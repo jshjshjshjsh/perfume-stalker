@@ -1,4 +1,4 @@
-package com.pond.perfumestalker.notion;
+package com.grove.perfumestalker.notion;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.pond.perfumestalker.notion;
+package com.grove.perfumestalker.notion;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
