@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: perfume-stalker-api
+
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500, expireAfterWrite=24h
+
+server:
+  port: 8080
+  shutdown: graceful
+
+notion:
+  api:
+    url: "https://api.notion.com/v1"
+    version: "2026-03-11"
+    token: ${NOTION_TOKEN}
+  db:
+    master-id: ${NOTION_MASTER_DB_ID}
+    usage-log-id: ${NOTION_USAGE_LOG_DB_ID}
+
+logging:
+  level:
+    root: INFO
+    com.perfumestalker: DEBUG
+    # WebClient 통신 시 노션 API 에러나면 아래 줄 주석 풀고 디버깅
+    # org.springframework.web.reactive.client: DEBUG

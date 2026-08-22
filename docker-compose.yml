@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  perfume-backend:
+    build: .
+    container_name: perfume-stalker-api
+    ports:
+      - "53333:8080"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Seoul
+    restart: unless-stopped

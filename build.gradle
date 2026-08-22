@@ -4,9 +4,9 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.pond'
+group = 'com.perfumestalker'
 version = '0.0.1-SNAPSHOT'
-description = 'perfume-stalker'
+description = 'api'
 
 java {
     toolchain {
@@ -19,9 +19,30 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
+    // 1. Core Web & API
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // 2. 비동기 통신 (Notion API 연동 핵심)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // 3. 로컬 인메모리 캐시 (Notion API 호출 최소화)
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'com.github.ben-manes.caffeine:caffeine'
+
+    // 4. K8s 모니터링 및 헬스체크 (Pond 2.0 Liveness/Readiness Probe 용도)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // 5. 웹 크롤링 우회 (나중에 프래그런티카 뚫을 때 쓸 헤드리스 브라우저)
+    implementation 'com.microsoft.playwright:playwright:1.41.0'
+
+    // 6. Lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // 7. Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testImplementation 'io.projectreactor:reactor-test' // WebFlux 테스트용
 }
 
 tasks.named('test') {
