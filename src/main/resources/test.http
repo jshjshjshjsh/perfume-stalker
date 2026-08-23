@@ -1,3 +1,8 @@
+### 0. data_sources id 가져오기
+GET https://api.notion.com/v1/databases/방금_긁어온_32자리_계정_DB_ID
+Authorization: Bearer 형님의_NOTION_TOKEN
+Notion-Version: 2026-03-11
+
 ### 1. 기존 향수 스캔 테스트 (마스터 DB 조회 -> 착향 로그 Insert)
 POST http://localhost:8080/api/v1/logs/scan
 Content-Type: application/json

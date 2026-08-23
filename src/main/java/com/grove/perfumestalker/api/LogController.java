@@ -2,6 +2,8 @@ package com.grove.perfumestalker.api;
 
 import com.grove.perfumestalker.notion.NotionLogService;
 import com.grove.perfumestalker.notion.NotionService;
+import com.grove.perfumestalker.user.UserService;
+import com.grove.perfumestalker.weather.WeatherService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,28 +19,41 @@ public class LogController {
 
     private final NotionService notionService;
     private final NotionLogService notionLogService;
+    private final WeatherService weatherService;
+    private final UserService userService;
+    public record ScanRequest(String uid, Double lat, Double lon) {}
 
     /**
      * 프론트엔드(모바일 웹)에서 NFC UID를 받아 착향 로그를 기록하는 엔드포인트
      */
     @PostMapping("/scan")
-    public Mono<ResponseEntity<String>> recordUsageLog(@RequestBody ScanRequest request) {
-        String uid = request.getUid();
-        log.info("📱 [Perfume Stalker] NFC 태그 스캔 요청 수신: UID = {}", uid);
+    public Mono<ResponseEntity<String>> scanNfcTag(@RequestBody ScanRequest request) {
+        log.info("📱 [Perfume Stalker] 스캔 수신: UID={}, GPS={},{}", request.uid(), request.lat(), request.lon());
 
-        // 1. UID로 향수 마스터 페이지 ID 조회 -> 2. 로그 Insert (flatMap으로 체이닝)
-        return notionService.findPerfumePageIdByUid(uid)
-                .flatMap(pageId -> notionLogService.createUsageLog(pageId))
-                .map(v -> ResponseEntity.ok("✅ 착향 로그가 성공적으로 기록되었습니다."))
+        // 1. 위치 및 날씨 조회 로직 (GPS가 있으면 GPS 우선, 없으면 계정 DB 위치)
+        Mono<WeatherService.WeatherData> weatherMono;
+        if (request.lat() != null && request.lon() != null) {
+            weatherMono = weatherService.getWeatherByCoordinates(request.lat(), request.lon());
+        } else {
+            weatherMono = userService.getDefaultLocation("jsh-admin")
+                    .flatMap(weatherService::getWeatherByCity);
+        }
+
+        // 2. 향수 ID 조회와 날씨 조회를 동시에(Parallel) 실행하고 묶기!
+        return Mono.zip(notionService.findPerfumePageIdByUid(request.uid()), weatherMono)
+                .flatMap(tuple -> {
+                    String perfumePageId = tuple.getT1();
+                    WeatherService.WeatherData weather = tuple.getT2();
+                    // 3. 묶인 데이터로 착향 로그 Insert
+                    return notionLogService.createUsageLog(perfumePageId, weather);
+                })
+                .map(v -> ResponseEntity.ok("✅ 날씨 정보와 함께 착향 로그가 기록되었습니다."))
                 .onErrorResume(e -> {
-                    log.error("❌ 착향 로그 기록 중 에러 발생: {}", e.getMessage());
-                    return Mono.just(ResponseEntity.badRequest().body("실패: " + e.getMessage()));
+                    if (e instanceof IllegalArgumentException && e.getMessage().contains("Unregistered")) {
+                        return Mono.just(ResponseEntity.badRequest().body("Unregistered NFC UID"));
+                    }
+                    log.error("❌ 에러: ", e);
+                    return Mono.just(ResponseEntity.internalServerError().body("서버 에러 발생"));
                 });
-    }
-
-    // API 요청 파라미터 DTO
-    @Data
-    public static class ScanRequest {
-        private String uid;
     }
 }

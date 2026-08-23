@@ -20,6 +20,7 @@ notion:
     master-id: ${NOTION_MASTER_DB_ID}
     master-data-source-id: ${NOTION_MASTER_DATA_SOURCE_ID}
     usage-log-id: ${NOTION_USAGE_LOG_DB_ID}
+    user-data-source-id : ${NOTION_USER_DATA_SOURCE_ID}
 
 logging:
   level:
@@ -27,5 +28,8 @@ logging:
     com.perfumestalker: DEBUG
     # WebClient 통신 시 노션 API 에러나면 아래 줄 주석 풀고 디버깅
     # org.springframework.web.reactive.client: DEBUG
+
+openweathermap:
+  api-key: ${OPENWEATHER_API_KEY}
 
 # ngrok http 8080

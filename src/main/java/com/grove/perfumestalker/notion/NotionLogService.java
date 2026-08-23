@@ -1,5 +1,6 @@
 package com.grove.perfumestalker.notion;
 
+import com.grove.perfumestalker.weather.WeatherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,13 +34,13 @@ public class NotionLogService {
         );
     }
 
-    public Mono<Void> createUsageLog(String masterPageId) {
+    public Mono<Void> createUsageLog(String masterPageId, WeatherService.WeatherData weather) {
         String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         String logId = "LOG-" + UUID.randomUUID().toString().substring(0, 8);
 
         // 부모 DB ID 포맷팅
         String formattedUsageLogDbId = formatUuid(usageLogDbId);
-        // 관계형으로 엮을 마스터 향수 Page ID 포맷팅 (이것도 2026 스펙에선 하이픈 필수)
+        // 관계형으로 엮을 마스터 향수 Page ID 포맷팅
         String formattedMasterPageId = formatUuid(masterPageId);
 
         Map<String, Object> body = Map.of(
@@ -60,7 +61,10 @@ public class NotionLogService {
                         ),
                         "DATE", Map.of(
                                 "date", Map.of("start", nowIso)
-                        )
+                        ),
+                        "WEATHER", Map.of("select", Map.of("name", weather.weather())),
+                        "TEMPERATURE", Map.of("number", weather.temperature()),
+                        "HUMIDITY", Map.of("number", weather.humidity())
                 )
         );
 
