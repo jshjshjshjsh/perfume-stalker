@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfume Stalker</title>
+    <style>
+        body { font-family: 'Pretendard', sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 50px 20px; }
+        h1 { color: #bb86fc; }
+        #scan-btn { background-color: #bb86fc; color: #000; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 12px; cursor: pointer; margin-top: 30px; width: 100%; max-width: 300px;}
+        #scan-btn:active { transform: scale(0.95); }
+        #status { margin-top: 30px; padding: 15px; border-radius: 8px; background-color: #1e1e1e; word-break: break-all; min-height: 50px; }
+    </style>
+</head>
+<body>
+
+<h1>🐰 Perfume Stalker</h1>
+<p>아침마다 스티커에 폰을 대세요</p>
+
+<button id="scan-btn">NFC 스캔하기</button>
+<div id="status">대기 중...</div>
+
+<script>
+    const scanBtn = document.getElementById('scan-btn');
+    const statusDiv = document.getElementById('status');
+
+    scanBtn.addEventListener('click', async () => {
+        try {
+            // 1. 브라우저가 Web NFC를 지원하는지 체크
+            if (!("NDEFReader" in window)) {
+                statusDiv.innerHTML = "❌ 이 브라우저는 Web NFC를 지원하지 않습니다.<br>(안드로이드 크롬을 사용해주세요)";
+                return;
+            }
+
+            statusDiv.innerText = "📱 폰을 향수 스티커에 가까이 대주세요...";
+            const ndef = new NDEFReader();
+            await ndef.scan();
+
+            // 2. NFC 스티커를 읽었을 때 실행되는 이벤트
+            ndef.onreading = async (event) => {
+                const uid = event.serialNumber; // 예: "5A:A5:B9:5A:1E:41:89"
+                statusDiv.innerText = `✅ 스캔 완료! UID: ${uid}\n서버로 전송 중...`;
+
+                // 3. 스프링 부트 서버로 POST 요청 쏘기
+                try {
+                    // TODO: 실제 폰에서 테스트할 때는 localhost 대신 형님 PC의 내부 IP 주소를 넣어야 함
+                    const response = await fetch("http://localhost:8080/api/v1/logs/scan", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uid: uid })
+                    });
+
+                    const resultText = await response.text();
+
+                    // 형님이 설계한 프론트엔드 분기 처리 로직!
+                    if (response.ok) {
+                        statusDiv.innerHTML = `<span style="color:#03dac6;">${resultText}</span>`;
+                    } else if (response.status === 400 && resultText.includes("Unregistered")) {
+                        statusDiv.innerHTML = `<span style="color:#cf6679;">미등록 향수입니다.<br>등록 페이지로 이동합니다 (구현 예정)</span>`;
+                    } else {
+                        statusDiv.innerHTML = `<span style="color:#cf6679;">에러 발생: ${resultText}</span>`;
+                    }
+
+                } catch (apiError) {
+                    statusDiv.innerText = "❌ 서버와 통신할 수 없습니다.";
+                }
+            };
+        } catch (error) {
+            statusDiv.innerText = `❌ NFC 스캔 에러: ${error}`;
+        }
+    });
+</script>
+</body>
+</html>

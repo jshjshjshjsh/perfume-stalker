@@ -23,7 +23,7 @@ public class NotionConfig {
     public WebClient notionWebClient() {
         return WebClient.builder()
                 .baseUrl(baseUrl)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + notionToken)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + notionToken.trim())
                 .defaultHeader("Notion-Version", notionVersion) // 노션 API 필수 헤더
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .build();

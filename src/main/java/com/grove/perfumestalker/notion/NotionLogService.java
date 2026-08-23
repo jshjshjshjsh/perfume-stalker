@@ -23,19 +23,30 @@ public class NotionLogService {
     @Value("${notion.db.usage-log-id}")
     private String usageLogDbId;
 
-    /**
-     * 향수 마스터의 Page ID를 받아 착향 로그 DB에 새로운 기록을 비동기로 Insert
-     */
-    public Mono<Void> createUsageLog(String masterPageId) {
-        // 현재 한국 시간 기준 ISO-8601 포맷 생성 (예: 2026-08-22T22:49:00+09:00)
-        String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    // 2026 스펙 방어용: 하이픈 없는 ID가 들어와도 무조건 표준 UUID(8-4-4-4-12)로 변환
+    private String formatUuid(String id) {
+        String cleanId = id.trim().replace("-", "");
+        if (cleanId.length() != 32) return id;
+        return cleanId.replaceFirst(
+                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
+                "$1-$2-$3-$4-$5"
+        );
+    }
 
-        // 고유 LOG_ID 생성 (예: LOG-8a2b3c4d)
+    public Mono<Void> createUsageLog(String masterPageId) {
+        String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         String logId = "LOG-" + UUID.randomUUID().toString().substring(0, 8);
 
-        // 노션 API Insert JSON 페이로드 구조
+        // 부모 DB ID 포맷팅
+        String formattedUsageLogDbId = formatUuid(usageLogDbId);
+        // 관계형으로 엮을 마스터 향수 Page ID 포맷팅 (이것도 2026 스펙에선 하이픈 필수)
+        String formattedMasterPageId = formatUuid(masterPageId);
+
         Map<String, Object> body = Map.of(
-                "parent", Map.of("database_id", usageLogDbId),
+                "parent", Map.of(
+                        "type", "database_id", // 페이지 생성 시에는 database_id 사용
+                        "database_id", formattedUsageLogDbId
+                ),
                 "properties", Map.of(
                         "LOG_ID", Map.of(
                                 "title", List.of(
@@ -44,7 +55,7 @@ public class NotionLogService {
                         ),
                         "PERFUME", Map.of(
                                 "relation", List.of(
-                                        Map.of("id", masterPageId) // MASTER DB에서 찾은 향수 페이지 ID로 관계 엮기
+                                        Map.of("id", formattedMasterPageId)
                                 )
                         ),
                         "DATE", Map.of(
@@ -54,11 +65,18 @@ public class NotionLogService {
         );
 
         return notionWebClient.post()
-                .uri("/pages") // 데이터를 생성할 때는 /pages를 호출함
+                .uri("/pages")
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Void.class)
                 .doOnSuccess(v -> log.info("✅ 노션 착향 로그 기록 완료: {}", logId))
-                .doOnError(e -> log.error("❌ 노션 착향 로그 기록 실패", e));
+                .doOnError(e -> {
+                    if (e instanceof org.springframework.web.reactive.function.client.WebClientResponseException) {
+                        String errorBody = ((org.springframework.web.reactive.function.client.WebClientResponseException) e).getResponseBodyAsString();
+                        log.error("❌ 노션 API 400/404 에러 상세: {}", errorBody);
+                    } else {
+                        log.error("❌ 착향 로그 기록 실패", e);
+                    }
+                });
     }
 }
