@@ -18,6 +18,7 @@ notion:
     token: ${NOTION_TOKEN}
   db:
     master-id: ${NOTION_MASTER_DB_ID}
+    master-data-source-id: ${NOTION_MASTER_DATA_SOURCE_ID}
     usage-log-id: ${NOTION_USAGE_LOG_DB_ID}
 
 logging:
@@ -26,3 +27,5 @@ logging:
     com.perfumestalker: DEBUG
     # WebClient 통신 시 노션 API 에러나면 아래 줄 주석 풀고 디버깅
     # org.springframework.web.reactive.client: DEBUG
+
+# ngrok http 8080

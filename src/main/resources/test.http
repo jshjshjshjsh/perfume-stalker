@@ -1,6 +1,20 @@
+### 1. 기존 향수 스캔 테스트 (마스터 DB 조회 -> 착향 로그 Insert)
 POST http://localhost:8080/api/v1/logs/scan
 Content-Type: application/json
 
 {
   "uid": "5A:A5:B9:5A:1E:41:89"
+}
+
+### 2. 신규 향수 등록 테스트 (마스터 DB Insert -> 착향 로그 Insert)
+POST http://localhost:8080/api/v1/perfumes/register
+Content-Type: application/json
+
+{
+  "uid": "NEW:TEST:UID:123",
+  "name": "Le Labo Santal 33",
+  "brand": "Le Labo",
+  "notes": ["Sandalwood", "Cedar", "Leather"],
+  "url": "https://www.fragrantica.com/perfume/Le-Labo/Santal-33-12201.html",
+  "imageUrl": "https://fimgs.net/mdig/perfume.12201.jpg"
 }

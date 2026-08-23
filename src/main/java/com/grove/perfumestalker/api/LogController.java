@@ -1,5 +1,7 @@
-package com.grove.perfumestalker.notion;
+package com.grove.perfumestalker.api;
 
+import com.grove.perfumestalker.notion.NotionLogService;
+import com.grove.perfumestalker.notion.NotionService;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
