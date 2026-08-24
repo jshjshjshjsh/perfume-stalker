@@ -1,10 +1,14 @@
 package com.grove.perfumestalker.user;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.grove.perfumestalker.enums.NotionUser;
+import com.grove.perfumestalker.notion.NotionModule;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -16,29 +20,22 @@ import java.util.Map;
 public class UserService {
 
     private final WebClient notionWebClient;
+    private final NotionModule notionModule;
 
     @Value("${notion.db.user-data-source-id}")
     private String userDataSourceId;
-
-    private String formatUuid(String id) {
-        String cleanId = id.trim().replace("-", "");
-        if (cleanId.length() != 32) return id;
-        return cleanId.replaceFirst(
-                "(\\p{XDigit}{8})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{4})(\\p{XDigit}{12})",
-                "$1-$2-$3-$4-$5"
-        );
-    }
 
     /**
      * 특정 유저의 DEFAULT_LOCATION을 조회 (없으면 기본값 "Busan" 반환)
      */
     public Mono<String> getDefaultLocation(String userId) {
-        String formattedDataSourceId = formatUuid(userDataSourceId);
+        String formattedDataSourceId = notionModule.formatUuid(userDataSourceId);
+        NotionUser userIdCol = NotionUser.USER_ID;
 
         Map<String, Object> queryBody = Map.of(
                 "filter", Map.of(
-                        "property", "USER_ID",
-                        "title", Map.of("equals", userId)
+                        "property", userIdCol.getColumnName(),
+                        userIdCol.getPropertyType(), Map.of("equals", userId)
                 )
         );
 
@@ -46,19 +43,38 @@ public class UserService {
                 .uri("/data_sources/{dbId}/query", formattedDataSourceId)
                 .bodyValue(queryBody)
                 .retrieve()
-                .bodyToMono(Map.class)
+                .bodyToMono(NotionUserQueryResponse.class)
                 .map(response -> {
-                    var results = (List<Map<String, Object>>) response.get("results");
-                    if (results.isEmpty()) return "Busan"; // fallback
+                    if (response.results().isEmpty()) return "Busan";
 
-                    var properties = (Map<String, Object>) results.get(0).get("properties");
-                    var locationProp = (Map<String, Object>) properties.get("DEFAULT_LOCATION");
-                    var richText = (List<Map<String, Object>>) locationProp.get("rich_text");
+                    var properties = response.results().get(0).properties();
 
-                    if (richText == null || richText.isEmpty()) return "Busan";
-                    return (String) ((Map<String, Object>) richText.get(0).get("text")).get("content");
+                    if (properties == null || properties.defaultLocation() == null || properties.defaultLocation().richText().isEmpty()) {
+                        return "Busan";
+                    }
+
+                    return properties.defaultLocation().richText().get(0).text().content();
                 })
-                .doOnError(e -> log.error("❌ 계정 DB 조회 에러", e))
+                .doOnError(e -> {
+                    if (e instanceof WebClientResponseException ex) {
+                        log.error("❌ 노션 계정 DB 조회 40x 에러 상세: {}", ex.getResponseBodyAsString());
+                    } else {
+                        log.error("❌ 계정 DB 조회 에러", e);
+                    }
+                })
                 .onErrorReturn("Busan"); // 에러 나도 멈추지 않고 기본값 리턴
+    }
+
+    // --- 💡 내부 전용 JSON 파싱 DTO ---
+    private record NotionUserQueryResponse(List<NotionPage> results) {
+        private record NotionPage(Properties properties) {}
+
+        private record Properties(
+                @JsonProperty("DEFAULT_LOCATION") DefaultLocation defaultLocation
+        ) {}
+
+        private record DefaultLocation(@JsonProperty("rich_text") List<RichText> richText) {}
+        private record RichText(Text text) {}
+        private record Text(String content) {}
     }
 }
