@@ -26,9 +26,9 @@ public class WeatherService {
     }
 
     // 서비스 내부에서 쓸 깔끔한 DTO (Java 16+ Record 사용)
-    public record WeatherData(String weather, double temperature, double humidity) {}
+    public record WeatherData(String cityName, String weather, double temperature, double humidity) {}
 
-    private record OpenWeatherResponse(List<Weather> weather, Main main) {
+    private record OpenWeatherResponse(List<Weather> weather, Main main, String name) {
         private record Weather(String main) {}
         private record Main(double temp, double humidity) {}
     }
@@ -74,9 +74,25 @@ public class WeatherService {
     private WeatherData convertToDto(OpenWeatherResponse res) {
         String mainWeather = res.weather().isEmpty() ? "Unknown" : res.weather().get(0).main();
         return new WeatherData(
+                res.name(),
                 mainWeather,
                 res.main().temp(),
                 res.main().humidity()
+        );
+    }
+
+    private WeatherData parseWeatherData(Map<String, Object> response) {
+        var main = (Map<String, Number>) response.get("main");
+        var weatherArray = (List<Map<String, Object>>) response.get("weather");
+        String mainWeather = (String) weatherArray.get(0).get("main");
+
+        String cityName = (String) response.get("name");
+
+        return new WeatherData(
+                cityName,
+                mainWeather,
+                main.get("temp").doubleValue(),
+                main.get("humidity").doubleValue()
         );
     }
 }

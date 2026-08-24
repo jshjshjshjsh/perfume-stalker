@@ -2,93 +2,253 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Perfume Stalker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Pretendard', sans-serif; background-color: #121212; color: #ffffff; text-align: center; padding: 50px 20px; }
-        h1 { color: #bb86fc; }
-        #scan-btn { background-color: #bb86fc; color: #000; border: none; padding: 20px 40px; font-size: 20px; font-weight: bold; border-radius: 12px; cursor: pointer; margin-top: 30px; width: 100%; max-width: 300px;}
-        #scan-btn:active { transform: scale(0.95); }
-        #status { margin-top: 30px; padding: 15px; border-radius: 8px; background-color: #1e1e1e; word-break: break-all; min-height: 50px; }
+        :root {
+            --bg-color: #f4f4f0;
+            --text-color: #1a1a1a;
+            --accent-color: #8c8c8c;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Courier Prime', 'Apple SD Gothic Neo', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 13px;
+            letter-spacing: -0.3px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .view-section {
+            flex: 1; padding: 40px 24px; display: none; opacity: 0;
+            transition: opacity 0.4s ease-in-out; overflow-y: auto;
+        }
+        .view-section.active { display: flex; flex-direction: column; opacity: 1; }
+
+        /* --- WEATHER WIDGET --- */
+        .weather-widget {
+            margin-bottom: 25px; /* 공간 확보를 위해 마진 줄임 */
+            border-bottom: 1px dashed var(--text-color);
+            padding-bottom: 15px;
+        }
+        .weather-widget h2 { font-size: 11px; font-weight: normal; color: var(--accent-color); margin-bottom: 8px; text-transform: uppercase; }
+        .weather-widget p { font-size: 14px; line-height: 1.6; }
+
+        .loc-btn {
+            font-size: 10px; cursor: pointer; text-decoration: underline; margin-left: 8px; color: var(--text-color);
+        }
+
+        /* --- SCAN CONTAINER (위로 땡김) --- */
+        .scan-container {
+            display: flex; align-items: center; flex-direction: column; margin-top: 20px;
+        }
+
+        .scan-btn {
+            background: transparent; color: var(--text-color); border: 1px solid var(--text-color);
+            padding: 18px 40px; font-family: inherit; font-size: 14px;
+            cursor: pointer; border-radius: 2px; text-transform: uppercase;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .scan-btn:active { transform: scale(0.95); }
+        .scan-btn.scanning { background: var(--text-color); color: var(--bg-color); animation: pulse 1.5s infinite; }
+        .scan-btn.success { background: var(--text-color); color: var(--bg-color); animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
+        }
+        @keyframes stamp {
+            0% { transform: scale(1.5) rotate(-5deg); opacity: 0; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
+
+        /* 💡 미래 확장을 위한 빈 공간 (대시보드 영역) */
+        .future-dashboard {
+            flex: 1;
+            margin-top: 30px;
+            border: 1px dashed #d0d0d0;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #b0b0b0;
+            font-size: 11px;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* --- BOTTOM NAV --- */
+        .bottom-nav {
+            display: flex; justify-content: space-between; padding: 20px 30px;
+            border-top: 1px solid #ddd; background-color: var(--bg-color);
+        }
+        .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
+        .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
     </style>
 </head>
 <body>
 
-<h1>🐰 Perfume Stalker</h1>
-<p>아침마다 스티커에 폰을 대세요</p>
+<section id="view-main" class="view-section active">
+    <div class="weather-widget">
+        <h2>Date: <span id="current-date"></span></h2>
+        <h2>Loc: <span id="current-loc">loading...</span></h2>
+        <p id="weather-info">Fetching real-time data...</p>
+    </div>
 
-<button id="scan-btn">NFC 스캔하기</button>
-<div id="status">대기 중...</div>
+    <div class="scan-container">
+        <button id="scan-btn" class="scan-btn">Tap to Scan</button>
+        <div id="status" class="status-msg">waiting for interaction...</div>
+    </div>
+
+    <!-- 💡 추후 차트나 최근 착향 리스트가 들어갈 자리 -->
+    <div class="future-dashboard">
+        Dashboard Area<br>(Charts & Recent Logs)
+    </div>
+</section>
+
+<section id="view-wardrobe" class="view-section"><div class="weather-widget"><h2>My Wardrobe</h2><p>Santal 33 (Le Labo)<br>Hinoki (CdG)</p></div></section>
+<section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
+<section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
+
+<nav class="bottom-nav">
+    <div class="nav-item active" onclick="switchView('main', this)">Main</div>
+    <div class="nav-item" onclick="switchView('wardrobe', this)">Wardrobe</div>
+    <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
+    <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
+</nav>
 
 <script>
-    const scanBtn = document.getElementById('scan-btn');
-    const statusDiv = document.getElementById('status');
+    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-    // 💡 팩트: 상태 관리를 위한 이중 락(Lock) 변수
-    let isScanning = false;   // 스캐너 중복 실행 방지
-    let isProcessing = false; // API 중복 호출 방지
+    let currentLat = null;
+    let currentLon = null;
 
-    scanBtn.addEventListener('click', async () => {
-        if (!("NDEFReader" in window)) {
-            statusDiv.innerHTML = "❌ 안드로이드 크롬에서만 작동합니다.";
-            return;
-        }
+    async function fetchRealWeather(lat = null, lon = null) {
+        const locText = document.getElementById('current-loc');
+        const weatherInfo = document.getElementById('weather-info');
 
-        // 락 1: 이미 스캐너가 켜져 있으면 무시
-        if (isScanning) {
-            statusDiv.innerText = "📱 이미 스캔 대기 중입니다. 스티커를 대주세요!";
-            return;
-        }
+        weatherInfo.innerText = "fetching real-time data...";
 
         try {
-            const ndef = new NDEFReader();
-            await ndef.scan();
-            isScanning = true; // 스캐너 켜짐 상태로 고정
+            let url = "/api/v1/weather";
+            if (lat !== null && lon !== null) url += `?lat=${lat}&lon=${lon}`;
 
-            scanBtn.innerText = "스캔 대기 중...";
-            scanBtn.style.backgroundColor = "#03dac6"; // UI 시각적 피드백
-            statusDiv.innerText = "📱 폰을 향수 스티커에 가까이 대주세요...";
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+
+                // 💡 GPS 모드일 때만 [ default ] 버튼을 추가로 렌더링
+                let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()">[ update ]</span>`;
+                if (lat !== null) {
+                    buttonsHtml += ` <span class="loc-btn" onclick="resetLocation()">[ default ]</span>`;
+                }
+
+                locText.innerHTML = `${data.location} ${buttonsHtml}`;
+                weatherInfo.innerHTML = `${data.temp}°C / Humidity ${data.humidity}%<br>Weather: ${data.weather}`;
+            } else {
+                weatherInfo.innerText = "[ERROR] Failed to load weather data.";
+            }
+        } catch (error) {
+            weatherInfo.innerText = "[ERROR] Network failure.";
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => fetchRealWeather());
+
+    // 📍 GPS 업데이트
+    function updateLocation() {
+        document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+                    fetchRealWeather(currentLat, currentLon);
+                },
+                (error) => { alert("GPS access denied."); fetchRealWeather(); },
+                { enableHighAccuracy: true, maximumAge: 0 }
+            );
+        }
+    }
+
+    // 🏠 계정 기본 위치로 복귀 (Reset)
+    function resetLocation() {
+        document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
+        currentLat = null;
+        currentLon = null;
+        fetchRealWeather(); // 파라미터 없이 찌르면 백엔드가 다시 Busan으로 처리함
+    }
+
+    // --- 뷰 전환 ---
+    function switchView(viewId, element) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        document.getElementById('view-' + viewId).classList.add('active');
+        element.classList.add('active');
+    }
+
+    // --- NFC 스캔 ---
+    const scanBtn = document.getElementById('scan-btn');
+    const statusDiv = document.getElementById('status');
+    let isScanning = false;
+    let abortController = null;
+
+    function resetScanUI() {
+        isScanning = false;
+        scanBtn.classList.remove('scanning', 'success');
+        scanBtn.innerText = "Tap to Scan";
+        statusDiv.innerText = "waiting for interaction...";
+        if (abortController) abortController.abort();
+    }
+
+    scanBtn.addEventListener('click', async () => {
+        if (!("NDEFReader" in window)) { statusDiv.innerText = "[ERROR] NFC not supported."; return; }
+        if (isScanning) { resetScanUI(); statusDiv.innerText = "[CANCELLED] Scan aborted."; return; }
+
+        try {
+            abortController = new AbortController();
+            const ndef = new NDEFReader();
+            await ndef.scan({ signal: abortController.signal });
+
+            isScanning = true;
+            scanBtn.classList.add('scanning');
+            scanBtn.innerText = "Scanning... (Tap to cancel)";
+            statusDiv.innerText = "Please approach the tag.";
 
             ndef.onreading = async (event) => {
-                // 락 2: 이미 서버로 API 쏘고 있으면 추가 스캔 무시 (바운싱 방지)
-                if (isProcessing) return;
-                isProcessing = true;
-
+                abortController.abort();
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 const uid = event.serialNumber;
-                statusDiv.innerText = `✅ 스캔 완료! UID: ${uid}\n서버로 전송 중...`;
+
+                scanBtn.classList.remove('scanning'); scanBtn.classList.add('success');
+                scanBtn.innerText = "STAMPED";
+                statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
 
                 try {
-                    // 백엔드와 같은 도메인이므로 상대 경로 사용
                     const response = await fetch("/api/v1/logs/scan", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ uid: uid })
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
                     });
-
                     const resultText = await response.text();
 
                     if (response.ok) {
-                        statusDiv.innerHTML = `<span style="color:#03dac6;">${resultText}</span>`;
+                        statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
                     } else if (response.status === 400 && resultText.includes("Unregistered")) {
-                        statusDiv.innerHTML = `<span style="color:#cf6679;">🐰 미등록 향수입니다.<br>등록 페이지로 이동해야 합니다.</span>`;
-                    } else {
-                        statusDiv.innerHTML = `<span style="color:#cf6679;">❌ 에러: ${resultText}</span>`;
-                    }
-
-                } catch (apiError) {
-                    statusDiv.innerText = "❌ 서버와 통신할 수 없습니다.";
-                } finally {
-                    // API 통신이 끝나면 2초 뒤에 락을 풀어서 다음 향수 스캔을 준비함
-                    setTimeout(() => {
-                        isProcessing = false;
-                        statusDiv.innerText = "📱 다음 향수를 스캔할 준비가 되었습니다.";
-                    }, 2000);
-                }
+                        statusDiv.innerText = `[UNKNOWN] Tag not found. Redirecting...`;
+                    } else { statusDiv.innerText = `[ERROR] ${resultText}`; }
+                } catch (apiError) { statusDiv.innerText = "[ERROR] Network failure."; }
+                finally { setTimeout(resetScanUI, 2500); }
             };
-        } catch (error) {
-            statusDiv.innerText = `❌ NFC 스캔 에러: ${error}`;
-            isScanning = false;
-        }
+        } catch (error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; resetScanUI(); } }
     });
 </script>
 </body>
