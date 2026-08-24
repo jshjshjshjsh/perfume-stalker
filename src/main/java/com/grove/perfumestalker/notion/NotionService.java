@@ -53,7 +53,7 @@ public class NotionService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
-                    var results = (java.util.List<Map<String, Object>>) response.get("results");
+                    var results = (List<Map<String, Object>>) response.get("results");
                     if (results.isEmpty()) {
                         log.warn("등록되지 않은 NFC UID 스캔됨: {}", uid);
                         throw new IllegalArgumentException("Unregistered NFC UID");
