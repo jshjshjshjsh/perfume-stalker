@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -27,6 +28,11 @@ public class WeatherService {
     // 서비스 내부에서 쓸 깔끔한 DTO (Java 16+ Record 사용)
     public record WeatherData(String weather, double temperature, double humidity) {}
 
+    private record OpenWeatherResponse(List<Weather> weather, Main main) {
+        private record Weather(String main) {}
+        private record Main(double temp, double humidity) {}
+    }
+
     /**
      * 1. 도시 이름(예: "Busan")으로 날씨 조회
      */
@@ -39,8 +45,8 @@ public class WeatherService {
                         .queryParam("units", "metric") // 섭씨온도로 받기 위해 metric 필수
                         .build())
                 .retrieve()
-                .bodyToMono(Map.class)
-                .map(this::parseWeatherData)
+                .bodyToMono(OpenWeatherResponse.class)
+                .map(this::convertToDto)
                 .doOnError(e -> log.error("❌ 날씨 API (City) 호출 실패: {}", city, e));
     }
 
@@ -57,23 +63,20 @@ public class WeatherService {
                         .queryParam("units", "metric")
                         .build())
                 .retrieve()
-                .bodyToMono(Map.class)
-                .map(this::parseWeatherData)
+                .bodyToMono(OpenWeatherResponse.class)
+                .map(this::convertToDto)
                 .doOnError(e -> log.error("❌ 날씨 API (GPS) 호출 실패", e));
     }
 
     /**
      * OpenWeatherMap의 복잡한 JSON 응답에서 딱 필요한 온습도/날씨만 추출
      */
-    private WeatherData parseWeatherData(Map<String, Object> response) {
-        var main = (Map<String, Number>) response.get("main");
-        var weatherArray = (java.util.List<Map<String, Object>>) response.get("weather");
-        String mainWeather = (String) weatherArray.get(0).get("main"); // e.g., Clear, Rain, Clouds
-
+    private WeatherData convertToDto(OpenWeatherResponse res) {
+        String mainWeather = res.weather().isEmpty() ? "Unknown" : res.weather().get(0).main();
         return new WeatherData(
                 mainWeather,
-                main.get("temp").doubleValue(),
-                main.get("humidity").doubleValue()
+                res.main().temp(),
+                res.main().humidity()
         );
     }
 }

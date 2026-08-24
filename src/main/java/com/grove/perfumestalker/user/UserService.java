@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -47,12 +48,12 @@ public class UserService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
-                    var results = (java.util.List<Map<String, Object>>) response.get("results");
+                    var results = (List<Map<String, Object>>) response.get("results");
                     if (results.isEmpty()) return "Busan"; // fallback
 
                     var properties = (Map<String, Object>) results.get(0).get("properties");
                     var locationProp = (Map<String, Object>) properties.get("DEFAULT_LOCATION");
-                    var richText = (java.util.List<Map<String, Object>>) locationProp.get("rich_text");
+                    var richText = (List<Map<String, Object>>) locationProp.get("rich_text");
 
                     if (richText == null || richText.isEmpty()) return "Busan";
                     return (String) ((Map<String, Object>) richText.get(0).get("text")).get("content");
