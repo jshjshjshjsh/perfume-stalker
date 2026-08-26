@@ -6,97 +6,56 @@
     <title>Perfume Stalker</title>
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #f4f4f0;
-            --text-color: #1a1a1a;
-            --accent-color: #8c8c8c;
-        }
+        :root { --bg-color: #f4f4f0; --text-color: #1a1a1a; --accent-color: #8c8c8c; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Courier Prime', 'Apple SD Gothic Neo', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: 13px;
-            letter-spacing: -0.3px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
+        body { font-family: 'Courier Prime', 'Apple SD Gothic Neo', sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 13px; letter-spacing: -0.3px; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; }
 
-        .view-section {
-            flex: 1; padding: 40px 24px; display: none; opacity: 0;
-            transition: opacity 0.4s ease-in-out; overflow-y: auto;
-        }
+        .view-section { flex: 1; padding: 40px 24px; display: none; opacity: 0; transition: opacity 0.4s ease-in-out; overflow-y: auto; }
         .view-section.active { display: flex; flex-direction: column; opacity: 1; }
 
-        /* --- WEATHER WIDGET --- */
-        .weather-widget {
-            margin-bottom: 25px; /* 공간 확보를 위해 마진 줄임 */
-            border-bottom: 1px dashed var(--text-color);
-            padding-bottom: 15px;
-        }
+        /* --- WEATHER & WIDGETS --- */
+        .weather-widget { margin-bottom: 25px; border-bottom: 1px dashed var(--text-color); padding-bottom: 15px; }
         .weather-widget h2 { font-size: 11px; font-weight: normal; color: var(--accent-color); margin-bottom: 8px; text-transform: uppercase; }
         .weather-widget p { font-size: 14px; line-height: 1.6; }
+        .loc-btn { font-size: 10px; cursor: pointer; text-decoration: underline; margin-left: 8px; color: var(--text-color); }
 
-        .loc-btn {
-            font-size: 10px; cursor: pointer; text-decoration: underline; margin-left: 8px; color: var(--text-color);
-        }
-
-        /* --- SCAN CONTAINER (위로 땡김) --- */
-        .scan-container {
-            display: flex; align-items: center; flex-direction: column; margin-top: 20px;
-        }
-
+        /* --- BUTTONS & ANIMATIONS --- */
+        .scan-container { display: flex; align-items: center; flex-direction: column; margin-top: 20px; }
         .scan-btn {
             background: transparent; color: var(--text-color); border: 1px solid var(--text-color);
-            padding: 18px 40px; font-family: inherit; font-size: 14px;
-            cursor: pointer; border-radius: 2px; text-transform: uppercase;
+            padding: 18px 40px; font-family: inherit; font-size: 14px; cursor: pointer; border-radius: 2px; text-transform: uppercase;
             transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         .scan-btn:active { transform: scale(0.95); }
         .scan-btn.scanning { background: var(--text-color); color: var(--bg-color); animation: pulse 1.5s infinite; }
         .scan-btn.success { background: var(--text-color); color: var(--bg-color); animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); }
-        }
-        @keyframes stamp {
-            0% { transform: scale(1.5) rotate(-5deg); opacity: 0; }
-            100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); } }
+        @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
         .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
 
-        /* 💡 미래 확장을 위한 빈 공간 (대시보드 영역) */
-        .future-dashboard {
-            flex: 1;
-            margin-top: 30px;
-            border: 1px dashed #d0d0d0;
-            border-radius: 2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #b0b0b0;
-            font-size: 11px;
-            text-transform: uppercase;
-            text-align: center;
-            line-height: 1.5;
+        .future-dashboard { flex: 1; margin-top: 30px; border: 1px dashed #d0d0d0; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #b0b0b0; font-size: 11px; text-transform: uppercase; text-align: center; line-height: 1.5; }
+
+        /* 💡 빈티지 입력 폼 (Register View) 스타일 */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 10px; color: var(--accent-color); margin-bottom: 5px; text-transform: uppercase; }
+        .form-group input {
+            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color);
+            padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;
         }
+        .form-group input:focus { border-bottom: 2px solid var(--text-color); }
+        .form-group input::placeholder { color: #ccc; }
+        .form-group input[readonly] { color: var(--accent-color); border-bottom-style: dashed; }
 
         /* --- BOTTOM NAV --- */
-        .bottom-nav {
-            display: flex; justify-content: space-between; padding: 20px 30px;
-            border-top: 1px solid #ddd; background-color: var(--bg-color);
-        }
+        .bottom-nav { display: flex; justify-content: space-between; padding: 20px 30px 30px 30px; border-top: 1px solid #ddd; background-color: var(--bg-color); }
         .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
         .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
     </style>
 </head>
 <body>
 
+<!-- 1. MAIN VIEW -->
 <section id="view-main" class="view-section active">
     <div class="weather-widget">
         <h2>Date: <span id="current-date"></span></h2>
@@ -108,19 +67,60 @@
         <button id="scan-btn" class="scan-btn">Tap to Scan</button>
         <div id="status" class="status-msg">waiting for interaction...</div>
     </div>
+    <div class="future-dashboard">Dashboard Area<br>(Charts & Recent Logs)</div>
+</section>
 
-    <!-- 💡 추후 차트나 최근 착향 리스트가 들어갈 자리 -->
-    <div class="future-dashboard">
-        Dashboard Area<br>(Charts & Recent Logs)
+<!-- 2. WARDROBE VIEW -->
+<section id="view-wardrobe" class="view-section"><div class="weather-widget"><h2>My Wardrobe</h2><p>Santal 33 (Le Labo)<br>Hinoki (CdG)</p></div></section>
+<!-- 3. SUMMARY VIEW -->
+<section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
+<!-- 4. WISH LIST VIEW -->
+<section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
+
+<!-- 💡 5. REGISTER VIEW (미등록 태그 스캔 시 스르륵 넘어오는 화면) -->
+<section id="view-register" class="view-section">
+    <div class="weather-widget">
+        <h2>New Discovery <span class="loc-btn" onclick="cancelRegistration()">[ cancel ]</span></h2>
+        <p>Unregistered tag detected.<br>Type details to log it.</p>
+    </div>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label>Tag UID</label>
+            <input type="text" id="reg-uid" readonly>
+        </div>
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="reg-name" placeholder="e.g. Santal 33" required autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="reg-brand" list="brand-list" placeholder="Select or type a brand" autocomplete="off">
+            <datalist id="brand-list">
+                <!-- 백엔드에서 받아온 브랜드 목록이 여기 들어감 -->
+            </datalist>
+        </div>
+        <div class="form-group">
+            <label>Notes (comma separated)</label>
+            <input type="text" id="reg-notes" placeholder="e.g. Sandalwood, Cedar, Leather" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Fragrantica URL <span class="loc-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
+            <input type="url" id="reg-url" placeholder="Paste URL here...">
+        </div>
+        <div class="form-group">
+            <label>Image URL</label>
+            <input type="url" id="reg-image" placeholder="https://...">
+        </div>
+
+        <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
+        <div id="reg-status" class="status-msg"></div>
     </div>
 </section>
 
-<section id="view-wardrobe" class="view-section"><div class="weather-widget"><h2>My Wardrobe</h2><p>Santal 33 (Le Labo)<br>Hinoki (CdG)</p></div></section>
-<section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
-<section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
-
 <nav class="bottom-nav">
-    <div class="nav-item active" onclick="switchView('main', this)">Main</div>
+    <!-- class="nav-item main-tab" 처럼 요소를 특정하기 쉽게 식별자 추가 -->
+    <div class="nav-item active main-tab" onclick="switchView('main', this)">Main</div>
     <div class="nav-item" onclick="switchView('wardrobe', this)">Wardrobe</div>
     <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
     <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
@@ -132,81 +132,65 @@
     let currentLat = null;
     let currentLon = null;
 
+    // --- 날씨 모듈 ---
     async function fetchRealWeather(lat = null, lon = null) {
         const locText = document.getElementById('current-loc');
         const weatherInfo = document.getElementById('weather-info');
-
         weatherInfo.innerText = "fetching real-time data...";
-
         try {
             let url = "/api/v1/weather";
             if (lat !== null && lon !== null) url += `?lat=${lat}&lon=${lon}`;
-
             const response = await fetch(url);
             if (response.ok) {
                 const data = await response.json();
-
-                // 💡 GPS 모드일 때만 [ default ] 버튼을 추가로 렌더링
                 let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()">[ update ]</span>`;
-                if (lat !== null) {
-                    buttonsHtml += ` <span class="loc-btn" onclick="resetLocation()">[ default ]</span>`;
-                }
-
+                if (lat !== null) buttonsHtml += ` <span class="loc-btn" onclick="resetLocation()">[ default ]</span>`;
                 locText.innerHTML = `${data.location} ${buttonsHtml}`;
                 weatherInfo.innerHTML = `${data.temp}°C / Humidity ${data.humidity}%<br>Weather: ${data.weather}`;
-            } else {
-                weatherInfo.innerText = "[ERROR] Failed to load weather data.";
-            }
-        } catch (error) {
-            weatherInfo.innerText = "[ERROR] Network failure.";
-        }
+            } else { weatherInfo.innerText = "[ERROR] Failed to load weather data."; }
+        } catch (error) { weatherInfo.innerText = "[ERROR] Network failure."; }
     }
 
-    window.addEventListener('DOMContentLoaded', () => fetchRealWeather());
-
-    // 📍 GPS 업데이트
     function updateLocation() {
         document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    fetchRealWeather(currentLat, currentLon);
-                },
+                (position) => { currentLat = position.coords.latitude; currentLon = position.coords.longitude; fetchRealWeather(currentLat, currentLon); },
                 (error) => { alert("GPS access denied."); fetchRealWeather(); },
                 { enableHighAccuracy: true, maximumAge: 0 }
             );
         }
     }
 
-    // 🏠 계정 기본 위치로 복귀 (Reset)
     function resetLocation() {
         document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
-        currentLat = null;
-        currentLon = null;
-        fetchRealWeather(); // 파라미터 없이 찌르면 백엔드가 다시 Busan으로 처리함
+        currentLat = null; currentLon = null; fetchRealWeather();
     }
 
-    // --- 뷰 전환 ---
+    // --- 뷰 전환 모듈 ---
     function switchView(viewId, element) {
         document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         document.getElementById('view-' + viewId).classList.add('active');
-        element.classList.add('active');
+        // element가 null이 아닐 때만 active 클래스 추가 (수동 전환 시 에러 방지)
+        if (element) { element.classList.add('active'); }
     }
 
-    // --- NFC 스캔 ---
+    // 등록 취소하고 메인으로 돌아가기
+    function cancelRegistration() {
+        document.getElementById('reg-uid').value = '';
+        document.getElementById('reg-status').innerText = '';
+        switchView('main', document.querySelector('.nav-item.main-tab'));
+    }
+
+    // --- NFC 스캔 모듈 ---
     const scanBtn = document.getElementById('scan-btn');
     const statusDiv = document.getElementById('status');
-    let isScanning = false;
-    let abortController = null;
+    let isScanning = false; let abortController = null;
 
     function resetScanUI() {
-        isScanning = false;
-        scanBtn.classList.remove('scanning', 'success');
-        scanBtn.innerText = "Tap to Scan";
-        statusDiv.innerText = "waiting for interaction...";
+        isScanning = false; scanBtn.classList.remove('scanning', 'success');
+        scanBtn.innerText = "Tap to Scan"; statusDiv.innerText = "waiting for interaction...";
         if (abortController) abortController.abort();
     }
 
@@ -219,8 +203,7 @@
             const ndef = new NDEFReader();
             await ndef.scan({ signal: abortController.signal });
 
-            isScanning = true;
-            scanBtn.classList.add('scanning');
+            isScanning = true; scanBtn.classList.add('scanning');
             scanBtn.innerText = "Scanning... (Tap to cancel)";
             statusDiv.innerText = "Please approach the tag.";
 
@@ -242,13 +225,128 @@
 
                     if (response.ok) {
                         statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
-                    } else if (response.status === 400 && resultText.includes("Unregistered")) {
-                        statusDiv.innerText = `[UNKNOWN] Tag not found. Redirecting...`;
-                    } else { statusDiv.innerText = `[ERROR] ${resultText}`; }
-                } catch (apiError) { statusDiv.innerText = "[ERROR] Network failure."; }
-                finally { setTimeout(resetScanUI, 2500); }
+                        setTimeout(resetScanUI, 2500);
+                    }
+                    // 💡 미등록 태그 감지 시 'Register View'로 화면 자동 전환!
+                    else if (response.status === 400 && resultText.includes("Unregistered")) {
+                        statusDiv.innerText = `[UNKNOWN] Redirecting to form...`;
+                        setTimeout(() => {
+                            document.getElementById('reg-uid').value = uid; // 폼에 UID 자동 채우기
+                            switchView('register', null); // 네비게이션 선택 해제 상태로 폼 이동
+                            resetScanUI();
+                        }, 1200);
+                    } else {
+                        statusDiv.innerText = `[ERROR] ${resultText}`;
+                        setTimeout(resetScanUI, 2500);
+                    }
+                } catch (apiError) {
+                    statusDiv.innerText = "[ERROR] Network failure.";
+                    setTimeout(resetScanUI, 2500);
+                }
             };
         } catch (error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; resetScanUI(); } }
+    });
+
+    // --- 💡 신규 향수 등록 (Submit) 모듈 ---
+    document.getElementById('register-submit-btn').addEventListener('click', async () => {
+        const uid = document.getElementById('reg-uid').value;
+        const name = document.getElementById('reg-name').value.trim();
+        const brand = document.getElementById('reg-brand').value.trim();
+        const notesInput = document.getElementById('reg-notes').value;
+        const url = document.getElementById('reg-url').value.trim();
+        const imageUrl = document.getElementById('reg-image').value.trim();
+        const regStatus = document.getElementById('reg-status');
+        const submitBtn = document.getElementById('register-submit-btn');
+
+        if (!name) { regStatus.innerText = "[ERROR] Name is required."; return; }
+
+        // 쉼표로 입력받은 노트를 문자열 배열로 깔끔하게 변환
+        const notes = notesInput ? notesInput.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
+
+        submitBtn.innerText = "Registering...";
+        regStatus.innerText = "Syncing with Master DB...";
+
+        try {
+            const res = await fetch("/api/v1/perfumes/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                // 💡 방금 전에 세팅해 둔 날씨 GPS도 똑같이 같이 넘겨줌!
+                body: JSON.stringify({ uid, name, brand, notes, url, imageUrl, lat: currentLat, lon: currentLon })
+            });
+
+            const resultText = await res.text();
+
+            if (res.ok) {
+                submitBtn.classList.add('success');
+                submitBtn.innerText = "REGISTERED";
+                regStatus.innerText = "[SUCCESS] Perfume added to Wardrobe.";
+
+                // 2초 뒤에 폼 싹 비우고 메인 화면으로 멋지게 복귀
+                setTimeout(() => {
+                    document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
+                    submitBtn.classList.remove('success');
+                    submitBtn.innerText = "Register & Log";
+                    regStatus.innerText = "";
+                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                }, 2000);
+            } else {
+                regStatus.innerText = `[ERROR] ${resultText}`;
+                submitBtn.innerText = "Register & Log";
+            }
+        } catch (e) {
+            regStatus.innerText = "[ERROR] Network failure.";
+            submitBtn.innerText = "Register & Log";
+        }
+    });
+
+    // --- 1. 브랜드 목록 불러오기 (초기 로딩 시) ---
+    async function fetchBrands() {
+        try {
+            const res = await fetch("/api/v1/perfumes/brands");
+            if (res.ok) {
+                const brands = await res.json();
+                const datalist = document.getElementById('brand-list');
+                datalist.innerHTML = brands.map(b => `<option value="${b}">`).join('');
+            }
+        } catch (e) { console.error("Brand load failed"); }
+    }
+
+    // --- 2. URL 크롤링 (Auto Fill) 로직 ---
+    async function crawlUrl() {
+        const urlInput = document.getElementById('reg-url').value.trim();
+        const notesInput = document.getElementById('reg-notes');
+        const imageInput = document.getElementById('reg-image');
+        const regStatus = document.getElementById('reg-status');
+
+        if (!urlInput) {
+            regStatus.innerText = "Please paste a URL first.";
+            return;
+        }
+
+        regStatus.innerText = "Crawling Fragrantica... [ wait ]";
+
+        try {
+            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
+            if (res.ok) {
+                const data = await res.json();
+
+                if (data.notes) notesInput.value = data.notes;
+                if (data.imageUrl) imageInput.value = data.imageUrl;
+
+                if (!data.notes && !data.imageUrl) {
+                    regStatus.innerText = "[BLOCKED] Anti-bot system prevented crawling. Please enter manually.";
+                } else {
+                    regStatus.innerText = "[SUCCESS] Data auto-filled.";
+                }
+            }
+        } catch (e) {
+            regStatus.innerText = "[ERROR] Crawling failed. Please enter manually.";
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        fetchRealWeather();
+        fetchBrands();
     });
 </script>
 </body>

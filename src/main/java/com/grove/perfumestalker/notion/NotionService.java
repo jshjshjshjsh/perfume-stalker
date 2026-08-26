@@ -5,11 +5,13 @@ import com.grove.perfumestalker.enums.NotionPerfumeMaster;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -96,6 +98,49 @@ public class NotionService {
                 .map(NotionPageResponse::id)
                 .doOnSuccess(id -> log.info("✅ 새 향수 등록 완료: {}", req.getName()))
                 .doOnError(this::handleNotionError);
+    }
+
+    /**
+     * 마스터 DB의 스키마를 조회해서 'BRAND' 컬럼에 등록된 옵션 목록을 가져옴
+     */
+    public Mono<List<String>> getBrandOptions() {
+        // 스캔 로직과 똑같이 UUID 포맷팅 적용
+        String formattedDataSourceId = notionModule.formatUuid(masterDataSourceId);
+
+        // 조건 없이 전체 향수를 긁어오기 위한 빈 쿼리 조립
+        Map<String, Object> queryBody = Map.of("page_size", 100);
+
+        return notionWebClient.post()
+                .uri("/data_sources/{dbId}/query", formattedDataSourceId)
+                .bodyValue(queryBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                    if (results == null || results.isEmpty()) return List.<String>of();
+
+                    String brandKey = NotionPerfumeMaster.BRAND.name();
+
+                    return results.stream()
+                            .map(page -> {
+                                Map<String, Object> props = (Map<String, Object>) page.get("properties");
+                                if (props == null) return null;
+
+                                Map<String, Object> brandProp = (Map<String, Object>) props.get(brandKey);
+                                if (brandProp == null) return null;
+
+                                // 향수 데이터에서 브랜드명(select.name)만 쏙쏙 빼오기
+                                if ("select".equals(brandProp.get("type")) && brandProp.get("select") != null) {
+                                    return (String) ((Map<String, Object>) brandProp.get("select")).get("name");
+                                }
+                                return null;
+                            })
+                            .filter(brand -> brand != null && !brand.trim().isEmpty())
+                            .distinct() // 중복 브랜드명 제거
+                            .toList();
+                })
+                .doOnError(e -> log.error("❌ 노션 브랜드 데이터 조회 실패: ", e))
+                .onErrorReturn(List.of());
     }
 
     /**

@@ -35,6 +35,7 @@ dependencies {
 
     // 5. 웹 크롤링 우회 (나중에 프래그런티카 뚫을 때 쓸 헤드리스 브라우저)
     implementation 'com.microsoft.playwright:playwright:1.41.0'
+    implementation 'org.jsoup:jsoup:1.17.2'
 
     // 6. Lombok
     compileOnly 'org.projectlombok:lombok'
