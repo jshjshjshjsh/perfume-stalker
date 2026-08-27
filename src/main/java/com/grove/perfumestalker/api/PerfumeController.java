@@ -1,6 +1,7 @@
 package com.grove.perfumestalker.api;
 
 import com.grove.perfumestalker.crawling.CrawlingService;
+import com.grove.perfumestalker.dto.UsageLogCreateCommand;
 import com.grove.perfumestalker.notion.NotionLogService;
 import com.grove.perfumestalker.notion.NotionService;
 import com.grove.perfumestalker.dto.PerfumeRegisterRequest;
@@ -55,7 +56,8 @@ public class PerfumeController {
                     String newPerfumePageId = tuple.getT1();
                     WeatherService.WeatherData weather = tuple.getT2();
 
-                    return notionLogService.createUsageLog(newPerfumePageId, weather);
+                    UsageLogCreateCommand command = new UsageLogCreateCommand(newPerfumePageId, weather, null);
+                    return notionLogService.createUsageLog(command);
                 })
                 .map(v -> ResponseEntity.ok("✅ 향수 등록 및 날씨 정보가 포함된 착향 로그 기록 완료!"))
                 .onErrorResume(e -> {
@@ -79,6 +81,12 @@ public class PerfumeController {
     @GetMapping("/crawl")
     public Mono<ResponseEntity<Map<String, Object>>> crawlFragrantica(@RequestParam String url) {
         return crawlingService.crawl(url)
+                .map(ResponseEntity::ok);
+    }
+
+    @GetMapping("/list")
+    public Mono<ResponseEntity<List<Map<String, String>>>> getPerfumeList() {
+        return notionService.getAllPerfumes()
                 .map(ResponseEntity::ok);
     }
 }

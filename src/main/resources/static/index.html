@@ -38,6 +38,23 @@
         @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
         .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
 
+        .manual-trigger-container {
+            margin-top: 25px; /* 스캔 버튼과의 간격을 시원하게 벌림 */
+            text-align: center;
+            border-top: 1px dashed #d0d0c8;
+            padding-top: 15px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .manual-trigger-btn {
+            background: transparent; border: none; font-family: inherit;
+            font-size: 11px; color: var(--text-color); cursor: pointer;
+            text-decoration: underline;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            transition: color 0.2s ease;
+        }
+        .manual-trigger-btn:hover { color: var(--text-color); text-decoration: underline; }
+
         /* 대시보드 스타일 */
         .future-dashboard {
             flex: 1; margin-top: 30px; border: 1px dashed var(--text-color);
@@ -110,6 +127,12 @@
     <div class="scan-container">
         <button id="scan-btn" class="scan-btn">Tap to Scan</button>
         <div id="status" class="status-msg">waiting for interaction...</div>
+
+        <div class="manual-trigger-container">
+            <button class="manual-trigger-btn" onclick="switchView('manual-log', null)">
+                [ + Manual Entry (수동 기록) ]
+            </button>
+        </div>
     </div>
     <div class="future-dashboard">
         <div class="dashboard-header">Recent Logs</div>
@@ -125,6 +148,33 @@
 <section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
 <!-- 4. WISH LIST VIEW -->
 <section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
+
+<!-- 💡 7. MANUAL LOG VIEW (수동 기록 화면) -->
+<section id="view-manual-log" class="view-section">
+    <div class="weather-widget">
+        <h2>Manual Log <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ cancel ]</span></h2>
+        <p>Log a perfume without NFC tag.</p>
+    </div>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label>Select Perfume *</label>
+            <select id="manual-perfume-select" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
+                <option value="">Loading perfumes...</option>
+                <!-- 백엔드에서 받아와서 채움 -->
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Date (Optional)</label>
+            <!-- 💡 날짜 선택기! 비워두면 백엔드가 오늘 날짜로 처리함 -->
+            <input type="date" id="manual-date">
+        </div>
+
+        <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
+        <div id="manual-status" class="status-msg"></div>
+    </div>
+</section>
 
 <!-- 💡 5. REGISTER VIEW -->
 <section id="view-register" class="view-section">
@@ -773,10 +823,78 @@
         }
     }
 
+    // 향수 목록 불러와서 셀렉트 박스 채우기 (초기 로딩 시 호출)
+    async function fetchPerfumeList() {
+        try {
+            const res = await fetch("/api/v1/perfumes/list");
+            if (res.ok) {
+                const perfumes = await res.json();
+                const selectBox = document.getElementById('manual-perfume-select');
+                selectBox.innerHTML = '<option value="">-- Choose a perfume --</option>' +
+                    perfumes.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            }
+        } catch (e) {
+            console.error("Perfume list load failed");
+        }
+    }
+
+    // 수동 로그 전송 로직
+    async function submitManualLog() {
+        const perfumeId = document.getElementById('manual-perfume-select').value;
+        const manualDate = document.getElementById('manual-date').value;
+        const statusMsg = document.getElementById('manual-status');
+        const submitBtn = document.getElementById('manual-submit-btn');
+
+        if (!perfumeId) {
+            statusMsg.innerText = "[ERROR] Please select a perfume.";
+            return;
+        }
+
+        statusMsg.innerText = "Saving log to Notion...";
+        submitBtn.innerText = "Saving...";
+
+        try {
+            const res = await fetch("/api/v1/logs/manual", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    perfumeId: perfumeId,
+                    date: manualDate || null, // 빈 값이면 null 전송
+                    lat: currentLat,
+                    lon: currentLon
+                })
+            });
+
+            if (res.ok) {
+                submitBtn.classList.add('success');
+                submitBtn.innerText = "LOGGED";
+                statusMsg.innerText = "[SUCCESS] Manual log saved.";
+
+                setTimeout(() => {
+                    submitBtn.classList.remove('success');
+                    submitBtn.innerText = "Save Log";
+                    statusMsg.innerText = "";
+                    document.getElementById('manual-date').value = '';
+
+                    // 메인 복귀 및 대시보드 리프레시!
+                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                    fetchRecentLogs();
+                }, 1500);
+            } else {
+                statusMsg.innerText = "[ERROR] Failed to save log.";
+                submitBtn.innerText = "Save Log";
+            }
+        } catch (e) {
+            statusMsg.innerText = "[ERROR] Network failure.";
+            submitBtn.innerText = "Save Log";
+        }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         fetchRealWeather();
         fetchBrands();
         fetchRecentLogs();
+        fetchPerfumeList();
     });
 </script>
 </body>

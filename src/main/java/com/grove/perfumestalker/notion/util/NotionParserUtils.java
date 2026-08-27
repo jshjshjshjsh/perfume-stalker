@@ -84,4 +84,18 @@ public final class NotionParserUtils {
             return num != null ? String.valueOf(num) : "";
         } catch (Exception e) { return ""; }
     }
+
+    @SuppressWarnings("unchecked")
+    public static String extractDefaultTitle(Map<String, Object> props) {
+        try {
+            for (Object value : props.values()) {
+                Map<String, Object> prop = (Map<String, Object>) value;
+                if ("title".equals(prop.get("type"))) {
+                    List<Map<String, Object>> titleList = (List<Map<String, Object>>) prop.get("title");
+                    return titleList.isEmpty() ? "Unknown" : (String) ((Map<String, Object>) titleList.get(0).get("text")).get("content");
+                }
+            }
+            return "Unknown";
+        } catch (Exception e) { return "Unknown"; }
+    }
 }

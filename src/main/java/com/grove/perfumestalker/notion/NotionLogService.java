@@ -1,6 +1,7 @@
 package com.grove.perfumestalker.notion;
 
 import com.grove.perfumestalker.dto.LogUpdateRequest;
+import com.grove.perfumestalker.dto.UsageLogCreateCommand;
 import com.grove.perfumestalker.enums.NotionUsageLog;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
@@ -34,20 +35,26 @@ public class NotionLogService {
     @Value("${notion.usage-log-data-source-id}")
     private String usageLogDataSourceId;
 
-    public Mono<Void> createUsageLog(String masterPageId, WeatherService.WeatherData weather) {
-        String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-        String logId = "LOG-" + UUID.randomUUID().toString().substring(0, 8);
+    public Mono<Void> createUsageLog(UsageLogCreateCommand command) {
 
+        // 커스텀 날짜가 없으면 현재 시간 사용 (ISO 8601 포맷)
+        String logDate = (command.customDate() != null && !command.customDate().trim().isEmpty())
+                ? command.customDate()
+                : ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        String logId = "LOG-" + UUID.randomUUID().toString().substring(0, 8);
         String formattedUsageLogDbId = notionTokenUtils.formatUuid(usageLogDbId);
-        String formattedMasterPageId = notionTokenUtils.formatUuid(masterPageId);
+        String formattedMasterPageId = notionTokenUtils.formatUuid(command.masterPageId());
 
         Map<String, Object> properties = new HashMap<>();
         properties.put(NotionUsageLog.LOG_ID.getColumnName(), NotionUsageLog.LOG_ID.formatValue(logId));
         properties.put(NotionUsageLog.PERFUME.getColumnName(), NotionUsageLog.PERFUME.formatValue(formattedMasterPageId));
-        properties.put(NotionUsageLog.DATE.getColumnName(), NotionUsageLog.DATE.formatValue(nowIso));
-        properties.put(NotionUsageLog.WEATHER.getColumnName(), NotionUsageLog.WEATHER.formatValue(weather.weather()));
-        properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(weather.temperature()));
-        properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(weather.humidity()));
+        properties.put(NotionUsageLog.DATE.getColumnName(), NotionUsageLog.DATE.formatValue(logDate));
+
+        // 💡 weather 데이터도 command에서 꺼냄
+        properties.put(NotionUsageLog.WEATHER.getColumnName(), NotionUsageLog.WEATHER.formatValue(command.weather().weather()));
+        properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(command.weather().temperature()));
+        properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(command.weather().humidity()));
 
         Map<String, Object> body = Map.of(
                 "parent", Map.of("type", "database_id", "database_id", formattedUsageLogDbId),
