@@ -87,6 +87,19 @@
             margin-left: 10px; white-space: nowrap; line-height: 1.4;
         }
 
+        /* 💡 크롤링 진행 상황 터미널 박스 */
+        .crawl-terminal {
+            margin-top: 15px; padding: 12px 15px;
+            background: #1e1e1e; color: #4af626; /* 해커톤 그린 */
+            font-family: 'Courier New', Courier, monospace; font-size: 11px;
+            border-radius: 4px; text-align: left;
+            display: none; flex-direction: column; gap: 6px;
+            border: 1px solid #333;
+        }
+        .crawl-terminal.error { color: #d9534f; border-color: #d9534f; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
         /* 💡 빈티지 입력 폼 (Register View) 스타일 */
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-size: 10px; color: var(--accent-color); margin-bottom: 5px; text-transform: uppercase; }
@@ -97,6 +110,14 @@
         .form-group input:focus { border-bottom: 2px solid var(--text-color); }
         .form-group input::placeholder { color: #ccc; }
         .form-group input[readonly] { color: var(--accent-color); border-bottom-style: dashed; }
+
+        /* 💡 에러 발생 시 입력칸 하단 및 배경을 붉게 물들임 */
+        .form-group input.error-border {
+            border-bottom: 2px solid #d9534f !important;
+            background-color: rgba(217, 83, 79, 0.05);
+            transition: all 0.3s ease;
+        }
+        .form-group input.error-border::placeholder { color: #d9534f; opacity: 0.8; }
 
         /* 💡 노트 뱃지(Chip) 및 로딩 텍스트 스타일 */
         .note-chip {
@@ -116,10 +137,56 @@
 </head>
 <body>
 
+<!-- 💡 0. AUTH VIEW (로그인 및 회원가입 화면) -->
+<section id="view-auth" class="view-section active" style="justify-content: center; padding-bottom: 20vh;">
+    <div class="weather-widget" style="text-align: center; border-bottom: none;">
+        <h2 style="font-size: 16px; margin-bottom: 5px; color: var(--text-color);">PERFUME STALKER</h2>
+        <p style="font-size: 10px; color: var(--accent-color);">System Authentication</p>
+    </div>
+
+    <div class="form-container">
+        <!-- 공통 필드 -->
+        <div class="form-group">
+            <label>User ID</label>
+            <input type="text" id="auth-id" placeholder="Enter your ID" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <!-- 💡 비밀번호 마스킹 처리 -->
+            <input type="password" id="auth-pw" placeholder="Enter password">
+        </div>
+
+        <!-- 회원가입 전용 확장 필드 (초기엔 숨김) -->
+        <div id="signup-fields" style="display: none;">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="auth-name" placeholder="e.g. 조승현">
+            </div>
+            <div class="form-group">
+                <label>Default Location</label>
+                <input type="text" id="auth-loc" placeholder="e.g. Busan">
+            </div>
+            <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="auth-noti" style="width: auto;" checked>
+                <label style="margin: 0;">Enable Notifications</label>
+            </div>
+        </div>
+
+        <button id="auth-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitAuth()">LOGIN</button>
+        <div id="auth-status" class="status-msg"></div>
+
+        <div class="manual-trigger-container" style="margin: 20px auto 0 auto;">
+            <button id="auth-toggle-btn" class="manual-trigger-btn" onclick="toggleAuthMode()">
+                [ Switch to Sign Up ]
+            </button>
+        </div>
+    </div>
+</section>
+
 <!-- 1. MAIN VIEW -->
 <section id="view-main" class="view-section active">
     <div class="weather-widget">
-        <h2>Date: <span id="current-date"></span></h2>
+        <h2>Date: <span id="current-date"></span> <span class="loc-btn" onclick="logout()" style="float: right;">[ logout ]</span></h2>
         <h2>Loc: <span id="current-loc">loading...</span></h2>
         <p id="weather-info">Fetching real-time data...</p>
     </div>
@@ -193,7 +260,10 @@
             <label>Fragrantica URL <span class="loc-btn" id="crawl-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
             <input type="url" id="reg-url" placeholder="Paste URL here...">
             <!-- 1. 페이크 프로그레스 텍스트 영역 -->
-            <div id="crawl-progress" class="progress-text" style="display: none;"></div>
+            <div id="crawl-terminal" class="crawl-terminal">
+                <span id="crawl-step-1">> Initializing Scraping Engine... [OK]</span>
+                <span id="crawl-step-2">> Fetching Fragrantica Notes... <span class="blink">_</span></span>
+            </div>
         </div>
 
         <div class="form-group">
@@ -269,6 +339,106 @@
 </nav>
 
 <script>
+
+    let isLoginMode = true;
+
+    // 앱 시작 시 토큰 체크 로직 (DOM 로드 이벤트 맨 위에 추가!)
+    function checkAuth() {
+        const token = localStorage.getItem('jwt_token');
+        if (token) {
+            // 토큰이 있으면 바로 메인으로 진입 (추후 토큰 만료 체크 로직 추가 필요)
+            switchView('main', document.querySelector('.nav-item.main-tab'));
+            fetchRecentLogs();
+        } else {
+            // 없으면 바텀 네비게이션 숨기고 로그인 창 띄우기
+            document.querySelector('.bottom-nav').style.display = 'none';
+            switchView('auth', null);
+        }
+    }
+
+    // 로그인 <-> 회원가입 폼 전환
+    function toggleAuthMode() {
+        isLoginMode = !isLoginMode;
+        document.getElementById('signup-fields').style.display = isLoginMode ? 'none' : 'block';
+        document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'LOGIN' : 'SIGN UP';
+        document.getElementById('auth-toggle-btn').innerText = isLoginMode ? '[ Switch to Sign Up ]' : '[ Back to Login ]';
+        document.getElementById('auth-status').innerText = '';
+    }
+
+    // 인증 폼 전송 로직 (완벽한 Validation 추가)
+    async function submitAuth() {
+        const fields = {
+            'auth-id': document.getElementById('auth-id'),
+            'auth-pw': document.getElementById('auth-pw'),
+            'auth-name': document.getElementById('auth-name'),
+            'auth-loc': document.getElementById('auth-loc')
+        };
+        const noti = document.getElementById('auth-noti').checked;
+        const statusMsg = document.getElementById('auth-status');
+
+        // 1. 기존 에러 스타일 싹 지우기
+        Object.values(fields).forEach(el => el.classList.remove('error-border'));
+
+        // 2. 현재 모드에 따른 필수 체크 리스트
+        const requiredKeys = isLoginMode ? ['auth-id', 'auth-pw'] : ['auth-id', 'auth-pw', 'auth-name', 'auth-loc'];
+        let hasError = false;
+
+        // 3. 빈 값 찾아내서 빨간 줄 긋고 포커스 주기
+        for (const key of requiredKeys) {
+            if (!fields[key].value.trim()) {
+                fields[key].classList.add('error-border');
+                if (!hasError) fields[key].focus(); // 첫 번째 빈칸으로 화면 이동
+                hasError = true;
+            }
+        }
+
+        if (hasError) {
+            statusMsg.innerText = "[ERROR] Required fields are missing.";
+            return;
+        }
+
+        statusMsg.innerText = isLoginMode ? "Authenticating..." : "Creating account...";
+        const endpoint = isLoginMode ? '/api/v1/auth/login' : '/api/v1/auth/signup';
+        const payload = isLoginMode
+            ? { userId: fields['auth-id'].value.trim(), rawPassword: fields['auth-pw'].value }
+            : {
+                userId: fields['auth-id'].value.trim(),
+                rawPassword: fields['auth-pw'].value,
+                name: fields['auth-name'].value.trim(),
+                defaultLocation: fields['auth-loc'].value.trim(),
+                notiEnabled: noti
+            };
+
+        try {
+            const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                if (isLoginMode) {
+                    const data = await res.json();
+                    localStorage.setItem('jwt_token', data.token);
+                    statusMsg.innerText = "[SUCCESS] Access granted.";
+                    setTimeout(() => {
+                        document.querySelector('.bottom-nav').style.display = 'flex';
+                        switchView('main', document.querySelector('.nav-item.main-tab'));
+                        fetchRecentLogs();
+                    }, 1000);
+                } else {
+                    statusMsg.innerText = "[SUCCESS] Account created. Please login.";
+                    setTimeout(() => toggleAuthMode(), 1500);
+                }
+            } else {
+                const errorData = await res.json();
+                statusMsg.innerText = `[ERROR] ${errorData.error || 'Request failed'}`;
+            }
+        } catch (e) {
+            statusMsg.innerText = "[ERROR] Network failure.";
+        }
+    }
+
     document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
     let currentLat = null;
@@ -323,8 +493,19 @@
 
     // 등록 취소하고 메인으로 돌아가기
     function cancelRegistration() {
-        document.getElementById('reg-uid').value = '';
+        // 입력칸 싹 비우기 (UID 제외)
+        document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
+
+        // 터미널 및 뱃지 UI 숨기기
+        document.getElementById('notes-preview-container').style.display = 'none';
+        document.getElementById('crawl-terminal').style.display = 'none';
         document.getElementById('reg-status').innerText = '';
+
+        // 내부 데이터 초기화
+        crawledNotesData = null;
+        crawledImageUrl = "";
+
+        // 메인 뷰로 복귀
         switchView('main', document.querySelector('.nav-item.main-tab'));
     }
 
@@ -379,6 +560,7 @@
                             document.getElementById('reg-uid').value = uid; // 폼에 UID 자동 채우기
                             switchView('register', null); // 네비게이션 선택 해제 상태로 폼 이동
                             resetScanUI();
+                            fetchRecentLogs();
                         }, 1200);
                     } else {
                         statusDiv.innerText = `[ERROR] ${resultText}`;
@@ -459,105 +641,82 @@
         } catch (e) { console.error("Brand load failed"); }
     }
 
-    // --- 2. URL 크롤링 (Auto Fill) 로직 ---
+    // 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
+    let crawledNotesData = null;
+    let crawledImageUrl = "";
+
+    // --- 2. URL 크롤링 (Auto Fill) 로직 (터미널 + 30초 타임아웃 완벽 통합) ---
     async function crawlUrl() {
         const urlInput = document.getElementById('reg-url').value.trim();
-        const notesInput = document.getElementById('reg-notes');
-        const imageInput = document.getElementById('reg-image');
+        const crawlBtn = document.getElementById('crawl-btn');
+        const terminal = document.getElementById('crawl-terminal');
+        const step2 = document.getElementById('crawl-step-2');
         const regStatus = document.getElementById('reg-status');
+        const previewContainer = document.getElementById('notes-preview-container');
+        const previewBox = document.getElementById('notes-preview-box');
 
         if (!urlInput) {
             regStatus.innerText = "Please paste a URL first.";
             return;
         }
 
-        regStatus.innerText = "Crawling Fragrantica... [ wait ]";
-
-        try {
-            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
-            if (res.ok) {
-                const data = await res.json();
-
-                if (data.notes) notesInput.value = data.notes;
-                if (data.imageUrl) imageInput.value = data.imageUrl;
-
-                if (!data.notes && !data.imageUrl) {
-                    regStatus.innerText = "[BLOCKED] Anti-bot system prevented crawling. Please enter manually.";
-                } else {
-                    regStatus.innerText = "[SUCCESS] Data auto-filled.";
-                }
-            }
-        } catch (e) {
-            regStatus.innerText = "[ERROR] Crawling failed. Please enter manually.";
-        }
-    }
-
-    // 💡 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
-    let crawledNotesData = null;
-    let crawledImageUrl = "";
-
-    const loadingTexts = [
-        "Connecting to Fragrantica...",
-        "Bypassing Cloudflare protections...",
-        "Extracting note pyramids...",
-        "Still working... safely retrying..."
-    ];
-
-    // --- 2. URL 크롤링 (Auto Fill) 로직 ---
-    async function crawlUrl() {
-        const urlInput = document.getElementById('reg-url').value.trim();
-        const progressDiv = document.getElementById('crawl-progress');
-        const previewContainer = document.getElementById('notes-preview-container');
-        const previewBox = document.getElementById('notes-preview-box');
-        const crawlBtn = document.getElementById('crawl-btn');
-
-        if (!urlInput) {
-            progressDiv.style.display = 'block';
-            progressDiv.innerText = "Please paste a URL first.";
-            return;
-        }
-
-        // 초기화 및 페이크 로딩 UI 시작
+        // 1. 초기화 (이전 데이터 지우고 뱃지 숨기기)
         crawledNotesData = null;
         crawledImageUrl = "";
         previewContainer.style.display = 'none';
         previewBox.innerHTML = '';
+        regStatus.innerText = "";
 
+        // 2. UI 상태 변경 (터미널 켜기, 버튼 연타 방지)
         crawlBtn.style.pointerEvents = 'none';
         crawlBtn.style.opacity = '0.5';
-        progressDiv.style.display = 'block';
+        terminal.style.display = 'flex';
+        terminal.classList.remove('error');
+        step2.innerHTML = '> Fetching Fragrantica Notes... <span class="blink">_</span>';
 
-        let loadingIndex = 0;
-        progressDiv.innerText = loadingTexts[0];
-
-        // 6초마다 텍스트 변경
-        const loadingInterval = setInterval(() => {
-            loadingIndex = Math.min(loadingIndex + 1, loadingTexts.length - 1);
-            progressDiv.innerText = loadingTexts[loadingIndex];
-        }, 6000);
+        // 3. 백엔드 재시도를 기다려줄 프론트엔드 타임아웃 셋업 (30초)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
         try {
-            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
+            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId); // 정상 응답 시 타이머 해제
+
             if (res.ok) {
                 const data = await res.json();
-
                 crawledNotesData = data.notes;
                 crawledImageUrl = data.imageUrl;
 
-                // 빈 객체({}) 처리
+                // 빈 객체/배열 체크 (봇 차단 방어)
                 if (!data.notes || Object.keys(data.notes).length === 0) {
-                    progressDiv.innerText = "[BLOCKED] Anti-bot prevented crawling.";
+                    terminal.classList.add('error');
+                    step2.innerHTML = '> [BLOCKED] Anti-bot system prevented crawling.';
+                    regStatus.innerText = "Please enter manually.";
                 } else {
-                    progressDiv.innerText = "[SUCCESS] Notes extracted.";
-                    renderNotesPreview(data.notes); // 뱃지 그리기
+                    step2.innerHTML = '> [SUCCESS] Notes extracted perfectly.';
+                    regStatus.innerText = "[SUCCESS] Data auto-filled.";
+                    renderNotesPreview(data.notes);
                 }
             } else {
-                progressDiv.innerText = "[ERROR] Server error during crawl.";
+                terminal.classList.add('error');
+                step2.innerHTML = '> [ERROR] Backend scraping failed.';
+                regStatus.innerText = "Please check URL and try again.";
             }
         } catch (e) {
-            progressDiv.innerText = "[ERROR] Crawling failed.";
+            terminal.classList.add('error');
+            // 💡 30초가 지나서 강제로 끊겼을 때의 팩폭 처리
+            if (e.name === 'AbortError') {
+                step2.innerHTML = '> [TIMEOUT] Scraping took too long. (Max retries exceeded)';
+                regStatus.innerText = "Please try again or enter manually.";
+            } else {
+                step2.innerHTML = '> [ERROR] Network connection lost.';
+                regStatus.innerText = "Please check your connection.";
+            }
         } finally {
-            clearInterval(loadingInterval);
+            // 통신이 성공하든 실패하든 크롤링 버튼 다시 활성화
             crawlBtn.style.pointerEvents = 'auto';
             crawlBtn.style.opacity = '1';
         }
@@ -890,7 +1049,25 @@
         }
     }
 
+    // 로그아웃 처리
+    function logout() {
+        if (!confirm("시스템에서 로그아웃 하시겠습니까?")) return;
+
+        // 토큰 날려버리기
+        localStorage.removeItem('jwt_token');
+
+        // 폼 초기화
+        document.getElementById('auth-id').value = '';
+        document.getElementById('auth-pw').value = '';
+        document.getElementById('auth-status').innerText = 'Logged out successfully.';
+
+        // 하단 네비 숨기고 로그인 창으로 추방
+        document.querySelector('.bottom-nav').style.display = 'none';
+        switchView('auth', null);
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+        checkAuth();
         fetchRealWeather();
         fetchBrands();
         fetchRecentLogs();

@@ -98,4 +98,18 @@ public final class NotionParserUtils {
             return "Unknown";
         } catch (Exception e) { return "Unknown"; }
     }
+
+    @SuppressWarnings("unchecked")
+    public static String extractRichText(Map<String, Object> props, String key) {
+        try {
+            Map<String, Object> prop = findPropertyIgnoreCase(props, key);
+            if (prop == null) return "";
+
+            String type = (String) prop.get("type");
+            if (!"rich_text".equals(type) && !"title".equals(type)) return "";
+
+            List<Map<String, Object>> textList = (List<Map<String, Object>>) prop.get(type);
+            return textList.isEmpty() ? "" : (String) ((Map<String, Object>) textList.get(0).get("text")).get("content");
+        } catch (Exception e) { return ""; }
+    }
 }
