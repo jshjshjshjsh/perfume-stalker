@@ -2,7 +2,7 @@ package com.grove.perfumestalker.user;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.grove.perfumestalker.enums.NotionUser;
-import com.grove.perfumestalker.notion.NotionModule;
+import com.grove.perfumestalker.notion.util.NotionTokenUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +20,7 @@ import java.util.Map;
 public class UserService {
 
     private final WebClient notionWebClient;
-    private final NotionModule notionModule;
+    private final NotionTokenUtils notionTokenUtils;
 
     @Value("${notion.db.user-data-source-id}")
     private String userDataSourceId;
@@ -29,7 +29,7 @@ public class UserService {
      * 특정 유저의 DEFAULT_LOCATION을 조회 (없으면 기본값 "Busan" 반환)
      */
     public Mono<String> getDefaultLocation(String userId) {
-        String formattedDataSourceId = notionModule.formatUuid(userDataSourceId);
+        String formattedDataSourceId = notionTokenUtils.formatUuid(userDataSourceId);
         NotionUser userIdCol = NotionUser.USER_ID;
 
         Map<String, Object> queryBody = Map.of(

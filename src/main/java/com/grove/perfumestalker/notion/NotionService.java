@@ -2,16 +2,15 @@ package com.grove.perfumestalker.notion;
 
 import com.grove.perfumestalker.dto.PerfumeRegisterRequest;
 import com.grove.perfumestalker.enums.NotionPerfumeMaster;
+import com.grove.perfumestalker.notion.util.NotionTokenUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +21,7 @@ import java.util.Map;
 public class NotionService {
 
     private final WebClient notionWebClient;
-    private final NotionModule notionModule;
+    private final NotionTokenUtils notionTokenUtils;
 
     @Value("${notion.db.master-id}")
     private String masterDbId;
@@ -34,7 +33,7 @@ public class NotionService {
      * 1. NFC UID로 마스터 DB 조회
      */
     public Mono<String> findPerfumePageIdByUid(String uid) {
-        String formattedDataSourceId = notionModule.formatUuid(masterDataSourceId);
+        String formattedDataSourceId = notionTokenUtils.formatUuid(masterDataSourceId);
         NotionPerfumeMaster uidCol = NotionPerfumeMaster.UID;
 
         // Enum을 활용한 필터 쿼리 조립
@@ -64,7 +63,7 @@ public class NotionService {
      * 2. 새로운 향수 마스터 데이터 생성
      */
     public Mono<String> createPerfumeMaster(PerfumeRegisterRequest req) {
-        String formattedDbId = notionModule.formatUuid(masterDbId);
+        String formattedDbId = notionTokenUtils.formatUuid(masterDbId);
         Map<String, Object> properties = new HashMap<>();
 
         // 필수 값 세팅 (Enum 전략 패턴 적용)
@@ -125,7 +124,7 @@ public class NotionService {
      */
     public Mono<List<String>> getBrandOptions() {
         // 스캔 로직과 똑같이 UUID 포맷팅 적용
-        String formattedDataSourceId = notionModule.formatUuid(masterDataSourceId);
+        String formattedDataSourceId = notionTokenUtils.formatUuid(masterDataSourceId);
 
         // 조건 없이 전체 향수를 긁어오기 위한 빈 쿼리 조립
         Map<String, Object> queryBody = Map.of("page_size", 100);

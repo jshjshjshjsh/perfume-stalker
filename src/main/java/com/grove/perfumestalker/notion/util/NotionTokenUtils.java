@@ -1,9 +1,9 @@
-package com.grove.perfumestalker.notion;
+package com.grove.perfumestalker.notion.util;
 
 import org.springframework.stereotype.Component;
 
 @Component
-public class NotionModule {
+public class NotionTokenUtils {
 
     // 2026 스펙 방어용: 하이픈 없는 ID가 들어와도 무조건 표준 UUID(8-4-4-4-12)로 변환
     public String formatUuid(String id) {

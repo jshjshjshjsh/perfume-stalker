@@ -1,6 +1,8 @@
 package com.grove.perfumestalker.notion;
 
 import com.grove.perfumestalker.enums.NotionUsageLog;
+import com.grove.perfumestalker.notion.util.NotionParserUtils;
+import com.grove.perfumestalker.notion.util.NotionTokenUtils;
 import com.grove.perfumestalker.weather.WeatherService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +26,7 @@ import java.util.stream.Collectors;
 public class NotionLogService {
 
     private final WebClient notionWebClient;
-    private final NotionModule notionModule;
+    private final NotionTokenUtils notionTokenUtils;
 
     @Value("${notion.db.usage-log-id}")
     private String usageLogDbId;
@@ -35,8 +37,8 @@ public class NotionLogService {
         String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         String logId = "LOG-" + UUID.randomUUID().toString().substring(0, 8);
 
-        String formattedUsageLogDbId = notionModule.formatUuid(usageLogDbId);
-        String formattedMasterPageId = notionModule.formatUuid(masterPageId);
+        String formattedUsageLogDbId = notionTokenUtils.formatUuid(usageLogDbId);
+        String formattedMasterPageId = notionTokenUtils.formatUuid(masterPageId);
 
         Map<String, Object> properties = new HashMap<>();
         properties.put(NotionUsageLog.LOG_ID.getColumnName(), NotionUsageLog.LOG_ID.formatValue(logId));
@@ -75,7 +77,7 @@ public class NotionLogService {
                 "sorts", List.of(Map.of("timestamp", "created_time", "direction", "descending"))
         );
 
-        String formattedDbId = notionModule.formatUuid(usageLogDataSourceId);
+        String formattedDbId = notionTokenUtils.formatUuid(usageLogDataSourceId);
 
         return notionWebClient.post()
                 .uri("/data_sources/{dbId}/query", formattedDbId)

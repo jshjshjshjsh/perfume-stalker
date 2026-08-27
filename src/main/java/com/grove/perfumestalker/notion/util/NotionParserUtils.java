@@ -1,4 +1,4 @@
-package com.grove.perfumestalker.notion;
+package com.grove.perfumestalker.notion.util;
 
 import java.util.List;
 import java.util.Map;
