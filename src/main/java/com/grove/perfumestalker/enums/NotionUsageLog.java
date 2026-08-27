@@ -57,6 +57,18 @@ public enum NotionUsageLog {
         public Map<String, Object> formatValue(Object value) {
             return Map.of(getPropertyType(), List.of(Map.of("text", Map.of("content", String.valueOf(value)))));
         }
+    },
+    PERFUME_ROLLUP("PERFUME NAME", "rollup") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            throw new UnsupportedOperationException("롤업(Rollup) 속성은 읽기 전용이므로 값을 쓸 수 없습니다.");
+        }
+    },
+    IMAGE_ROLLUP("PERFUME IMAGE", "rollup") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            throw new UnsupportedOperationException("롤업(Rollup) 속성은 읽기 전용이므로 값을 쓸 수 없습니다.");
+        }
     };
 
     private final String columnName;

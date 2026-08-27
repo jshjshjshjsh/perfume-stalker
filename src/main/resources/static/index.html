@@ -34,7 +34,37 @@
         @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
         .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
 
-        .future-dashboard { flex: 1; margin-top: 30px; border: 1px dashed #d0d0d0; border-radius: 2px; display: flex; align-items: center; justify-content: center; color: #b0b0b0; font-size: 11px; text-transform: uppercase; text-align: center; line-height: 1.5; }
+        /* 대시보드 스타일 */
+        .future-dashboard {
+            flex: 1; margin-top: 30px; border: 1px dashed var(--text-color);
+            border-radius: 2px; display: flex; flex-direction: column;
+            padding: 15px; overflow-y: auto;
+        }
+        .dashboard-header {
+            font-size: 11px; color: var(--accent-color); text-transform: uppercase;
+            margin-bottom: 15px; border-bottom: 1px solid var(--text-color); padding-bottom: 5px;
+        }
+
+        .log-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 0; border-bottom: 1px dashed var(--text-color);
+        }
+        .log-item:last-child { border-bottom: none; }
+
+        .log-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
+        .log-thumb {
+            width: 32px; height: 42px; object-fit: cover; border-radius: 2px;
+            background-color: transparent; border: 1px solid var(--accent-color);
+            margin-right: 12px; flex-shrink: 0;
+        }
+        .log-details { display: flex; flex-direction: column; overflow: hidden; }
+        .log-perfume { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .log-date { font-size: 10px; color: var(--accent-color); margin-top: 3px; }
+
+        .log-weather {
+            font-size: 10px; color: var(--accent-color); text-align: right;
+            margin-left: 10px; white-space: nowrap; line-height: 1.4;
+        }
 
         /* 💡 빈티지 입력 폼 (Register View) 스타일 */
         .form-group { margin-bottom: 20px; }
@@ -77,7 +107,12 @@
         <button id="scan-btn" class="scan-btn">Tap to Scan</button>
         <div id="status" class="status-msg">waiting for interaction...</div>
     </div>
-    <div class="future-dashboard">Dashboard Area<br>(Charts & Recent Logs)</div>
+    <div class="future-dashboard">
+        <div class="dashboard-header">Recent Logs</div>
+        <div id="recent-logs-container">
+            <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching logs...</div>
+        </div>
+    </div>
 </section>
 
 <!-- 2. WARDROBE VIEW -->
@@ -158,8 +193,11 @@
                 const data = await response.json();
                 let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()">[ update ]</span>`;
                 if (lat !== null) buttonsHtml += ` <span class="loc-btn" onclick="resetLocation()">[ default ]</span>`;
+
+                const weatherIcon = getWeatherIcon(data.weather);
+
                 locText.innerHTML = `${data.location} ${buttonsHtml}`;
-                weatherInfo.innerHTML = `${data.temp}°C / Humidity ${data.humidity}%<br>Weather: ${data.weather}`;
+                weatherInfo.innerHTML = `${data.temp}°C / Humidity ${data.humidity}%<br>Weather: ${weatherIcon} ${data.weather}`;
             } else { weatherInfo.innerText = "[ERROR] Failed to load weather data."; }
         } catch (error) { weatherInfo.innerText = "[ERROR] Network failure."; }
     }
@@ -301,6 +339,9 @@
                     submitBtn.innerText = "Register & Log";
                     regStatus.innerText = "";
                     switchView('main', document.querySelector('.nav-item.main-tab'));
+
+                    // 다 찍었으니 대시보드 다시 최신화
+                    fetchRecentLogs();
                 }, 2000);
             } else {
                 regStatus.innerText = `[ERROR] ${resultText}`;
@@ -356,11 +397,6 @@
             regStatus.innerText = "[ERROR] Crawling failed. Please enter manually.";
         }
     }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        fetchRealWeather();
-        fetchBrands();
-    });
 
     // 💡 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
     let crawledNotesData = null;
@@ -513,6 +549,81 @@
             regStatus.innerText = "[ERROR] Network failure.";
             submitBtn.innerText = "Register & Log";
         }
+    });
+
+    // 날씨 텍스트를 분석해서 이모지로 바꿔주는 매퍼 함수
+    function getWeatherIcon(weatherText) {
+        if (!weatherText) return '❓';
+        const w = weatherText.toLowerCase();
+        if (w.includes('clear')) return '☀️';
+        if (w.includes('cloud')) return '☁️';
+        if (w.includes('rain') || w.includes('drizzle')) return '🌧️';
+        if (w.includes('thunder') || w.includes('storm')) return '⛈️';
+        if (w.includes('snow')) return '❄️';
+        if (w.includes('mist') || w.includes('fog') || w.includes('haze')) return '🌫️';
+        return '🌤️'; // 기본값
+    }
+
+    // --- 대시보드 최근 로그 불러오기 ---
+    async function fetchRecentLogs() {
+        const container = document.getElementById('recent-logs-container');
+        try {
+            const response = await fetch("/api/v1/logs/recent?limit=5");
+            if (response.ok) {
+                const logs = await response.json();
+
+                // 1. 진짜 로그가 없을 때는 'No records found'만 띄우고 종료
+                if (logs.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No records found.</div>`;
+                    return;
+                }
+
+                // 2. 로그가 있을 때는 우리가 짠 기가 막힌 썸네일 레이아웃으로 렌더링
+                container.innerHTML = logs.map(log => {
+                    // 이미지 처리
+                    const imgTag = log.imageUrl
+                        ? `<img src="${log.imageUrl}" class="log-thumb" alt="thumb">`
+                        : `<div class="log-thumb" style="display:flex; align-items:center; justify-content:center; font-size:8px;">No Img</div>`;
+
+                    // 날짜 처리
+                    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+
+                    // 온습도 포맷팅
+                    const tempStr = log.temp ? `${log.temp}°C` : '';
+                    const humStr = log.humidity ? `${log.humidity}%` : '';
+                    const tempHum = [tempStr, humStr].filter(Boolean).join(' / ');
+
+                    const weatherIcon = getWeatherIcon(log.weather);
+
+                    return `
+                        <div class="log-item">
+                            <div class="log-left">
+                                ${imgTag}
+                                <div class="log-details">
+                                    <div class="log-perfume">${log.perfumeName}</div>
+                                    <div class="log-date">[${shortDate}]</div>
+                                </div>
+                            </div>
+                            <div class="log-weather">
+                                <!-- 💡 아이콘을 살짝 크게(14px) 키워서 텍스트와 분리 -->
+                                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>
+                                ${tempHum}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load.</div>`;
+            }
+        } catch (error) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        fetchRealWeather();
+        fetchBrands();
+        fetchRecentLogs();
     });
 </script>
 </body>

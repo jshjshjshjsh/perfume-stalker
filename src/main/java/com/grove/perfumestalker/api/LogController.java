@@ -11,6 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/logs")
@@ -55,5 +58,12 @@ public class LogController {
                     log.error("❌ 에러: ", e);
                     return Mono.just(ResponseEntity.internalServerError().body("서버 에러 발생"));
                 });
+    }
+
+    @GetMapping("/recent")
+    public Mono<ResponseEntity<List<Map<String, String>>>> getRecentLogs(
+            @RequestParam(defaultValue = "5") int limit) {
+        return notionLogService.getRecentLogs(limit)
+                .map(ResponseEntity::ok);
     }
 }

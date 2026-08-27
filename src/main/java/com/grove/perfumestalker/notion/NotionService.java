@@ -93,6 +93,8 @@ public class NotionService {
                             "external", Map.of("url", req.getImageUrl())
                     ))
             ));
+
+            properties.put(NotionPerfumeMaster.IMAGE_URL.name(), Map.of("url", req.getImageUrl()));
         }
 
         Map<String, List<String>> notes = req.getNotes();

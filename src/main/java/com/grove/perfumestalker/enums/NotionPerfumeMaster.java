@@ -73,7 +73,13 @@ public enum NotionPerfumeMaster {
                     Map.of("name", "향수 썸네일", "type", "external", "external", Map.of("url", String.valueOf(value)))
             ));
         }
-    };
+    },
+    IMAGE_URL("IMAGE_URL", "url") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), String.valueOf(value));
+        }
+    },;
 
     private final String columnName;
     private final String propertyType;

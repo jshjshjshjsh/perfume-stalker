@@ -13,8 +13,10 @@ import reactor.core.publisher.Mono;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -26,6 +28,8 @@ public class NotionLogService {
 
     @Value("${notion.db.usage-log-id}")
     private String usageLogDbId;
+    @Value("${notion.usage-log-data-source-id}")
+    private String usageLogDataSourceId;
 
     public Mono<Void> createUsageLog(String masterPageId, WeatherService.WeatherData weather) {
         String nowIso = ZonedDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
@@ -58,10 +62,60 @@ public class NotionLogService {
 
     private void handleNotionError(Throwable e) {
         if (e instanceof WebClientResponseException ex) {
-            String errorBody = ex.getResponseBodyAsString();
-            log.error("❌ 노션 API 40x/50x 에러 상세: {}", errorBody);
+            log.error("❌ 노션 API 40x/50x 에러 상세: {}", ex.getResponseBodyAsString());
         } else {
             log.error("❌ 노션 착향 로그 기록 실패", e);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Mono<List<Map<String, String>>> getRecentLogs(int limit) {
+        Map<String, Object> queryBody = Map.of(
+                "page_size", limit,
+                "sorts", List.of(Map.of("timestamp", "created_time", "direction", "descending"))
+        );
+
+        String formattedDbId = notionModule.formatUuid(usageLogDataSourceId);
+
+        return notionWebClient.post()
+                .uri("/data_sources/{dbId}/query", formattedDbId)
+                .bodyValue(queryBody)
+                .retrieve()
+                .onStatus(status -> status.is4xxClientError(), response ->
+                        response.bodyToMono(String.class).flatMap(error -> {
+                            log.error("🚨 노션 4xx 에러: {}", error);
+                            return Mono.error(new RuntimeException("Notion API 4xx Error"));
+                        })
+                )
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                    if (results == null || results.isEmpty()) return List.<Map<String, String>>of();
+
+                    return results.stream().map(page -> {
+                        Map<String, Object> props = (Map<String, Object>) page.get("properties");
+
+                        // 💡 유틸리티 클래스 활용으로 코드가 압도적으로 깨끗해짐
+                        String date = NotionParserUtils.extractDate(props, NotionUsageLog.DATE.name());
+                        String weather = NotionParserUtils.extractSelect(props, NotionUsageLog.WEATHER.name());
+                        String perfumeName = NotionParserUtils.extractPerfumeName(props, NotionUsageLog.PERFUME_ROLLUP.getColumnName());
+                        String imageUrl = NotionParserUtils.extractRollupImage(props, NotionUsageLog.IMAGE_ROLLUP.getColumnName());
+                        String temp = NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName());
+                        String humidity = NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName());
+
+                        return Map.of(
+                                "date", date,
+                                "perfumeName", perfumeName.isEmpty() ? "Unknown" : perfumeName,
+                                "imageUrl", imageUrl,
+                                "weather", weather,
+                                "temp", temp,
+                                "humidity", humidity
+                        );
+                    }).collect(Collectors.toList());
+                })
+                .onErrorResume(e -> {
+                    log.error("❌ 최근 로그 조회 에러: ", e);
+                    return Mono.just(List.of());
+                });
     }
 }
