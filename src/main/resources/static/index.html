@@ -47,6 +47,16 @@
         .form-group input::placeholder { color: #ccc; }
         .form-group input[readonly] { color: var(--accent-color); border-bottom-style: dashed; }
 
+        /* 💡 노트 뱃지(Chip) 및 로딩 텍스트 스타일 */
+        .note-chip {
+            display: inline-block; border: 1px solid var(--accent-color);
+            padding: 3px 8px; margin: 3px 5px 3px 0; border-radius: 2px;
+            background: transparent; color: var(--text-color); font-size: 11px;
+        }
+        .note-category { margin-top: 10px; margin-bottom: 4px; font-weight: bold; color: var(--text-color); font-size: 10px; text-transform: uppercase; }
+        .note-category:first-child { margin-top: 0; }
+        .progress-text { font-size: 11px; color: var(--accent-color); margin-top: 5px; font-style: italic; }
+
         /* --- BOTTOM NAV --- */
         .bottom-nav { display: flex; justify-content: space-between; padding: 20px 30px 30px 30px; border-top: 1px solid #ddd; background-color: var(--bg-color); }
         .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
@@ -78,6 +88,7 @@
 <section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
 
 <!-- 💡 5. REGISTER VIEW (미등록 태그 스캔 시 스르륵 넘어오는 화면) -->
+<!-- 💡 5. REGISTER VIEW -->
 <section id="view-register" class="view-section">
     <div class="weather-widget">
         <h2>New Discovery <span class="loc-btn" onclick="cancelRegistration()">[ cancel ]</span></h2>
@@ -89,6 +100,14 @@
             <label>Tag UID</label>
             <input type="text" id="reg-uid" readonly>
         </div>
+
+        <div class="form-group">
+            <label>Fragrantica URL <span class="loc-btn" id="crawl-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
+            <input type="url" id="reg-url" placeholder="Paste URL here...">
+            <!-- 1. 페이크 프로그레스 텍스트 영역 -->
+            <div id="crawl-progress" class="progress-text" style="display: none;"></div>
+        </div>
+
         <div class="form-group">
             <label>Name *</label>
             <input type="text" id="reg-name" placeholder="e.g. Santal 33" required autocomplete="off">
@@ -96,21 +115,15 @@
         <div class="form-group">
             <label>Brand</label>
             <input type="text" id="reg-brand" list="brand-list" placeholder="Select or type a brand" autocomplete="off">
-            <datalist id="brand-list">
-                <!-- 백엔드에서 받아온 브랜드 목록이 여기 들어감 -->
-            </datalist>
+            <datalist id="brand-list"></datalist>
         </div>
-        <div class="form-group">
-            <label>Notes (comma separated)</label>
-            <input type="text" id="reg-notes" placeholder="e.g. Sandalwood, Cedar, Leather" autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>Fragrantica URL <span class="loc-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
-            <input type="url" id="reg-url" placeholder="Paste URL here...">
-        </div>
-        <div class="form-group">
-            <label>Image URL</label>
-            <input type="url" id="reg-image" placeholder="https://...">
+
+        <!-- 2. 크롤링 완료 후 나타나는 빈티지 노트 뱃지 영역 -->
+        <div class="form-group" id="notes-preview-container" style="display: none;">
+            <label>Extracted Notes</label>
+            <div id="notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;">
+                <!-- JS에서 뱃지가 렌더링됨 -->
+            </div>
         </div>
 
         <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
@@ -347,6 +360,159 @@
     window.addEventListener('DOMContentLoaded', () => {
         fetchRealWeather();
         fetchBrands();
+    });
+
+    // 💡 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
+    let crawledNotesData = null;
+    let crawledImageUrl = "";
+
+    const loadingTexts = [
+        "Connecting to Fragrantica...",
+        "Bypassing Cloudflare protections...",
+        "Extracting note pyramids...",
+        "Still working... safely retrying..."
+    ];
+
+    // --- 2. URL 크롤링 (Auto Fill) 로직 ---
+    async function crawlUrl() {
+        const urlInput = document.getElementById('reg-url').value.trim();
+        const progressDiv = document.getElementById('crawl-progress');
+        const previewContainer = document.getElementById('notes-preview-container');
+        const previewBox = document.getElementById('notes-preview-box');
+        const crawlBtn = document.getElementById('crawl-btn');
+
+        if (!urlInput) {
+            progressDiv.style.display = 'block';
+            progressDiv.innerText = "Please paste a URL first.";
+            return;
+        }
+
+        // 초기화 및 페이크 로딩 UI 시작
+        crawledNotesData = null;
+        crawledImageUrl = "";
+        previewContainer.style.display = 'none';
+        previewBox.innerHTML = '';
+
+        crawlBtn.style.pointerEvents = 'none';
+        crawlBtn.style.opacity = '0.5';
+        progressDiv.style.display = 'block';
+
+        let loadingIndex = 0;
+        progressDiv.innerText = loadingTexts[0];
+
+        // 6초마다 텍스트 변경
+        const loadingInterval = setInterval(() => {
+            loadingIndex = Math.min(loadingIndex + 1, loadingTexts.length - 1);
+            progressDiv.innerText = loadingTexts[loadingIndex];
+        }, 6000);
+
+        try {
+            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
+            if (res.ok) {
+                const data = await res.json();
+
+                crawledNotesData = data.notes;
+                crawledImageUrl = data.imageUrl;
+
+                // 빈 객체({}) 처리
+                if (!data.notes || Object.keys(data.notes).length === 0) {
+                    progressDiv.innerText = "[BLOCKED] Anti-bot prevented crawling.";
+                } else {
+                    progressDiv.innerText = "[SUCCESS] Notes extracted.";
+                    renderNotesPreview(data.notes); // 뱃지 그리기
+                }
+            } else {
+                progressDiv.innerText = "[ERROR] Server error during crawl.";
+            }
+        } catch (e) {
+            progressDiv.innerText = "[ERROR] Crawling failed.";
+        } finally {
+            clearInterval(loadingInterval);
+            crawlBtn.style.pointerEvents = 'auto';
+            crawlBtn.style.opacity = '1';
+        }
+    }
+
+    // --- 💡 4등분 된 노트를 빈티지 뱃지로 화면에 그리는 함수 ---
+    function renderNotesPreview(notes) {
+        const previewContainer = document.getElementById('notes-preview-container');
+        const previewBox = document.getElementById('notes-preview-box');
+        let html = '';
+
+        if (notes.top && notes.top.length > 0) {
+            html += `<div class="note-category">TOP</div>`;
+            html += notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
+        }
+        if (notes.middle && notes.middle.length > 0) {
+            html += `<div class="note-category">MIDDLE</div>`;
+            html += notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
+        }
+        if (notes.base && notes.base.length > 0) {
+            html += `<div class="note-category">BASE</div>`;
+            html += notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
+        }
+        if (notes.general && notes.general.length > 0) {
+            html += `<div class="note-category">NOTES (LINEAR)</div>`;
+            html += notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
+        }
+
+        previewBox.innerHTML = html;
+        previewContainer.style.display = 'block';
+    }
+
+    // --- 💡 신규 향수 등록 (Submit) 모듈 ---
+    document.getElementById('register-submit-btn').addEventListener('click', async () => {
+        const uid = document.getElementById('reg-uid').value;
+        const name = document.getElementById('reg-name').value.trim();
+        const brand = document.getElementById('reg-brand').value.trim();
+        const url = document.getElementById('reg-url').value.trim();
+        const regStatus = document.getElementById('reg-status');
+        const submitBtn = document.getElementById('register-submit-btn');
+
+        if (!name) { regStatus.innerText = "[ERROR] Name is required."; return; }
+
+        submitBtn.innerText = "Registering...";
+        regStatus.innerText = "Syncing with Master DB...";
+
+        try {
+            const res = await fetch("/api/v1/perfumes/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                // 💡 백엔드 분리 후: 자바스크립트 객체인 crawledNotesData를 그대로 전송!
+                body: JSON.stringify({
+                    uid, name, brand, url,
+                    imageUrl: crawledImageUrl,
+                    notes: crawledNotesData,
+                    lat: currentLat, lon: currentLon
+                })
+            });
+
+            const resultText = await res.text();
+
+            if (res.ok) {
+                submitBtn.classList.add('success');
+                submitBtn.innerText = "REGISTERED";
+                regStatus.innerText = "[SUCCESS] Perfume added to Wardrobe.";
+
+                setTimeout(() => {
+                    document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
+                    document.getElementById('notes-preview-container').style.display = 'none';
+                    document.getElementById('crawl-progress').style.display = 'none';
+                    crawledNotesData = null;
+                    crawledImageUrl = "";
+                    submitBtn.classList.remove('success');
+                    submitBtn.innerText = "Register & Log";
+                    regStatus.innerText = "";
+                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                }, 2000);
+            } else {
+                regStatus.innerText = `[ERROR] ${resultText}`;
+                submitBtn.innerText = "Register & Log";
+            }
+        } catch (e) {
+            regStatus.innerText = "[ERROR] Network failure.";
+            submitBtn.innerText = "Register & Log";
+        }
     });
 </script>
 </body>

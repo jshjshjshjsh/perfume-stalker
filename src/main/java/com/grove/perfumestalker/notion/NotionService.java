@@ -85,6 +85,24 @@ public class NotionService {
             properties.put(NotionPerfumeMaster.IMAGE.getColumnName(), NotionPerfumeMaster.IMAGE.formatValue(req.getImageUrl()));
         }
 
+        if (req.getImageUrl() != null && !req.getImageUrl().isEmpty()) {
+            properties.put(NotionPerfumeMaster.IMAGE.name(), Map.of(
+                    "files", List.of(Map.of(
+                            "name", req.getName() + "_image.jpg",
+                            "type", "external",
+                            "external", Map.of("url", req.getImageUrl())
+                    ))
+            ));
+        }
+
+        Map<String, List<String>> notes = req.getNotes();
+        if (notes != null) {
+            properties.put(NotionPerfumeMaster.TOP_NOTES.name(), buildMultiSelect(notes.get("top")));
+            properties.put(NotionPerfumeMaster.MIDDLE_NOTES.name(), buildMultiSelect(notes.get("middle")));
+            properties.put(NotionPerfumeMaster.BASE_NOTES.name(), buildMultiSelect(notes.get("base")));
+            properties.put(NotionPerfumeMaster.NOTES.name(), buildMultiSelect(notes.get("general")));
+        }
+
         Map<String, Object> body = Map.of(
                 "parent", Map.of("type", "database_id", "database_id", formattedDbId),
                 "properties", properties
@@ -141,6 +159,58 @@ public class NotionService {
                 })
                 .doOnError(e -> log.error("❌ 노션 브랜드 데이터 조회 실패: ", e))
                 .onErrorReturn(List.of());
+    }
+
+    /**
+     * 크롤링 데이터를 노션 저장용 Properties 객체로 변환
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> buildPerfumeProperties(String uid, String brand, String name, Map<String, Object> crawledData) {
+        Map<String, Object> properties = new java.util.HashMap<>();
+
+        // 1. 기본 텍스트 속성 (예시)
+        properties.put(NotionPerfumeMaster.UID.name(), Map.of("title", List.of(Map.of("text", Map.of("content", uid)))));
+        properties.put(NotionPerfumeMaster.NAME.name(), Map.of("rich_text", List.of(Map.of("text", Map.of("content", name)))));
+        properties.put(NotionPerfumeMaster.BRAND.name(), Map.of("select", Map.of("name", brand)));
+
+        // 💡 2. IMAGE 처리: 서버에 다운받지 않고 'external' URL 통째로 꽂아 넣기
+        String imageUrl = (String) crawledData.getOrDefault("imageUrl", "");
+        if (!imageUrl.isEmpty()) {
+            properties.put(NotionPerfumeMaster.IMAGE.name(), Map.of(
+                    "files", List.of(
+                            Map.of(
+                                    "name", name + "_image.jpg",
+                                    "type", "external",
+                                    "external", Map.of("url", imageUrl)
+                            )
+                    )
+            ));
+        }
+
+        // 💡 3. 입체적 노트 파싱 처리 (Top, Middle, Base, General)
+        Map<String, List<String>> notesMap = (Map<String, List<String>>) crawledData.get("notes");
+        if (notesMap != null) {
+            properties.put(NotionPerfumeMaster.TOP_NOTES.name(), buildMultiSelect(notesMap.get("top")));
+            properties.put(NotionPerfumeMaster.MIDDLE_NOTES.name(), buildMultiSelect(notesMap.get("middle")));
+            properties.put(NotionPerfumeMaster.BASE_NOTES.name(), buildMultiSelect(notesMap.get("base")));
+            properties.put(NotionPerfumeMaster.NOTES.name(), buildMultiSelect(notesMap.get("general"))); // 선형 향수 방어
+        }
+
+        return properties;
+    }
+
+
+    /**
+     * List<String>을 노션의 multi_select 포맷으로 변환하는 헬퍼 메서드
+     */
+    private Map<String, Object> buildMultiSelect(List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return Map.of("multi_select", List.of());
+        }
+        List<Map<String, String>> selectOptions = tags.stream()
+                .map(tag -> Map.of("name", tag))
+                .toList();
+        return Map.of("multi_select", selectOptions);
     }
 
     /**

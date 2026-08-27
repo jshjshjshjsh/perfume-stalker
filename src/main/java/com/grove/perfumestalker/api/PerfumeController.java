@@ -35,22 +35,21 @@ public class PerfumeController {
 
     @PostMapping("/register")
     public Mono<ResponseEntity<String>> registerNewPerfume(@RequestBody PerfumeRegisterRequest request) {
-        log.info("📱 [Perfume Stalker] 새 향수 등록 요청: {}", request.getName());
+        log.info("📱 [최종 저장] 새 향수 등록 요청: {}", request.getName());
 
-        // 1. 날씨 조회 로직 (GPS 우선, 없으면 계정 기본 위치)
+        // 1. 날씨 조회 로직 (크롤링 뺐으니 바로 날씨부터 찌름)
         Mono<WeatherService.WeatherData> weatherMono;
         if (request.getLat() != null && request.getLon() != null) {
             weatherMono = weatherService.getWeatherByCoordinates(request.getLat(), request.getLon());
         } else {
-            // 형님의 계정 DB USER_ID
             weatherMono = userService.getDefaultLocation("jsh-admin")
                     .flatMap(weatherService::getWeatherByCity);
         }
 
-        // 2. 향수 마스터 DB Insert
+        // 2. 향수 마스터 DB Insert (이제 request 안에 프론트가 확정한 이미지와 노트가 다 있음!)
         Mono<String> perfumeMasterMono = notionService.createPerfumeMaster(request);
 
-        // 3. 두 비동기 작업을 묶어서 착향 로그 기록으로
+        // 3. Zip으로 묶어서 착향 로그 기록
         return Mono.zip(perfumeMasterMono, weatherMono)
                 .flatMap(tuple -> {
                     String newPerfumePageId = tuple.getT1();

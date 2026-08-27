@@ -28,14 +28,36 @@ public enum NotionPerfumeMaster {
             return Map.of(getPropertyType(), Map.of("name", String.valueOf(value)));
         }
     },
-    NOTES("NOTES", "multi_select") {
+    TOP_NOTES("TOP_NOTES", "multi_select") {
         @Override
         @SuppressWarnings("unchecked")
         public Map<String, Object> formatValue(Object value) {
-            List<String> notes = (List<String>) value;
-            return Map.of(getPropertyType(), notes.stream()
-                    .map(note -> Map.of("name", note))
-                    .toList());
+            List<String> notes = parseNotesList(value);
+            return formatMultiSelect(notes);
+        }
+    },
+    MIDDLE_NOTES("MIDDLE_NOTES", "multi_select") {
+        @Override
+        @SuppressWarnings("unchecked")
+        public Map<String, Object> formatValue(Object value) {
+            List<String> notes = parseNotesList(value);
+            return formatMultiSelect(notes);
+        }
+    },
+    BASE_NOTES("BASE_NOTES", "multi_select") {
+        @Override
+        @SuppressWarnings("unchecked")
+        public Map<String, Object> formatValue(Object value) {
+            List<String> notes = parseNotesList(value);
+            return formatMultiSelect(notes);
+        }
+    },
+    NOTES("NOTES", "multi_select") { // General 노트용
+        @Override
+        @SuppressWarnings("unchecked")
+        public Map<String, Object> formatValue(Object value) {
+            List<String> notes = parseNotesList(value);
+            return formatMultiSelect(notes);
         }
     },
     URL("URL", "url") {
@@ -57,4 +79,20 @@ public enum NotionPerfumeMaster {
     private final String propertyType;
 
     public abstract Map<String, Object> formatValue(Object value);
+
+    protected static List<String> parseNotesList(Object value) {
+        if (value instanceof List) {
+            return (List<String>) value;
+        }
+        return List.of(); // 타입이 안 맞거나 비어있으면 안전하게 빈 리스트 반환
+    }
+
+    protected static Map<String, Object> formatMultiSelect(List<String> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return Map.of("multi_select", List.of());
+        }
+        return Map.of("multi_select", notes.stream()
+                .map(note -> Map.of("name", note))
+                .toList());
+    }
 }
