@@ -1,5 +1,6 @@
 package com.grove.perfumestalker.notion;
 
+import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.enums.NotionUsageLog;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
@@ -97,7 +98,7 @@ public class NotionLogService {
                     return results.stream().map(page -> {
                         Map<String, Object> props = (Map<String, Object>) page.get("properties");
 
-                        // 💡 유틸리티 클래스 활용으로 코드가 압도적으로 깨끗해짐
+                        String pageId = (String) page.get("id");
                         String date = NotionParserUtils.extractDate(props, NotionUsageLog.DATE.name());
                         String weather = NotionParserUtils.extractSelect(props, NotionUsageLog.WEATHER.name());
                         String perfumeName = NotionParserUtils.extractPerfumeName(props, NotionUsageLog.PERFUME_ROLLUP.getColumnName());
@@ -106,6 +107,7 @@ public class NotionLogService {
                         String humidity = NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName());
 
                         return Map.of(
+                                "pageId", pageId,
                                 "date", date,
                                 "perfumeName", perfumeName.isEmpty() ? "Unknown" : perfumeName,
                                 "imageUrl", imageUrl,
@@ -119,5 +121,37 @@ public class NotionLogService {
                     log.error("❌ 최근 로그 조회 에러: ", e);
                     return Mono.just(List.of());
                 });
+    }
+
+    public Mono<Void> updateUsageLog(String pageId, LogUpdateRequest request) {
+        Map<String, Object> properties = new HashMap<>();
+
+        if (request.getWeather() != null) {
+            properties.put(NotionUsageLog.WEATHER.getColumnName(), NotionUsageLog.WEATHER.formatValue(request.getWeather()));
+        }
+        if (request.getTemp() != null) {
+            properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(request.getTemp()));
+        }
+        if (request.getHumidity() != null) {
+            properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(request.getHumidity()));
+        }
+
+        return notionWebClient.patch()
+                .uri("/pages/{pageId}", pageId)
+                .bodyValue(Map.of("properties", properties))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .doOnSuccess(v -> log.info("✅ 노션 착향 로그 수정 완료: {}", pageId))
+                .doOnError(this::handleNotionError);
+    }
+
+    public Mono<Void> deleteUsageLog(String pageId) {
+        return notionWebClient.patch() // 노션 삭제는 사실상 상태 업데이트(PATCH)임
+                .uri("/pages/{pageId}", pageId)
+                .bodyValue(Map.of("in_trash", true))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .doOnSuccess(v -> log.info("🗑️ 노션 착향 로그 삭제 완료: {}", pageId))
+                .doOnError(this::handleNotionError);
     }
 }

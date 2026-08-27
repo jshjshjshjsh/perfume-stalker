@@ -1,5 +1,6 @@
 package com.grove.perfumestalker.api;
 
+import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.notion.NotionLogService;
 import com.grove.perfumestalker.notion.NotionService;
 import com.grove.perfumestalker.user.UserService;
@@ -66,4 +67,17 @@ public class LogController {
         return notionLogService.getRecentLogs(limit)
                 .map(ResponseEntity::ok);
     }
+
+    @PatchMapping("/{pageId}")
+    public Mono<ResponseEntity<String>> updateLog(@PathVariable String pageId, @RequestBody LogUpdateRequest request) {
+        return notionLogService.updateUsageLog(pageId, request)
+                .then(Mono.just(ResponseEntity.ok("✅ 수정 완료!")));
+    }
+
+    @DeleteMapping("/{pageId}")
+    public Mono<ResponseEntity<String>> deleteLog(@PathVariable String pageId) {
+        return notionLogService.deleteUsageLog(pageId)
+                .then(Mono.just(ResponseEntity.ok("🗑️ 삭제 완료!")));
+    }
+
 }
