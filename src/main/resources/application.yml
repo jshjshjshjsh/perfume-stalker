@@ -7,6 +7,10 @@ spring:
     caffeine:
       spec: maximumSize=500, expireAfterWrite=24h
 
+  mvc:
+    async:
+      request-timeout: 60000
+
 server:
   port: 8080
   shutdown: graceful
