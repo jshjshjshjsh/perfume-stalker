@@ -71,4 +71,14 @@ public class NotionTokenUtils {
                 "$1-$2-$3-$4-$5"
         );
     }
+
+    // 토큰에서 로그인 아이디(Subject) 추출
+    public String getUserIdFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
 }

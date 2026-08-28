@@ -55,31 +55,55 @@
         }
         .manual-trigger-btn:hover { color: var(--text-color); text-decoration: underline; }
 
-        /* 대시보드 스타일 */
+        /* --- 대시보드 컨테이너 및 헤더 --- */
         .future-dashboard {
-            flex: 1; margin-top: 30px; border: 1px dashed var(--text-color);
+            flex: 1; margin-top: 25px; border: 1px dashed var(--text-color);
             border-radius: 2px; display: flex; flex-direction: column;
-            padding: 15px; overflow-y: auto;
+            padding: 16px; overflow-y: auto;
         }
         .dashboard-header {
             font-size: 11px; color: var(--accent-color); text-transform: uppercase;
-            margin-bottom: 15px; border-bottom: 1px solid var(--text-color); padding-bottom: 5px;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px; /* 하단 첫 번째 카드와의 간격 균일화 */
+            border-bottom: 1px solid var(--text-color);
+            padding-bottom: 8px;
         }
 
+        /* --- 개별 로그 카드 (그림자 & 클릭 피드백) --- */
         .log-item {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 0; border-bottom: 1px dashed var(--text-color);
+            padding: 12px 14px;
+            margin-bottom: 12px; /* 카드 간 간격을 12px로 통일 */
+            border: 1px solid #e0e0dc;
+            border-radius: 4px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-        .log-item:last-child { border-bottom: none; }
+        .log-item:last-child {
+            margin-bottom: 0; /* 마지막 카드는 하단 여백 제거 */
+        }
+        .log-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+            border-color: var(--text-color);
+        }
+        .log-item:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            background-color: #fafaf8;
+        }
 
+        /* --- 카드 내부 텍스트 및 썸네일 --- */
         .log-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
         .log-thumb {
-            width: 32px; height: 42px; object-fit: cover; border-radius: 2px;
-            background-color: transparent; border: 1px solid var(--accent-color);
+            width: 34px; height: 44px; object-fit: cover; border-radius: 2px;
+            background-color: transparent; border: 1px solid #e0e0dc;
             margin-right: 12px; flex-shrink: 0;
         }
         .log-details { display: flex; flex-direction: column; overflow: hidden; }
-        .log-perfume { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .log-perfume { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-color); }
         .log-date { font-size: 10px; color: var(--accent-color); margin-top: 3px; }
 
         .log-weather {
@@ -346,11 +370,9 @@
     function checkAuth() {
         const token = localStorage.getItem('jwt_token');
         if (token) {
-            // 토큰이 있으면 바로 메인으로 진입 (추후 토큰 만료 체크 로직 추가 필요)
             switchView('main', document.querySelector('.nav-item.main-tab'));
-            fetchRecentLogs();
+            initializeAppData(); // 토큰이 있을 때만 데이터 불러옴
         } else {
-            // 없으면 바텀 네비게이션 숨기고 로그인 창 띄우기
             document.querySelector('.bottom-nav').style.display = 'none';
             switchView('auth', null);
         }
@@ -424,7 +446,7 @@
                     setTimeout(() => {
                         document.querySelector('.bottom-nav').style.display = 'flex';
                         switchView('main', document.querySelector('.nav-item.main-tab'));
-                        fetchRecentLogs();
+                        initializeAppData();
                     }, 1000);
                 } else {
                     statusMsg.innerText = "[SUCCESS] Account created. Please login.";
@@ -1066,34 +1088,46 @@
         switchView('auth', null);
     }
 
-    // 기존 fetchWithAuth() 대신 이걸 쓰면 알아서 토큰을 헤더에 박아서 보냄
+    // 알람 폭격 방지용 플래그
+    let isSessionExpired = false;
+
     async function fetchWithAuth(url, options = {}) {
         const token = localStorage.getItem('jwt_token');
-
-        // options.headers가 이미 있으면 합치고, 없으면 새로 만듦
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`
-        };
+        const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
 
         const response = await fetch(url, { ...options, headers });
 
-        // 토큰이 만료되었거나 조작되어 401 에러가 뜨면 강제 로그아웃
         if (response.status === 401) {
-            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
-            logout();
+            // 여러 API가 동시에 401을 맞아도 경고창은 딱 1번만!
+            if (!isSessionExpired) {
+                isSessionExpired = true;
+                alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+
+                // 컨펌 없이 강제 로그아웃
+                localStorage.removeItem('jwt_token');
+                document.getElementById('auth-id').value = '';
+                document.getElementById('auth-pw').value = '';
+                document.getElementById('auth-status').innerText = 'Session expired.';
+                document.querySelector('.bottom-nav').style.display = 'none';
+                switchView('auth', null);
+
+                // 3초 뒤 플래그 초기화
+                setTimeout(() => { isSessionExpired = false; }, 3000);
+            }
             throw new Error("Unauthorized");
         }
-
         return response;
     }
 
-    window.addEventListener('DOMContentLoaded', () => {
-        checkAuth();
+    function initializeAppData() {
         fetchRealWeather();
         fetchBrands();
         fetchRecentLogs();
         fetchPerfumeList();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        checkAuth();
     });
 </script>
 </body>

@@ -1,54 +1,67 @@
 package com.grove.perfumestalker.config;
 
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.web.server.WebFilter;
-import org.springframework.web.server.WebFilterChain;
-import reactor.core.publisher.Mono;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class JwtAuthenticationFilter implements WebFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final NotionTokenUtils tokenUtils;
 
+    // 💡 팩폭 해결: 인증 검사를 '건너뛸' 경로들을 여기에 깔끔하게 정의!
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String path = exchange.getRequest().getURI().getPath();
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getRequestURI();
+        return path.equals("/") ||
+                path.startsWith("/index.html") ||
+                path.startsWith("/favicon.ico") ||
+                path.startsWith("/static/") ||
+                path.startsWith("/.well-known/") ||
+                path.startsWith("/api/v1/auth/");
+    }
 
-        // 1. 인증이 필요 없는 Public API는 그냥 통과 (로그인, 회원가입 등)
-        if (path.startsWith("/api/v1/auth/") || path.equals("/api/v1/weather")) {
-            return chain.filter(exchange);
-        }
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        // 2. 헤더에서 토큰 추출
-        String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        String path = request.getRequestURI();
+
+        // 💡 2. 헤더 검증 (이제 화면 띄우는 요청은 여기까지 안 오고 무사통과됨)
+        String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("🚨 [인증 실패] 토큰이 없습니다: {}", path);
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            log.warn("🚨 [인증 실패] 토큰 누락: {}", path);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
 
-        // 3. 토큰 유효성 검증
+        // 💡 3. 토큰 유효성 검증
         String token = authHeader.substring(7);
         if (!tokenUtils.validateToken(token)) {
-            log.warn("🚨 [인증 실패] 유효하지 않은 토큰입니다: {}", path);
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+            log.warn("🚨 [인증 실패] 유효하지 않은 토큰: {}", path);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
         }
 
-        // 4. 토큰에서 유저 고유 ID(Notion Page ID) 추출
+        // 💡 4. 데이터 추출 및 Request Attribute에 주입
+        String userId = tokenUtils.getUserIdFromToken(token);
         String userPageId = tokenUtils.getUserPageIdFromToken(token);
 
-        // 5. Reactor Context에 userPageId를 담아서 하위 서비스로 흘려보냄
-        // 이제 파라미터 주렁주렁 안 달아도, 서비스단에서 Mono.deferContextual()로 꺼내 쓸 수 있음.
-        return chain.filter(exchange)
-                .contextWrite(ctx -> ctx.put("userPageId", userPageId));
+        request.setAttribute("userId", userId);
+        request.setAttribute("userPageId", userPageId);
+
+        // 💡 5. 다음 필터 또는 컨트롤러로 이동
+        filterChain.doFilter(request, response);
     }
 }

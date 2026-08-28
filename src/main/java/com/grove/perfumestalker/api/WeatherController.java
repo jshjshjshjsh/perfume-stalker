@@ -22,7 +22,8 @@ public class WeatherController {
     @GetMapping
     public Mono<ResponseEntity<Map<String, Object>>> getCurrentWeather(
             @RequestParam(required = false) Double lat,
-            @RequestParam(required = false) Double lon) {
+            @RequestParam(required = false) Double lon,
+            @RequestAttribute("userId") String userId) {
 
         // 1. 프론트에서 GPS를 넘겨준 경우 (Update 버튼 눌렀을 때)
         if (lat != null && lon != null) {
@@ -37,7 +38,7 @@ public class WeatherController {
         }
         // 2. GPS가 없는 경우 (앱 초기 로딩 시)
         else {
-            return userService.getDefaultLocation("jsh-admin")
+            return userService.getDefaultLocation(userId)
                     .flatMap(loc -> weatherService.getWeatherByCity(loc)
                             .map(w -> ResponseEntity.ok(Map.of(
                                     "location", loc,
