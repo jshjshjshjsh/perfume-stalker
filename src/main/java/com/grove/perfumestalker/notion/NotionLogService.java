@@ -2,6 +2,7 @@ package com.grove.perfumestalker.notion;
 
 import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.dto.UsageLogCreateCommand;
+import com.grove.perfumestalker.dto.UsageLogResponse;
 import com.grove.perfumestalker.enums.NotionUsageLog;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
@@ -34,6 +35,51 @@ public class NotionLogService {
     private String usageLogDbId;
     @Value("${notion.usage-log-data-source-id}")
     private String usageLogDataSourceId;
+
+    public Mono<List<UsageLogResponse>> getLogsByPerfume(String perfumeId, String userPageId) {
+        String formattedDbId = notionTokenUtils.formatUuid(usageLogDataSourceId);
+
+        Map<String, Object> queryBody = Map.of(
+                "filter", Map.of(
+                        "and", List.of(
+                                Map.of("property", NotionUsageLog.USER.getColumnName(),
+                                        "relation", Map.of("contains", userPageId)),
+                                Map.of("property", NotionUsageLog.PERFUME.getColumnName(),
+                                        "relation", Map.of("contains", perfumeId))
+                        )
+                ),
+                "sorts", List.of(
+                        Map.of("property", NotionUsageLog.DATE.getColumnName(),
+                                "direction", "descending")
+                )
+        );
+
+        return notionWebClient.post()
+                .uri("/data_sources/{dbId}/query", formattedDbId)
+                .bodyValue(queryBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                    if (results == null) return List.of();
+
+                    return results.stream().map(page -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> props = (Map<String, Object>) page.get("properties");
+
+                        return new UsageLogResponse(
+                                (String) page.get("id"),
+                                NotionParserUtils.extractPerfumeName(props, NotionUsageLog.PERFUME.getColumnName()),
+                                NotionParserUtils.extractDate(props, NotionUsageLog.DATE.getColumnName()),
+                                NotionParserUtils.extractSelect(props, NotionUsageLog.WEATHER.getColumnName()),
+                                Double.valueOf(NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName())),
+                                Double.valueOf(NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName())),
+                                NotionParserUtils.extractRollupImage(props, NotionUsageLog.IMAGE_ROLLUP.getColumnName())
+                        );
+                    }).collect(Collectors.toList());
+                });
+    }
 
     public Mono<Void> createUsageLog(UsageLogCreateCommand command, String userPageId) {
 

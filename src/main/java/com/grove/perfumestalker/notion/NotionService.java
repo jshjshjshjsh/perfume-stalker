@@ -172,14 +172,13 @@ public class NotionService {
                 .onErrorReturn(List.of());
     }
 
-    public Mono<List<Map<String, String>>> getAllPerfumes(String userPageId) {
+    public Mono<List<Map<String, Object>>> getAllPerfumes(String userPageId) {
         String formattedDbId = notionTokenUtils.formatUuid(masterDataSourceId);
 
-        // 최대 100개까지 한 번에 긁어오기 (향수가 100개 넘어가면 pagination 추가해야 함)
         Map<String, Object> queryBody = Map.of(
                 "page_size", 100,
                 "filter", Map.of(
-                        "property", NotionPerfumeMaster.USER.getColumnName(),
+                        "property", "USER",
                         "relation", Map.of("contains", userPageId)
                 )
         );
@@ -190,22 +189,39 @@ public class NotionService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
+                    @SuppressWarnings("unchecked")
                     List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
-                    if (results == null || results.isEmpty()) return List.<Map<String, String>>of();
+                    if (results == null) return List.of();
 
                     return results.stream().map(page -> {
-                        String id = (String) page.get("id"); // 💡 노션의 고유 UUID
+                        @SuppressWarnings("unchecked")
                         Map<String, Object> props = (Map<String, Object>) page.get("properties");
 
-                        // 형님이 컬럼명을 뭐라고 지었든 무조건 제목을 찾아냄
-                        String name = NotionParserUtils.extractDefaultTitle(props);
+                        String id = (String) page.get("id");
+                        String name = NotionParserUtils.extractRichText(props, "NAME");
+                        String brand = NotionParserUtils.extractSelect(props, "BRAND");
+                        String imageUrl = NotionParserUtils.extractUrl(props, "IMAGE_URL");
 
-                        return Map.of("id", id, "name", name);
+                        List<String> topNotes = NotionParserUtils.extractMultiSelect(props, "TOP_NOTES");
+                        List<String> middleNotes = NotionParserUtils.extractMultiSelect(props, "MIDDLE_NOTES");
+                        List<String> baseNotes = NotionParserUtils.extractMultiSelect(props, "BASE_NOTES");
+                        List<String> generalNotes = NotionParserUtils.extractMultiSelect(props, "NOTES");
+
+                        // 프론트엔드가 편하게 읽도록 Map으로 압축
+                        Map<String, Object> notesMap = new java.util.HashMap<>();
+                        if (!topNotes.isEmpty()) notesMap.put("top", topNotes);
+                        if (!middleNotes.isEmpty()) notesMap.put("middle", middleNotes);
+                        if (!baseNotes.isEmpty()) notesMap.put("base", baseNotes);
+                        if (!generalNotes.isEmpty()) notesMap.put("general", generalNotes);
+
+                        Map<String, Object> dto = new java.util.HashMap<>();
+                        dto.put("id", id);
+                        dto.put("name", name);
+                        dto.put("brand", brand);
+                        dto.put("notes", notesMap);
+                        dto.put("imageUrl", imageUrl);
+                        return dto;
                     }).collect(Collectors.toList());
-                })
-                .onErrorResume(e -> {
-                    log.error("❌ 마스터 DB 향수 목록 조회 실패", e);
-                    return Mono.just(List.of());
                 });
     }
 

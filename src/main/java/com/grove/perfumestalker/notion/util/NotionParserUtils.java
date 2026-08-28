@@ -113,7 +113,7 @@ public final class NotionParserUtils {
         } catch (Exception e) { return ""; }
     }
 
-    // 💡 노션 Relation 컬럼에서 연결된 Page ID(유저 ID)를 쏙 빼오는 유틸리티
+    // 노션 Relation 컬럼에서 연결된 Page ID(유저 ID)를 빼오는 유틸리티
     @SuppressWarnings("unchecked")
     public static String extractRelationId(Map<String, Object> props, String key) {
         try {
@@ -125,5 +125,37 @@ public final class NotionParserUtils {
 
             return (String) relations.get(0).get("id");
         } catch (Exception e) { return ""; }
+    }
+
+    // 노션 URL 속성 안전 추출기
+    public static String extractUrl(Map<String, Object> props, String key) {
+        try {
+            Map<String, Object> prop = findPropertyIgnoreCase(props, key);
+            if (prop == null) return "";
+
+            String type = (String) prop.get("type");
+            if ("url".equals(type)) {
+                Object urlObj = prop.get("url");
+                return urlObj != null ? String.valueOf(urlObj) : "";
+            }
+            // 만약 rich_text로 저장했다면 기존 메서드로 우회
+            return extractRichText(props, key);
+        } catch (Exception e) { return ""; }
+    }
+
+    // 다중 선택(multi_select) 타입 전용 추출 (TOP, MIDDLE, BASE, NOTES 용)
+    @SuppressWarnings("unchecked")
+    public static List<String> extractMultiSelect(Map<String, Object> props, String key) {
+        try {
+            Map<String, Object> prop = findPropertyIgnoreCase(props, key);
+            if (prop == null || !"multi_select".equals(prop.get("type"))) return List.of();
+
+            List<Map<String, Object>> multiSelect = (List<Map<String, Object>>) prop.get("multi_select");
+            if (multiSelect == null) return List.of();
+
+            return multiSelect.stream()
+                    .map(m -> (String) m.get("name"))
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) { return List.of(); }
     }
 }

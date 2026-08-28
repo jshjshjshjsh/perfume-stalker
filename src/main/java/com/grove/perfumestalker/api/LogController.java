@@ -3,6 +3,7 @@ package com.grove.perfumestalker.api;
 import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.dto.ManualLogRequest;
 import com.grove.perfumestalker.dto.UsageLogCreateCommand;
+import com.grove.perfumestalker.dto.UsageLogResponse;
 import com.grove.perfumestalker.notion.NotionLogService;
 import com.grove.perfumestalker.notion.NotionService;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
@@ -30,6 +31,16 @@ public class LogController {
     private final WeatherService weatherService;
     private final UserService userService;
     public record ScanRequest(String uid, Double lat, Double lon) {}
+
+    @GetMapping("/perfume/{perfumeId}")
+    public Mono<ResponseEntity<List<UsageLogResponse>>> getLogsByPerfumeId(
+            @PathVariable String perfumeId,
+            @RequestAttribute("userPageId") String userPageId) {
+
+        return notionLogService.getLogsByPerfume(perfumeId, userPageId)
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.ok(List.of())); // 결과가 없으면 빈 리스트 리턴
+    }
 
     /**
      * 프론트엔드(모바일 웹)에서 NFC UID를 받아 착향 로그를 기록하는 엔드포인트

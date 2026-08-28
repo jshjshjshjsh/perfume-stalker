@@ -157,6 +157,35 @@
         .bottom-nav { display: flex; justify-content: space-between; padding: 20px 30px 30px 30px; border-top: 1px solid #ddd; background-color: var(--bg-color); }
         .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
         .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
+
+        /* --- 옷장(Wardrobe) 스타일 --- */
+        .wardrobe-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+        .wardrobe-card {
+            display: flex; padding: 12px; border: 1px solid #e0e0dc; border-radius: 4px;
+            background-color: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease;
+        }
+        .wardrobe-card:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08); }
+        .wardrobe-thumb {
+            width: 55px; height: 75px; object-fit: cover; border-radius: 2px;
+            border: 1px solid #e0e0dc; margin-right: 15px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--accent-color); background: #fafaf8;
+        }
+        .wardrobe-info { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+        .wardrobe-brand { font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px; }
+        .wardrobe-name { font-weight: bold; font-size: 14px; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+        .wardrobe-notes {
+            font-size: 11px;
+            color: var(--accent-color);
+            line-height: 1.4; /* 가독성을 위한 줄간격 */
+            margin-top: 4px;
+
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 </head>
 <body>
@@ -234,7 +263,16 @@
 </section>
 
 <!-- 2. WARDROBE VIEW -->
-<section id="view-wardrobe" class="view-section"><div class="weather-widget"><h2>My Wardrobe</h2><p>Santal 33 (Le Labo)<br>Hinoki (CdG)</p></div></section>
+<section id="view-wardrobe" class="view-section">
+    <div class="weather-widget">
+        <h2>My Wardrobe <span class="loc-btn" onclick="fetchWardrobe()" style="float: right;">[ refresh ]</span></h2>
+        <p>Your registered collection.</p>
+    </div>
+
+    <div id="wardrobe-container" class="wardrobe-grid">
+        <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>
+    </div>
+</section>
 <!-- 3. SUMMARY VIEW -->
 <section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
 <!-- 4. WISH LIST VIEW -->
@@ -264,6 +302,38 @@
 
         <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
         <div id="manual-status" class="status-msg"></div>
+    </div>
+</section>
+
+<!-- 💡 8. PERFUME DETAIL VIEW (옷장 상세 화면) -->
+<section id="view-perfume-detail" class="view-section">
+    <div class="weather-widget">
+        <h2>Perfume Details <span class="loc-btn" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])" style="float: right;">[ back ]</span></h2>
+        <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
+        <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Perfume Name</p>
+    </div>
+
+    <!-- 1. 이미지 & 노트 뱃지 영역 (팩폭 수정: 내부 스크롤 제거, 자연스러운 세로 확장) -->
+    <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 10px;">
+
+        <!-- 썸네일 고정 영역 (flex-shrink: 0 으로 찌그러짐 방지) -->
+        <div style="flex-shrink: 0;">
+            <div id="detail-image-box" class="wardrobe-thumb" style="width: 85px; height: 115px; margin: 0;">No Img</div>
+            <img id="detail-image" src="" style="width: 85px; height: 115px; object-fit: cover; border: 1px solid #e0e0dc; border-radius: 2px; display: none;">
+        </div>
+
+        <!-- 노트 컨테이너: 세로 제한(max-height) 삭제, 높이 자동 조절 -->
+        <div id="detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;">
+            <!-- JS에서 노트 뱃지가 렌더링됨 -->
+        </div>
+    </div>
+
+    <!-- 2. 이 향수의 착향 로그만 모아보는 미니 대시보드 -->
+    <div class="future-dashboard" style="margin-top: 15px;">
+        <div class="dashboard-header">Wearing History</div>
+        <div id="detail-history-container">
+            <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>
+        </div>
     </div>
 </section>
 
@@ -1087,11 +1157,148 @@
         return response;
     }
 
+    // 💡 1. 향수 상세 뷰에 넘겨줄 옷장 데이터 전용 보관함 (전역 변수)
+    let globalWardrobeData = [];
+
+    // 💡 2. 옷장(Wardrobe) 데이터 불러오기 완성본
+    async function fetchWardrobe() {
+        const container = document.getElementById('wardrobe-container');
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+
+        try {
+            const res = await fetchWithAuth("/api/v1/perfumes/list");
+
+            if (res.ok) {
+                // 💡 팩폭: 통신 성공 시 데이터를 전역 변수에 통째로 저장!
+                globalWardrobeData = await res.json();
+
+                if (globalWardrobeData.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">옷장이 비어있습니다.<br>새로운 태그를 스캔해 향수를 등록하세요.</div>`;
+                    return;
+                }
+
+                container.innerHTML = globalWardrobeData.map(p => {
+                    const imgTag = p.imageUrl
+                        ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">`
+                        : `<div class="wardrobe-thumb">No Img</div>`;
+
+                    // 노트 파싱 (Top, Middle, Base 등 싹 다 긁어서 한 줄로 묶기)
+                    let notesPreview = "No notes recorded.";
+                    if (p.notes) {
+                        try {
+                            const parsedNotes = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+                            const allNotes = [];
+                            if (parsedNotes.top) allNotes.push(...parsedNotes.top);
+                            if (parsedNotes.middle) allNotes.push(...parsedNotes.middle);
+                            if (parsedNotes.base) allNotes.push(...parsedNotes.base);
+                            if (parsedNotes.general) allNotes.push(...parsedNotes.general);
+
+                            if (allNotes.length > 0) notesPreview = allNotes.join(', ');
+                        } catch(e) {}
+                    }
+
+                    // 💡 클릭 시 상세 뷰 함수(openPerfumeDetail)로 넘어가게 튜닝된 카드 HTML
+                    return `
+                        <div class="wardrobe-card" style="cursor: pointer;" onclick="openPerfumeDetail('${p.id}')">
+                            ${imgTag}
+                            <div class="wardrobe-info">
+                                <div class="wardrobe-brand">${p.brand || 'Unknown Brand'}</div>
+                                <div class="wardrobe-name">${p.name}</div>
+                                <div class="wardrobe-notes">${notesPreview}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load wardrobe.</div>`;
+            }
+        } catch (e) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
+    }
+
+    // 💡 1. 향수 상세 화면 열기
+    function openPerfumeDetail(perfumeId) {
+        const p = globalWardrobeData.find(x => x.id === perfumeId);
+        if (!p) return;
+
+        document.getElementById('detail-brand').innerText = p.brand || 'UNKNOWN BRAND';
+        document.getElementById('detail-name').innerText = p.name;
+
+        const imgEl = document.getElementById('detail-image');
+        const boxEl = document.getElementById('detail-image-box');
+        if (p.imageUrl) {
+            imgEl.src = p.imageUrl;
+            imgEl.style.display = 'block';
+            boxEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            boxEl.style.display = 'flex';
+        }
+
+        // 노트 뱃지 렌더링 (크롤링 때 썼던 로직 100% 재활용!)
+        const notesBox = document.getElementById('detail-notes-container');
+        let html = '';
+        if (p.notes && Object.keys(p.notes).length > 0) {
+            const n = p.notes;
+            if (n.top && n.top.length > 0) html += `<div class="note-category">TOP</div>` + n.top.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.middle && n.middle.length > 0) html += `<div class="note-category">MIDDLE</div>` + n.middle.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.base && n.base.length > 0) html += `<div class="note-category">BASE</div>` + n.base.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.general && n.general.length > 0) html += `<div class="note-category">NOTES</div>` + n.general.map(x => `<span class="note-chip">${x}</span>`).join('');
+        }
+        notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
+
+        // 화면 전환 후 히스토리 통신 시작
+        switchView('perfume-detail', null);
+        fetchPerfumeHistory(perfumeId);
+    }
+
+    // 💡 2. 특정 향수의 착향 이력(로그)만 백엔드에서 긁어오기
+    async function fetchPerfumeHistory(perfumeId) {
+        const container = document.getElementById('detail-history-container');
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>`;
+
+        try {
+            const response = await fetchWithAuth(`/api/v1/logs/perfume/${perfumeId}`);
+            if (response.ok) {
+                const logs = await response.json();
+
+                if (logs.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No wearing history found.</div>`;
+                    return;
+                }
+
+                // 메인 대시보드 리스트 스타일 그대로 재활용! (썸네일은 이미 위에 있으니 제외)
+                container.innerHTML = logs.map(log => {
+                    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+                    const weatherIcon = getWeatherIcon(log.weather);
+                    const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
+
+                    return `
+                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+                            <div class="log-left">
+                                <div class="log-details">
+                                    <div class="log-date" style="font-size: 12px; color: var(--text-color); font-weight: bold;">${shortDate}</div>
+                                </div>
+                            </div>
+                            <div class="log-weather">
+                                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        } catch (e) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
+    }
+
     function initializeAppData() {
         fetchRealWeather();
         fetchBrands();
         fetchRecentLogs();
         fetchPerfumeList();
+        fetchWardrobe();
     }
 
     window.addEventListener('DOMContentLoaded', () => {

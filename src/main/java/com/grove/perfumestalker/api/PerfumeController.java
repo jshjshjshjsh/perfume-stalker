@@ -98,7 +98,7 @@ public class PerfumeController {
     }
 
     @GetMapping("/list")
-    public Mono<ResponseEntity<List<Map<String, String>>>> getPerfumeList(@RequestAttribute("userPageId") String userPageId) {
+    public Mono<ResponseEntity<List<Map<String, Object>>>> getPerfumeList(@RequestAttribute("userPageId") String userPageId) {
         return notionService.getAllPerfumes(userPageId)
                 .map(ResponseEntity::ok);
     }
