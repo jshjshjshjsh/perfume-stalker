@@ -36,33 +36,45 @@ public class PerfumeController {
 
     @PostMapping("/register")
     public Mono<ResponseEntity<String>> registerNewPerfume(@RequestBody PerfumeRegisterRequest request,
-                                                           @RequestAttribute("userPageId") String userPageId) {
+                                                           @RequestAttribute("userPageId") String userPageId,
+                                                           @RequestAttribute("userId") String userId) {
         log.info("📱 [최종 저장] 새 향수 등록 요청: {}", request.getName());
 
-        // 1. 날씨 조회 로직 (크롤링 뺐으니 바로 날씨부터 찌름)
+        // 1. 날씨 조회 로직
         Mono<WeatherService.WeatherData> weatherMono;
         if (request.getLat() != null && request.getLon() != null) {
             weatherMono = weatherService.getWeatherByCoordinates(request.getLat(), request.getLon());
         } else {
-            weatherMono = userService.getDefaultLocation(userPageId)
+            weatherMono = userService.getDefaultLocation(userId)
                     .flatMap(weatherService::getWeatherByCity);
         }
 
-        // 2. 향수 마스터 DB Insert (이제 request 안에 프론트가 확정한 이미지와 노트가 다 있음!)
-        Mono<String> perfumeMasterMono = notionService.createPerfumeMaster(request, userPageId);
+        // 2. 글로벌 UID 중복 검사 후 진행
+        return notionService.getPerfumeByUidGlobal(request.getUid())
+                .flatMap(perfumePage -> {
+                    // 남의 것이든 내 것이든 이미 마스터 DB에 있는 UID면 등록 컷
+                    if (!perfumePage.isEmpty()) {
+                        return Mono.error(new SecurityException("🚨 이미 시스템에 등록된 태그입니다."));
+                    }
 
-        // 3. Zip으로 묶어서 착향 로그 기록
-        return Mono.zip(perfumeMasterMono, weatherMono)
+                    // 3. 존재하지 않는 태그일 때만 향수 마스터 DB Insert 진행
+                    Mono<String> perfumeMasterMono = notionService.createPerfumeMaster(request, userPageId);
+                    return Mono.zip(perfumeMasterMono, weatherMono);
+                })
                 .flatMap(tuple -> {
                     String newPerfumePageId = tuple.getT1();
                     WeatherService.WeatherData weather = tuple.getT2();
 
+                    // 4. Zip으로 묶어서 착향 로그 기록
                     UsageLogCreateCommand command = new UsageLogCreateCommand(newPerfumePageId, weather, null);
                     return notionLogService.createUsageLog(command, userPageId);
                 })
                 .map(v -> ResponseEntity.ok("✅ 향수 등록 및 날씨 정보가 포함된 착향 로그 기록 완료!"))
                 .onErrorResume(e -> {
                     log.error("❌ 향수 등록 파이프라인 에러: {}", e.getMessage());
+                    if (e instanceof SecurityException) {
+                        return Mono.just(ResponseEntity.badRequest().body(e.getMessage()));
+                    }
                     return Mono.just(ResponseEntity.badRequest().body("실패: " + e.getMessage()));
                 });
     }

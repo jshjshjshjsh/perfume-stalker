@@ -209,6 +209,31 @@ public class NotionService {
                 });
     }
 
+    // 💡 소유자 상관없이 마스터 DB 전체에서 UID로 향수 찾기
+    @SuppressWarnings("unchecked")
+    public Mono<Map<String, Object>> getPerfumeByUidGlobal(String uid) {
+        String formattedDbId = notionTokenUtils.formatUuid(masterDataSourceId);
+
+        // USER 필터 없이 오직 UID만으로 검색!
+        Map<String, Object> queryBody = Map.of(
+                "filter", Map.of(
+                        "property", "UID", // 형님 노션의 태그 UID 컬럼명에 맞출 것!
+                        "rich_text", Map.of("equals", uid)
+                )
+        );
+
+        return notionWebClient.post()
+                .uri("/data_sources/{dbId}/query", formattedDbId)
+                .bodyValue(queryBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                    if (results == null || results.isEmpty()) return Map.of(); // 빈 Map 리턴 시 '미등록 태그'
+                    return results.get(0); // 발견 시 해당 향수 데이터 통째로 리턴
+                });
+    }
+
 
     /**
      * List<String>을 노션의 multi_select 포맷으로 변환하는 헬퍼 메서드

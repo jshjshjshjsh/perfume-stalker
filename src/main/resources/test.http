@@ -51,3 +51,76 @@ Content-Type: application/json
   "userId": "new_user",
   "password": "password123"
 }
+
+
+
+### 0. 로그인 (토큰 자동 저장 스크립트 포함)
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "userId": "testuser2",
+  "rawPassword": "1234"
+}
+> {%
+    // 💡 로그인 성공 시 발급된 토큰을 'auth_token' 변수에 자동 저장!
+    client.global.set("auth_token", response.body.token);
+%}
+
+### 1. 스캔 테스트 - 미등록 청정 태그 (기댓값: 400 Bad Request, "Unregistered NFC UID")
+POST http://localhost:8080/api/v1/logs/scan
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "uid": "TEST-UID-1111",
+  "lat": 35.1796,
+  "lon": 129.0756
+}
+
+### 2. 향수 등록 테스트 - 청정 태그 등록 (기댓값: 200 OK)
+POST http://localhost:8080/api/v1/perfumes/register
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "uid": "TEST-UID-1111",
+  "name": "Le Labo Santal 33",
+  "brand": "Le Labo",
+  "url": "https://www.fragrantica.com/perfume/test",
+  "imageUrl": "",
+  "notes": {
+    "top": ["Cardamom"],
+    "middle": ["Iris", "Violet"],
+    "base": ["Sandalwood", "Cedar"]
+  },
+  "lat": 35.1796,
+  "lon": 129.0756
+}
+
+### 3. 향수 등록 방어막 테스트 - 남이 이미 등록한 태그 가로채기 시도 (기댓값: 400 Bad Request, "이미 시스템에 등록된 태그입니다")
+POST http://localhost:8080/api/v1/perfumes/register
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "uid": "5A:A5:B9:5A:1E:41:89",
+  "name": "Hijacked Perfume",
+  "brand": "Thief",
+  "url": "",
+  "imageUrl": "",
+  "notes": {},
+  "lat": 35.1796,
+  "lon": 129.0756
+}
+
+### 4. 스캔 테스트 - 정상 등록된 내 태그 스캔 (기댓값: 200 OK)
+POST http://localhost:8080/api/v1/logs/scan
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "uid": "5A:A5:B9:5A:1E:41:89",
+  "lat": 35.1796,
+  "lon": 129.0756
+}

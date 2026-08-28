@@ -112,4 +112,18 @@ public final class NotionParserUtils {
             return textList.isEmpty() ? "" : (String) ((Map<String, Object>) textList.get(0).get("text")).get("content");
         } catch (Exception e) { return ""; }
     }
+
+    // 💡 노션 Relation 컬럼에서 연결된 Page ID(유저 ID)를 쏙 빼오는 유틸리티
+    @SuppressWarnings("unchecked")
+    public static String extractRelationId(Map<String, Object> props, String key) {
+        try {
+            Map<String, Object> prop = findPropertyIgnoreCase(props, key);
+            if (prop == null) return "";
+
+            List<Map<String, Object>> relations = (List<Map<String, Object>>) prop.get("relation");
+            if (relations == null || relations.isEmpty()) return "";
+
+            return (String) relations.get(0).get("id");
+        } catch (Exception e) { return ""; }
+    }
 }
