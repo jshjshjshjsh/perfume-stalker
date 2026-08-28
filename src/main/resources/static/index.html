@@ -410,7 +410,7 @@
             };
 
         try {
-            const res = await fetch(endpoint, {
+            const res = await fetchWithAuth(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -452,7 +452,7 @@
         try {
             let url = "/api/v1/weather";
             if (lat !== null && lon !== null) url += `?lat=${lat}&lon=${lon}`;
-            const response = await fetch(url);
+            const response = await fetchWithAuth(url);
             if (response.ok) {
                 const data = await response.json();
                 let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()">[ update ]</span>`;
@@ -543,7 +543,7 @@
                 statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
 
                 try {
-                    const response = await fetch("/api/v1/logs/scan", {
+                    const response = await fetchWithAuth("/api/v1/logs/scan", {
                         method: "POST", headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
                     });
@@ -594,7 +594,7 @@
         regStatus.innerText = "Syncing with Master DB...";
 
         try {
-            const res = await fetch("/api/v1/perfumes/register", {
+            const res = await fetchWithAuth("/api/v1/perfumes/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 // 💡 방금 전에 세팅해 둔 날씨 GPS도 똑같이 같이 넘겨줌!
@@ -632,7 +632,7 @@
     // --- 1. 브랜드 목록 불러오기 (초기 로딩 시) ---
     async function fetchBrands() {
         try {
-            const res = await fetch("/api/v1/perfumes/brands");
+            const res = await fetchWithAuth("/api/v1/perfumes/brands");
             if (res.ok) {
                 const brands = await res.json();
                 const datalist = document.getElementById('brand-list');
@@ -679,7 +679,7 @@
         const timeoutId = setTimeout(() => controller.abort(), 30000);
 
         try {
-            const res = await fetch(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
+            const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
                 signal: controller.signal
             });
 
@@ -764,7 +764,7 @@
         regStatus.innerText = "Syncing with Master DB...";
 
         try {
-            const res = await fetch("/api/v1/perfumes/register", {
+            const res = await fetchWithAuth("/api/v1/perfumes/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 // 💡 백엔드 분리 후: 자바스크립트 객체인 crawledNotesData를 그대로 전송!
@@ -821,7 +821,7 @@
     async function fetchRecentLogs() {
         const container = document.getElementById('recent-logs-container');
         try {
-            const response = await fetch("/api/v1/logs/recent?limit=5");
+            const response = await fetchWithAuth("/api/v1/logs/recent?limit=5");
             if (response.ok) {
                 const logs = await response.json();
 
@@ -907,7 +907,7 @@
         submitBtn.innerText = "Updating...";
 
         try {
-            const res = await fetch(`/api/v1/logs/${pageId}`, {
+            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -954,7 +954,7 @@
         updateBtn.disabled = true;
 
         try {
-            const res = await fetch(`/api/v1/logs/${pageId}`, { method: "DELETE" });
+            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, { method: "DELETE" });
 
             if (res.ok) {
                 delBtn.classList.add('success');
@@ -985,7 +985,7 @@
     // 향수 목록 불러와서 셀렉트 박스 채우기 (초기 로딩 시 호출)
     async function fetchPerfumeList() {
         try {
-            const res = await fetch("/api/v1/perfumes/list");
+            const res = await fetchWithAuth("/api/v1/perfumes/list");
             if (res.ok) {
                 const perfumes = await res.json();
                 const selectBox = document.getElementById('manual-perfume-select');
@@ -1013,7 +1013,7 @@
         submitBtn.innerText = "Saving...";
 
         try {
-            const res = await fetch("/api/v1/logs/manual", {
+            const res = await fetchWithAuth("/api/v1/logs/manual", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -1051,7 +1051,7 @@
 
     // 로그아웃 처리
     function logout() {
-        if (!confirm("시스템에서 로그아웃 하시겠습니까?")) return;
+        if (!confirm("로그아웃 하시겠습니까?")) return;
 
         // 토큰 날려버리기
         localStorage.removeItem('jwt_token');
@@ -1064,6 +1064,28 @@
         // 하단 네비 숨기고 로그인 창으로 추방
         document.querySelector('.bottom-nav').style.display = 'none';
         switchView('auth', null);
+    }
+
+    // 기존 fetchWithAuth() 대신 이걸 쓰면 알아서 토큰을 헤더에 박아서 보냄
+    async function fetchWithAuth(url, options = {}) {
+        const token = localStorage.getItem('jwt_token');
+
+        // options.headers가 이미 있으면 합치고, 없으면 새로 만듦
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`
+        };
+
+        const response = await fetch(url, { ...options, headers });
+
+        // 토큰이 만료되었거나 조작되어 401 에러가 뜨면 강제 로그아웃
+        if (response.status === 401) {
+            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+            logout();
+            throw new Error("Unauthorized");
+        }
+
+        return response;
     }
 
     window.addEventListener('DOMContentLoaded', () => {
