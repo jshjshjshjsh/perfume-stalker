@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Perfume Stalker</title>
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg-color: #f4f4f0; --text-color: #1a1a1a; --accent-color: #8c8c8c; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -186,6 +187,21 @@
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* --- 통계 잔디(Heatmap) 스타일 --- */
+        .heatmap-grid {
+            display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px;
+        }
+        .heatmap-cell {
+            aspect-ratio: 1; border-radius: 2px; background-color: #f5f5f5; border: 1px solid #e0e0dc;
+            transition: all 0.2s ease; cursor: pointer;
+        }
+        .heatmap-cell:hover { transform: scale(1.15); border-color: var(--text-color); }
+        .heatmap-cell.active {
+            background-color: #10b981;
+            border-color: #059669;
+            box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -273,8 +289,39 @@
         <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>
     </div>
 </section>
-<!-- 3. SUMMARY VIEW -->
-<section id="view-summary" class="view-section"><div class="weather-widget"><h2>Summary & History</h2><p>Total Scans: 14<br>Most worn: Santal 33</p></div></section>
+<!-- 💡 3. SUMMARY VIEW (통계 화면) -->
+<section id="view-summary" class="view-section">
+    <div class="weather-widget">
+        <h2>My Summary <span class="loc-btn" onclick="fetchSummary()" style="float: right;">[ refresh ]</span></h2>
+        <p>Your wearing statistics.</p>
+    </div>
+
+    <!-- 1. 명예의 전당 -->
+    <div class="future-dashboard">
+        <div class="dashboard-header">Top 3 Hall of Fame</div>
+        <div style="display: flex; align-items: center; justify-content: flex-start; height: 100px; gap: 20px;">
+            <!-- 💡 팩폭: 차트 크기를 75px로 줄여서 훨씬 세련되게! -->
+            <div style="width: 75px; height: 75px; flex-shrink: 0;">
+                <canvas id="topPerfumeChart"></canvas>
+            </div>
+            <div id="top-legend-container" style="flex: 1; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-color); overflow: hidden;">
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 잔디 심기 (최근 30일 Heatmap) -->
+    <div class="future-dashboard" style="margin-top: 15px;">
+        <div class="dashboard-header">Last 30 Days Activity</div>
+        <div id="heatmap-container" class="heatmap-grid"></div>
+    </div>
+
+    <!-- 3. 날씨별 최애 픽 (Insights) -->
+    <div class="future-dashboard" style="margin-top: 15px;">
+        <div class="dashboard-header">Weather Pick (Last 30 Days)</div>
+        <div id="weather-insight-container" style="font-size: 12px; color: var(--text-color); line-height: 1.4;">
+        </div>
+    </div>
+</section>
 <!-- 4. WISH LIST VIEW -->
 <section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
 
@@ -1293,12 +1340,128 @@
         }
     }
 
+    // 💡 차트 인스턴스 전역 보관 (초기화용)
+    let summaryChartInstance = null;
+
+    async function fetchSummary() {
+        try {
+            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
+            if (!res.ok) return;
+            const logs = await res.json();
+
+            // --- 1. Top 3 명예의 전당 ---
+            const counts = logs.reduce((acc, log) => {
+                const name = log.perfumeName || 'Unknown';
+                acc[name] = (acc[name] || 0) + 1;
+                return acc;
+            }, {});
+            const sortedTop = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+            // 확 튀는 통계 전용 컬러 (로즈, 퍼플, 인디고)
+            const chartColors = ['#f43f5e', '#a855f7', '#6366f1'];
+
+            const ctx = document.getElementById('topPerfumeChart').getContext('2d');
+            if (summaryChartInstance) summaryChartInstance.destroy();
+            summaryChartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: sortedTop.map(x => x[0]),
+                    datasets: [{
+                        data: sortedTop.map(x => x[1]),
+                        backgroundColor: chartColors,
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        // 클릭 시 이름이 뜨는 트렌디한 블랙 툴팁(Tooltip)
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleFont: { size: 10 },
+                            bodyFont: { size: 12, weight: 'bold' },
+                            displayColors: false,
+                            padding: 8,
+                            callbacks: {
+                                title: function() { return ''; }, // 쓸데없는 기본 타이틀 제거
+                                label: function(context) {
+                                    return `${context.label} : ${context.parsed}회`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // 💡 텍스트 짤림을 막기 위한 HTML 수제 트로피 리스트
+            const legendBox = document.getElementById('top-legend-container');
+            const trophies = ['🏆', '🥈', '🥉'];
+            legendBox.innerHTML = sortedTop.map((item, index) => `
+                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span style="font-size: 15px;">${trophies[index]}</span>
+                    <span style="font-weight: bold; color: ${chartColors[index]}; margin: 0 6px;">${item[1]}회</span>
+                    ${item[0]}
+                </div>
+            `).join('');
+
+            // --- 2. 깃허브 잔디 심기 (최근 30일) ---
+            const heatmapBox = document.getElementById('heatmap-container');
+            const logDates = new Set(logs.map(l => l.date ? l.date.split('T')[0] : ''));
+            let heatmapHtml = '';
+
+            const today = new Date();
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(today.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                const isActive = logDates.has(dateStr) ? 'active' : '';
+                heatmapHtml += `<div class="heatmap-cell ${isActive}" title="${dateStr}"></div>`;
+            }
+            heatmapBox.innerHTML = heatmapHtml;
+
+            // --- 3. 날씨 픽 (최근 30일 필터링 팩폭 적용) ---
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+
+            // 최근 30일 치 로그만 걸러냄
+            const recentLogs = logs.filter(l => l.date && new Date(l.date.split('T')[0]) >= thirtyDaysAgo);
+
+            // 키워드 배열을 받아서 가장 많이 쓴 향수 리턴
+            const weatherCount = (conditionList) => {
+                const filtered = recentLogs.filter(l => l.weather && conditionList.some(c => l.weather.includes(c)));
+                if (filtered.length === 0) return '기록 부족';
+                const fCounts = filtered.reduce((acc, log) => { acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1; return acc; }, {});
+                return Object.entries(fCounts).sort((a, b) => b[1] - a[1])[0][0];
+            };
+
+            // 점선 보더라인과 패딩으로 3칸 공간을 예쁘게 분할
+            document.getElementById('weather-insight-container').innerHTML = `
+                <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
+                    <b>☀️ 맑은 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Clear', 'Sunny'])}</span>
+                </div>
+                <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
+                    <b>☁️ 흐린 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Cloud'])}</span>
+                </div>
+                <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+                    <b>🌧️ 비/눈</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Rain', 'Snow', 'Drizzle'])}</span>
+                </div>
+            `;
+
+        } catch (e) {
+            console.error("통계 로딩 실패:", e);
+        }
+    }
+
     function initializeAppData() {
         fetchRealWeather();
         fetchBrands();
         fetchRecentLogs();
         fetchPerfumeList();
         fetchWardrobe();
+        fetchSummary();
     }
 
     window.addEventListener('DOMContentLoaded', () => {
