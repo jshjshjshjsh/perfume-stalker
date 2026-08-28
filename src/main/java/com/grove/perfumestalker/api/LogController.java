@@ -33,7 +33,8 @@ public class LogController {
      * 프론트엔드(모바일 웹)에서 NFC UID를 받아 착향 로그를 기록하는 엔드포인트
      */
     @PostMapping("/scan")
-    public Mono<ResponseEntity<String>> scanNfcTag(@RequestBody ScanRequest request) {
+    public Mono<ResponseEntity<String>> scanNfcTag(@RequestBody ScanRequest request,
+                                                   @RequestAttribute("userPageId") String userPageId) {
         log.info("📱 [Perfume Stalker] 스캔 수신: UID={}, GPS={},{}", request.uid(), request.lat(), request.lon());
 
         // 1. 위치 및 날씨 조회 로직 (GPS가 있으면 GPS 우선, 없으면 계정 DB 위치)
@@ -53,7 +54,7 @@ public class LogController {
                     // 3. 묶인 데이터로 착향 로그 Insert
                     UsageLogCreateCommand command = new UsageLogCreateCommand(perfumePageId, weather, null);
 
-                    return notionLogService.createUsageLog(command);
+                    return notionLogService.createUsageLog(command, userPageId);
                 })
                 .map(v -> ResponseEntity.ok("✅ 날씨 정보와 함께 착향 로그가 기록되었습니다."))
                 .onErrorResume(e -> {
@@ -66,7 +67,8 @@ public class LogController {
     }
 
     @PostMapping("/manual")
-    public Mono<ResponseEntity<String>> createManualLog(@RequestBody ManualLogRequest request) {
+    public Mono<ResponseEntity<String>> createManualLog(@RequestBody ManualLogRequest request,
+                                                        @RequestAttribute("userPageId") String userPageId) {
         log.info("📝 수동 착향 로그 등록 요청: {}", request.getPerfumeId());
 
         Mono<WeatherService.WeatherData> weatherMono = (request.getLat() != null && request.getLon() != null)
@@ -82,15 +84,16 @@ public class LogController {
                     request.getDate()
             );
 
-            return notionLogService.createUsageLog(command);
+            return notionLogService.createUsageLog(command, userPageId);
 
         }).then(Mono.just(ResponseEntity.ok("✅ 수동 등록 완료!")));
     }
 
     @GetMapping("/recent")
     public Mono<ResponseEntity<List<Map<String, String>>>> getRecentLogs(
-            @RequestParam(defaultValue = "5") int limit) {
-        return notionLogService.getRecentLogs(limit)
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestAttribute("userPageId") String userPageId) {
+        return notionLogService.getRecentLogs(limit, userPageId)
                 .map(ResponseEntity::ok);
     }
 

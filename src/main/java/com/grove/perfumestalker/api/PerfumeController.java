@@ -35,7 +35,8 @@ public class PerfumeController {
     private final CrawlingService crawlingService;
 
     @PostMapping("/register")
-    public Mono<ResponseEntity<String>> registerNewPerfume(@RequestBody PerfumeRegisterRequest request) {
+    public Mono<ResponseEntity<String>> registerNewPerfume(@RequestBody PerfumeRegisterRequest request,
+                                                           @RequestAttribute("userPageId") String userPageId) {
         log.info("📱 [최종 저장] 새 향수 등록 요청: {}", request.getName());
 
         // 1. 날씨 조회 로직 (크롤링 뺐으니 바로 날씨부터 찌름)
@@ -43,12 +44,12 @@ public class PerfumeController {
         if (request.getLat() != null && request.getLon() != null) {
             weatherMono = weatherService.getWeatherByCoordinates(request.getLat(), request.getLon());
         } else {
-            weatherMono = userService.getDefaultLocation("jsh-admin")
+            weatherMono = userService.getDefaultLocation(userPageId)
                     .flatMap(weatherService::getWeatherByCity);
         }
 
         // 2. 향수 마스터 DB Insert (이제 request 안에 프론트가 확정한 이미지와 노트가 다 있음!)
-        Mono<String> perfumeMasterMono = notionService.createPerfumeMaster(request);
+        Mono<String> perfumeMasterMono = notionService.createPerfumeMaster(request, userPageId);
 
         // 3. Zip으로 묶어서 착향 로그 기록
         return Mono.zip(perfumeMasterMono, weatherMono)
@@ -57,7 +58,7 @@ public class PerfumeController {
                     WeatherService.WeatherData weather = tuple.getT2();
 
                     UsageLogCreateCommand command = new UsageLogCreateCommand(newPerfumePageId, weather, null);
-                    return notionLogService.createUsageLog(command);
+                    return notionLogService.createUsageLog(command, userPageId);
                 })
                 .map(v -> ResponseEntity.ok("✅ 향수 등록 및 날씨 정보가 포함된 착향 로그 기록 완료!"))
                 .onErrorResume(e -> {
@@ -70,8 +71,8 @@ public class PerfumeController {
      * 1. 등록된 브랜드 목록 가져오기 (노션 DB 스키마 조회)
      */
     @GetMapping("/brands")
-    public Mono<ResponseEntity<List<String>>> getBrands() {
-        return notionService.getBrandOptions()
+    public Mono<ResponseEntity<List<String>>> getBrands(@RequestAttribute("userPageId") String userPageId) {
+        return notionService.getBrandOptions(userPageId)
                 .map(ResponseEntity::ok);
     }
 
@@ -85,8 +86,8 @@ public class PerfumeController {
     }
 
     @GetMapping("/list")
-    public Mono<ResponseEntity<List<Map<String, String>>>> getPerfumeList() {
-        return notionService.getAllPerfumes()
+    public Mono<ResponseEntity<List<Map<String, String>>>> getPerfumeList(@RequestAttribute("userPageId") String userPageId) {
+        return notionService.getAllPerfumes(userPageId)
                 .map(ResponseEntity::ok);
     }
 }

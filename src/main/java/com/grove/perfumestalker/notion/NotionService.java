@@ -2,6 +2,7 @@ package com.grove.perfumestalker.notion;
 
 import com.grove.perfumestalker.dto.PerfumeRegisterRequest;
 import com.grove.perfumestalker.enums.NotionPerfumeMaster;
+import com.grove.perfumestalker.enums.NotionUsageLog;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
 import lombok.RequiredArgsConstructor;
@@ -64,7 +65,7 @@ public class NotionService {
     /**
      * 2. 새로운 향수 마스터 데이터 생성
      */
-    public Mono<String> createPerfumeMaster(PerfumeRegisterRequest req) {
+    public Mono<String> createPerfumeMaster(PerfumeRegisterRequest req, String userPageId) {
         String formattedDbId = notionTokenUtils.formatUuid(masterDbId);
         Map<String, Object> properties = new HashMap<>();
 
@@ -97,6 +98,7 @@ public class NotionService {
 
             properties.put(NotionPerfumeMaster.IMAGE_URL.name(), Map.of("url", req.getImageUrl()));
         }
+        properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
 
         Map<String, List<String>> notes = req.getNotes();
         if (notes != null) {
@@ -124,12 +126,18 @@ public class NotionService {
     /**
      * 마스터 DB의 스키마를 조회해서 'BRAND' 컬럼에 등록된 옵션 목록을 가져옴
      */
-    public Mono<List<String>> getBrandOptions() {
+    public Mono<List<String>> getBrandOptions(String userPageId) {
         // 스캔 로직과 똑같이 UUID 포맷팅 적용
         String formattedDataSourceId = notionTokenUtils.formatUuid(masterDataSourceId);
 
         // 조건 없이 전체 향수를 긁어오기 위한 빈 쿼리 조립
-        Map<String, Object> queryBody = Map.of("page_size", 100);
+        Map<String, Object> queryBody = Map.of(
+                "page_size", 100,
+                "filter", Map.of(
+                        "property", NotionPerfumeMaster.USER.getColumnName(),
+                        "relation", Map.of("contains", userPageId)
+                )
+        );
 
         return notionWebClient.post()
                 .uri("/data_sources/{dbId}/query", formattedDataSourceId)
@@ -164,12 +172,16 @@ public class NotionService {
                 .onErrorReturn(List.of());
     }
 
-    public Mono<List<Map<String, String>>> getAllPerfumes() {
+    public Mono<List<Map<String, String>>> getAllPerfumes(String userPageId) {
         String formattedDbId = notionTokenUtils.formatUuid(masterDataSourceId);
 
         // 최대 100개까지 한 번에 긁어오기 (향수가 100개 넘어가면 pagination 추가해야 함)
         Map<String, Object> queryBody = Map.of(
-                "page_size", 100
+                "page_size", 100,
+                "filter", Map.of(
+                        "property", NotionPerfumeMaster.USER.getColumnName(),
+                        "relation", Map.of("contains", userPageId)
+                )
         );
 
         return notionWebClient.post()

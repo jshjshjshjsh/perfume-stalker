@@ -35,7 +35,7 @@ public class NotionLogService {
     @Value("${notion.usage-log-data-source-id}")
     private String usageLogDataSourceId;
 
-    public Mono<Void> createUsageLog(UsageLogCreateCommand command) {
+    public Mono<Void> createUsageLog(UsageLogCreateCommand command, String userPageId) {
 
         // 커스텀 날짜가 없으면 현재 시간 사용 (ISO 8601 포맷)
         String logDate = (command.customDate() != null && !command.customDate().trim().isEmpty())
@@ -55,6 +55,7 @@ public class NotionLogService {
         properties.put(NotionUsageLog.WEATHER.getColumnName(), NotionUsageLog.WEATHER.formatValue(command.weather().weather()));
         properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(command.weather().temperature()));
         properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(command.weather().humidity()));
+        properties.put(NotionUsageLog.USER.getColumnName(), NotionUsageLog.USER.formatValue(userPageId));
 
         Map<String, Object> body = Map.of(
                 "parent", Map.of("type", "database_id", "database_id", formattedUsageLogDbId),
@@ -79,9 +80,13 @@ public class NotionLogService {
     }
 
     @SuppressWarnings("unchecked")
-    public Mono<List<Map<String, String>>> getRecentLogs(int limit) {
+    public Mono<List<Map<String, String>>> getRecentLogs(int limit, String userPageId) {
         Map<String, Object> queryBody = Map.of(
                 "page_size", limit,
+                "filter", Map.of(
+                        "property", NotionUsageLog.USER.getColumnName(),
+                        "relation", Map.of("contains", userPageId)
+                ),
                 "sorts", List.of(Map.of("timestamp", "created_time", "direction", "descending"))
         );
 

@@ -79,7 +79,13 @@ public enum NotionPerfumeMaster {
         public Map<String, Object> formatValue(Object value) {
             return Map.of(getPropertyType(), String.valueOf(value));
         }
-    },;
+    },
+    USER("USER", "relation") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), List.of(Map.of("id", String.valueOf(value))));
+        }
+    };
 
     private final String columnName;
     private final String propertyType;

@@ -69,6 +69,12 @@ public enum NotionUsageLog {
         public Map<String, Object> formatValue(Object value) {
             throw new UnsupportedOperationException("롤업(Rollup) 속성은 읽기 전용이므로 값을 쓸 수 없습니다.");
         }
+    },
+    USER("USER", "relation") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), List.of(Map.of("id", String.valueOf(value))));
+        }
     };
 
     private final String columnName;

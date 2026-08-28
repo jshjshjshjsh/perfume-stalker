@@ -596,61 +596,6 @@
         } catch (error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; resetScanUI(); } }
     });
 
-    // --- 💡 신규 향수 등록 (Submit) 모듈 ---
-    document.getElementById('register-submit-btn').addEventListener('click', async () => {
-        const uid = document.getElementById('reg-uid').value;
-        const name = document.getElementById('reg-name').value.trim();
-        const brand = document.getElementById('reg-brand').value.trim();
-        const notesInput = document.getElementById('reg-notes').value;
-        const url = document.getElementById('reg-url').value.trim();
-        const imageUrl = document.getElementById('reg-image').value.trim();
-        const regStatus = document.getElementById('reg-status');
-        const submitBtn = document.getElementById('register-submit-btn');
-
-        if (!name) { regStatus.innerText = "[ERROR] Name is required."; return; }
-
-        // 쉼표로 입력받은 노트를 문자열 배열로 깔끔하게 변환
-        const notes = notesInput ? notesInput.split(',').map(n => n.trim()).filter(n => n.length > 0) : [];
-
-        submitBtn.innerText = "Registering...";
-        regStatus.innerText = "Syncing with Master DB...";
-
-        try {
-            const res = await fetchWithAuth("/api/v1/perfumes/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                // 💡 방금 전에 세팅해 둔 날씨 GPS도 똑같이 같이 넘겨줌!
-                body: JSON.stringify({ uid, name, brand, notes, url, imageUrl, lat: currentLat, lon: currentLon })
-            });
-
-            const resultText = await res.text();
-
-            if (res.ok) {
-                submitBtn.classList.add('success');
-                submitBtn.innerText = "REGISTERED";
-                regStatus.innerText = "[SUCCESS] Perfume added to Wardrobe.";
-
-                // 2초 뒤에 폼 싹 비우고 메인 화면으로 멋지게 복귀
-                setTimeout(() => {
-                    document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
-                    submitBtn.classList.remove('success');
-                    submitBtn.innerText = "Register & Log";
-                    regStatus.innerText = "";
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
-
-                    // 다 찍었으니 대시보드 다시 최신화
-                    fetchRecentLogs();
-                }, 2000);
-            } else {
-                regStatus.innerText = `[ERROR] ${resultText}`;
-                submitBtn.innerText = "Register & Log";
-            }
-        } catch (e) {
-            regStatus.innerText = "[ERROR] Network failure.";
-            submitBtn.innerText = "Register & Log";
-        }
-    });
-
     // --- 1. 브랜드 목록 불러오기 (초기 로딩 시) ---
     async function fetchBrands() {
         try {
@@ -667,7 +612,7 @@
     let crawledNotesData = null;
     let crawledImageUrl = "";
 
-    // --- 2. URL 크롤링 (Auto Fill) 로직 (터미널 + 30초 타임아웃 완벽 통합) ---
+    // --- 2. URL 크롤링 (Auto Fill) 로직 (터미널 + 타임아웃 + 실시간 재시도 애니메이션 통합) ---
     async function crawlUrl() {
         const urlInput = document.getElementById('reg-url').value.trim();
         const crawlBtn = document.getElementById('crawl-btn');
@@ -682,37 +627,51 @@
             return;
         }
 
-        // 1. 초기화 (이전 데이터 지우고 뱃지 숨기기)
+        // 1. 초기화
         crawledNotesData = null;
         crawledImageUrl = "";
         previewContainer.style.display = 'none';
         previewBox.innerHTML = '';
         regStatus.innerText = "";
 
-        // 2. UI 상태 변경 (터미널 켜기, 버튼 연타 방지)
+        // 2. UI 상태 변경
         crawlBtn.style.pointerEvents = 'none';
         crawlBtn.style.opacity = '0.5';
         terminal.style.display = 'flex';
         terminal.classList.remove('error');
         step2.innerHTML = '> Fetching Fragrantica Notes... <span class="blink">_</span>';
 
-        // 3. 백엔드 재시도를 기다려줄 프론트엔드 타임아웃 셋업 (30초)
+        // 3. 70초 강제 종료 타이머
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), 70000);
+
+        // 💡 4. 핵심 팩폭: 백엔드 재시도 주기에 맞춘 실시간 터미널 텍스트 교체!
+        let retryPhase = 0;
+        const progressInterval = setInterval(() => {
+            retryPhase++;
+            if (retryPhase === 1) {
+                step2.innerHTML = '> [WARN] Bot detection triggered. Retrying (1/3)... <span class="blink">_</span>';
+            } else if (retryPhase === 2) {
+                step2.innerHTML = '> [WARN] Solving Cloudflare challenge. Retrying (2/3)... <span class="blink">_</span>';
+            } else if (retryPhase === 3) {
+                step2.innerHTML = '> [WARN] Forcing extraction. Final attempt (3/3)... <span class="blink">_</span>';
+            }
+        }, 16000); // 백엔드 타임아웃(15초) + 여유(1초) = 16초마다 텍스트 갱신
 
         try {
             const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
                 signal: controller.signal
             });
 
-            clearTimeout(timeoutId); // 정상 응답 시 타이머 해제
+            // 💡 통신이 끝나면 무조건 타이머들 박살 내기!
+            clearTimeout(timeoutId);
+            clearInterval(progressInterval);
 
             if (res.ok) {
                 const data = await res.json();
                 crawledNotesData = data.notes;
                 crawledImageUrl = data.imageUrl;
 
-                // 빈 객체/배열 체크 (봇 차단 방어)
                 if (!data.notes || Object.keys(data.notes).length === 0) {
                     terminal.classList.add('error');
                     step2.innerHTML = '> [BLOCKED] Anti-bot system prevented crawling.';
@@ -729,7 +688,6 @@
             }
         } catch (e) {
             terminal.classList.add('error');
-            // 💡 30초가 지나서 강제로 끊겼을 때의 팩폭 처리
             if (e.name === 'AbortError') {
                 step2.innerHTML = '> [TIMEOUT] Scraping took too long. (Max retries exceeded)';
                 regStatus.innerText = "Please try again or enter manually.";
@@ -738,7 +696,9 @@
                 regStatus.innerText = "Please check your connection.";
             }
         } finally {
-            // 통신이 성공하든 실패하든 크롤링 버튼 다시 활성화
+            // 에러가 났을 때도 타이머들 확실히 박살 내기
+            clearInterval(progressInterval);
+            clearTimeout(timeoutId);
             crawlBtn.style.pointerEvents = 'auto';
             crawlBtn.style.opacity = '1';
         }
@@ -786,10 +746,10 @@
         regStatus.innerText = "Syncing with Master DB...";
 
         try {
+            // 💡 팩폭: 토큰을 실어 보내는 fetchWithAuth 적용!
             const res = await fetchWithAuth("/api/v1/perfumes/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // 💡 백엔드 분리 후: 자바스크립트 객체인 crawledNotesData를 그대로 전송!
                 body: JSON.stringify({
                     uid, name, brand, url,
                     imageUrl: crawledImageUrl,
@@ -806,15 +766,23 @@
                 regStatus.innerText = "[SUCCESS] Perfume added to Wardrobe.";
 
                 setTimeout(() => {
+                    // 1. 폼 데이터 싹 비우기
                     document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
                     document.getElementById('notes-preview-container').style.display = 'none';
-                    document.getElementById('crawl-progress').style.display = 'none';
+
+                    // 💡 핵심 팩폭 해결: 유령 태그 대신 새로 만든 터미널을 확실하게 숨김!
+                    const terminal = document.getElementById('crawl-terminal');
+                    if (terminal) terminal.style.display = 'none';
+
                     crawledNotesData = null;
                     crawledImageUrl = "";
                     submitBtn.classList.remove('success');
                     submitBtn.innerText = "Register & Log";
                     regStatus.innerText = "";
+
+                    // 2. 메인 화면 복귀 및 대시보드 리프레시! (이제 뻗지 않고 완벽 실행됨)
                     switchView('main', document.querySelector('.nav-item.main-tab'));
+                    fetchRecentLogs();
                 }, 2000);
             } else {
                 regStatus.innerText = `[ERROR] ${resultText}`;
