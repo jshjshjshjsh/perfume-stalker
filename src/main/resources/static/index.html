@@ -18,7 +18,8 @@
         .weather-widget { margin-bottom: 25px; border-bottom: 1px dashed var(--text-color); padding-bottom: 15px; }
         .weather-widget h2 { font-size: 11px; font-weight: normal; color: var(--accent-color); margin-bottom: 8px; text-transform: uppercase; }
         .weather-widget p { font-size: 14px; line-height: 1.6; }
-        .loc-btn { font-size: 10px; cursor: pointer; text-decoration: underline; margin-left: 8px; color: var(--text-color); }
+
+        .loc-btn { font-size: 10px; cursor: pointer; font-weight:bold; text-decoration: underline; margin-left: 8px; color: var(--text-color); user-select: none; -webkit-user-select: none; }
 
         /* --- BUTTONS & ANIMATIONS --- */
         .scan-container { display: flex; align-items: center; flex-direction: column; margin-top: 20px; }
@@ -50,6 +51,7 @@
         .manual-trigger-btn {
             background: transparent; border: none; font-family: inherit;
             font-size: 11px; color: var(--text-color); cursor: pointer;
+            font-weight: bold;
             text-decoration: underline;
             text-transform: uppercase; letter-spacing: 0.5px;
             transition: color 0.2s ease;
@@ -202,6 +204,11 @@
             border-color: #059669;
             box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
         }
+
+        h2, .loc-btn, .dashboard-header {
+            -webkit-user-select: none;
+            user-select: none;
+        }
     </style>
 </head>
 <body>
@@ -271,7 +278,11 @@
         </div>
     </div>
     <div class="future-dashboard">
-        <div class="dashboard-header">Recent Logs</div>
+        <!-- 1. MAIN VIEW 내 헤더 팩폭 수정 -->
+        <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
+            Recent Logs
+            <span style="font-size: 11px; font-weight:bold; color: var(--text-color); text-decoration: underline; cursor: pointer;" onclick="openAllLogsView()">[ + view all ]</span>
+        </div>
         <div id="recent-logs-container">
             <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching logs...</div>
         </div>
@@ -478,6 +489,26 @@
     <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
     <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
 </nav>
+
+<!-- 💡 9. ALL LOGS VIEW (전체 로그 및 날짜 범위 검색) -->
+<section id="view-all-logs" class="view-section">
+    <div style="padding: 0 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="margin: 0; font-size: 16px;">All History</h2>
+            <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ back ]</span>
+        </div>
+
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="date" id="search-start-date" class="form-input" style="flex: 1; padding: 6px;" onchange="renderAllLogs()">
+            <span style="color: var(--accent-color); font-weight: bold;">~</span>
+            <input type="date" id="search-end-date" class="form-input" style="flex: 1; padding: 6px;" onchange="renderAllLogs()">
+            <button class="form-btn" style="width: auto; padding: 0 10px;" onclick="clearSearchDates()">Clear</button>
+        </div>
+    </div>
+
+    <div id="all-logs-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+    </div>
+</section>
 
 <script>
 
@@ -1453,6 +1484,87 @@
         } catch (e) {
             console.error("통계 로딩 실패:", e);
         }
+    }
+
+    // 💡 전체 로그 보관용 전역 변수
+    let globalAllLogsData = [];
+
+    // 💡 1. 뷰 전환 시 달력 2개 모두 싹 비워주기
+    async function openAllLogsView() {
+        switchView('all-logs', null);
+        const container = document.getElementById('all-logs-container');
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+        clearSearchDates(); // 검색창 초기화
+
+        try {
+            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
+            if (res.ok) {
+                globalAllLogsData = await res.json();
+                renderAllLogs();
+            } else {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load logs.</div>`;
+            }
+        } catch (e) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
+    }
+
+    // 초기화 유틸
+    function clearSearchDates() {
+        document.getElementById('search-start-date').value = '';
+        document.getElementById('search-end-date').value = '';
+        renderAllLogs();
+    }
+
+    // 💡 2. 날짜 범위(Range) 필터링 및 리스트 렌더링
+    function renderAllLogs() {
+        const container = document.getElementById('all-logs-container');
+        const startDate = document.getElementById('search-start-date').value;
+        const endDate = document.getElementById('search-end-date').value;
+
+        let filteredLogs = globalAllLogsData;
+        if (startDate || endDate) {
+            filteredLogs = globalAllLogsData.filter(log => {
+                if (!log.date) return false;
+                const logDate = log.date.split('T')[0];
+
+                if (startDate && endDate) return logDate >= startDate && logDate <= endDate;
+                if (startDate) return logDate >= startDate;
+                if (endDate) return logDate <= endDate;
+                return true;
+            });
+        }
+
+        if (filteredLogs.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 로그가 없습니다.</div>`;
+            return;
+        }
+
+        container.innerHTML = filteredLogs.map(log => {
+            const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+            const weatherIcon = getWeatherIcon(log.weather);
+            const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
+
+            // 💡 팩폭 수정: 리스트 좌측에 들어갈 앙증맞은 35x50 썸네일 셋업 (이미지가 없으면 빈 박스)
+            const imgTag = log.imageUrl
+                ? `<img src="${log.imageUrl}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
+                : `<div style="width: 35px; height: 50px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
+
+            return `<div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+                    <!-- 이미지가 텍스트 옆에 자연스럽게 배치되도록 flex + gap 적용 -->
+                    <div class="log-left" style="display: flex; align-items: center; gap: 12px;">
+                        ${imgTag}
+                        <div class="log-details">
+                            <div class="log-perfume" style="font-weight: bold; color: var(--text-color);">${log.perfumeName || 'Unknown Perfume'}</div>
+                            <div class="log-date" style="font-size: 11px; margin-top: 3px;">${shortDate}</div>
+                        </div>
+                    </div>
+                    <div class="log-weather">
+                        <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     function initializeAppData() {
