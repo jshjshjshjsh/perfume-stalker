@@ -27,6 +27,8 @@ notion:
     usage-log-data-source-id: ${NOTION_USAGE_LOG_DATA_SOURCE_ID}
     user-id : ${NOTION_USER_DB_ID}
     user-data-source-id : ${NOTION_USER_DATA_SOURCE_ID}
+    wishlist-db-id: ${NOTION_WISHLIST_DB_ID}
+    wishlist-data-source-id: ${NOTION_WISHLIST_DATA_SOURCE_ID}
 
 logging:
   level:
