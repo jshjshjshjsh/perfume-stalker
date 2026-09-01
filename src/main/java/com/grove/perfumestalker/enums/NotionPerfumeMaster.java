@@ -85,7 +85,25 @@ public enum NotionPerfumeMaster {
         public Map<String, Object> formatValue(Object value) {
             return Map.of(getPropertyType(), List.of(Map.of("id", String.valueOf(value))));
         }
-    };
+    },
+    DATE("DATE", "date") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of("date", Map.of("start", String.valueOf(value)));
+        }
+    },
+    ORDER_INDEX("ORDER_INDEX", "number") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), Double.parseDouble(String.valueOf(value)));
+        }
+    },
+    DELETED("DELETED", "checkbox") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of("checkbox", Boolean.parseBoolean(String.valueOf(value)));
+        }
+    };;
 
     private final String columnName;
     private final String propertyType;

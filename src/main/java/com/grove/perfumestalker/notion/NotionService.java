@@ -66,61 +66,70 @@ public class NotionService {
      * 2. 새로운 향수 마스터 데이터 생성
      */
     public Mono<String> createPerfumeMaster(PerfumeRegisterRequest req, String userPageId) {
-        String formattedDbId = notionTokenUtils.formatUuid(masterDbId);
-        Map<String, Object> properties = new HashMap<>();
 
-        // 필수 값 세팅 (Enum 전략 패턴 적용)
-        properties.put(NotionPerfumeMaster.NAME.getColumnName(), NotionPerfumeMaster.NAME.formatValue(req.getName()));
-        properties.put(NotionPerfumeMaster.UID.getColumnName(), NotionPerfumeMaster.UID.formatValue(req.getUid()));
+        if (Boolean.TRUE.equals(req.getSkipLog())) {
+            return Mono.just(userPageId); // 로그 안 남기고 바로 종료
+        } else {
+            String formattedDbId = notionTokenUtils.formatUuid(masterDbId);
+            Map<String, Object> properties = new HashMap<>();
 
-        // 선택적 값 세팅
-        if (req.getBrand() != null && !req.getBrand().isBlank()) {
-            properties.put(NotionPerfumeMaster.BRAND.getColumnName(), NotionPerfumeMaster.BRAND.formatValue(req.getBrand()));
+            // 필수 값 세팅 (Enum 전략 패턴 적용)
+            properties.put(NotionPerfumeMaster.NAME.getColumnName(), NotionPerfumeMaster.NAME.formatValue(req.getName()));
+            properties.put(NotionPerfumeMaster.UID.getColumnName(), NotionPerfumeMaster.UID.formatValue(req.getUid()));
+
+            // 선택적 값 세팅
+            if (req.getBrand() != null && !req.getBrand().isBlank()) {
+                properties.put(NotionPerfumeMaster.BRAND.getColumnName(), NotionPerfumeMaster.BRAND.formatValue(req.getBrand()));
+            }
+            if (req.getNotes() != null && !req.getNotes().isEmpty()) {
+                properties.put(NotionPerfumeMaster.NOTES.getColumnName(), NotionPerfumeMaster.NOTES.formatValue(req.getNotes()));
+            }
+            if (req.getUrl() != null && !req.getUrl().isBlank()) {
+                properties.put(NotionPerfumeMaster.URL.getColumnName(), NotionPerfumeMaster.URL.formatValue(req.getUrl()));
+            }
+            if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
+                properties.put(NotionPerfumeMaster.IMAGE.getColumnName(), NotionPerfumeMaster.IMAGE.formatValue(req.getImageUrl()));
+            }
+
+            if (req.getImageUrl() != null && !req.getImageUrl().isEmpty()) {
+                properties.put(NotionPerfumeMaster.IMAGE.name(), Map.of(
+                        "files", List.of(Map.of(
+                                "name", req.getName() + "_image.jpg",
+                                "type", "external",
+                                "external", Map.of("url", req.getImageUrl())
+                        ))
+                ));
+
+                properties.put(NotionPerfumeMaster.IMAGE_URL.name(), Map.of("url", req.getImageUrl()));
+            }
+            properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
+
+            if (req.getDate() != null && !req.getDate().isBlank()) {
+                properties.put(NotionPerfumeMaster.DATE.getColumnName(), NotionPerfumeMaster.DATE.formatValue(req.getDate()));
+            }
+
+            Map<String, List<String>> notes = req.getNotes();
+            if (notes != null) {
+                properties.put(NotionPerfumeMaster.TOP_NOTES.name(), buildMultiSelect(notes.get("top")));
+                properties.put(NotionPerfumeMaster.MIDDLE_NOTES.name(), buildMultiSelect(notes.get("middle")));
+                properties.put(NotionPerfumeMaster.BASE_NOTES.name(), buildMultiSelect(notes.get("base")));
+                properties.put(NotionPerfumeMaster.NOTES.name(), buildMultiSelect(notes.get("general")));
+            }
+
+            Map<String, Object> body = Map.of(
+                    "parent", Map.of("type", "database_id", "database_id", formattedDbId),
+                    "properties", properties
+            );
+
+            return notionWebClient.post()
+                    .uri("/pages")
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(NotionPageResponse.class)
+                    .map(NotionPageResponse::id)
+                    .doOnSuccess(id -> log.info("✅ 새 향수 등록 완료: {}", req.getName()))
+                    .doOnError(this::handleNotionError);
         }
-        if (req.getNotes() != null && !req.getNotes().isEmpty()) {
-            properties.put(NotionPerfumeMaster.NOTES.getColumnName(), NotionPerfumeMaster.NOTES.formatValue(req.getNotes()));
-        }
-        if (req.getUrl() != null && !req.getUrl().isBlank()) {
-            properties.put(NotionPerfumeMaster.URL.getColumnName(), NotionPerfumeMaster.URL.formatValue(req.getUrl()));
-        }
-        if (req.getImageUrl() != null && !req.getImageUrl().isBlank()) {
-            properties.put(NotionPerfumeMaster.IMAGE.getColumnName(), NotionPerfumeMaster.IMAGE.formatValue(req.getImageUrl()));
-        }
-
-        if (req.getImageUrl() != null && !req.getImageUrl().isEmpty()) {
-            properties.put(NotionPerfumeMaster.IMAGE.name(), Map.of(
-                    "files", List.of(Map.of(
-                            "name", req.getName() + "_image.jpg",
-                            "type", "external",
-                            "external", Map.of("url", req.getImageUrl())
-                    ))
-            ));
-
-            properties.put(NotionPerfumeMaster.IMAGE_URL.name(), Map.of("url", req.getImageUrl()));
-        }
-        properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
-
-        Map<String, List<String>> notes = req.getNotes();
-        if (notes != null) {
-            properties.put(NotionPerfumeMaster.TOP_NOTES.name(), buildMultiSelect(notes.get("top")));
-            properties.put(NotionPerfumeMaster.MIDDLE_NOTES.name(), buildMultiSelect(notes.get("middle")));
-            properties.put(NotionPerfumeMaster.BASE_NOTES.name(), buildMultiSelect(notes.get("base")));
-            properties.put(NotionPerfumeMaster.NOTES.name(), buildMultiSelect(notes.get("general")));
-        }
-
-        Map<String, Object> body = Map.of(
-                "parent", Map.of("type", "database_id", "database_id", formattedDbId),
-                "properties", properties
-        );
-
-        return notionWebClient.post()
-                .uri("/pages")
-                .bodyValue(body)
-                .retrieve()
-                .bodyToMono(NotionPageResponse.class)
-                .map(NotionPageResponse::id)
-                .doOnSuccess(id -> log.info("✅ 새 향수 등록 완료: {}", req.getName()))
-                .doOnError(this::handleNotionError);
     }
 
     /**
@@ -178,9 +187,12 @@ public class NotionService {
         Map<String, Object> queryBody = Map.of(
                 "page_size", 100,
                 "filter", Map.of(
-                        "property", "USER",
-                        "relation", Map.of("contains", userPageId)
-                )
+                        "and", List.of(
+                                Map.of("property", "USER", "relation", Map.of("contains", userPageId)),
+                                Map.of("property", NotionPerfumeMaster.DELETED.getColumnName(), "checkbox", Map.of("equals", false))
+                        )
+                ),
+                "sorts", List.of(Map.of("property", NotionPerfumeMaster.ORDER_INDEX.getColumnName(), "direction", "ascending"))
         );
 
         return notionWebClient.post()
@@ -202,6 +214,8 @@ public class NotionService {
                         String brand = NotionParserUtils.extractSelect(props, "BRAND");
                         String imageUrl = NotionParserUtils.extractUrl(props, "IMAGE_URL");
 
+                        String date = NotionParserUtils.extractDate(props, NotionPerfumeMaster.DATE.getColumnName());
+
                         List<String> topNotes = NotionParserUtils.extractMultiSelect(props, "TOP_NOTES");
                         List<String> middleNotes = NotionParserUtils.extractMultiSelect(props, "MIDDLE_NOTES");
                         List<String> baseNotes = NotionParserUtils.extractMultiSelect(props, "BASE_NOTES");
@@ -220,6 +234,7 @@ public class NotionService {
                         dto.put("brand", brand);
                         dto.put("notes", notesMap);
                         dto.put("imageUrl", imageUrl);
+                        dto.put("date", date);
                         return dto;
                     }).collect(Collectors.toList());
                 });
@@ -248,6 +263,26 @@ public class NotionService {
                     if (results == null || results.isEmpty()) return Map.of(); // 빈 Map 리턴 시 '미등록 태그'
                     return results.get(0); // 발견 시 해당 향수 데이터 통째로 리턴
                 });
+    }
+
+    public Mono<Void> reorderWardrobe(List<String> pageIds) {
+        return reactor.core.publisher.Flux.range(0, pageIds.size())
+                .concatMap(index -> {
+                    String pageId = pageIds.get(index);
+                    Map<String, Object> body = Map.of("properties", Map.of(NotionPerfumeMaster.ORDER_INDEX.getColumnName(), NotionPerfumeMaster.ORDER_INDEX.formatValue(index)));
+                    return notionWebClient.patch().uri("/pages/{pageId}", pageId).bodyValue(body).retrieve().bodyToMono(Void.class);
+                }).then();
+    }
+
+    public Mono<Void> softDeletePerfume(String pageId) {
+        Map<String, Object> body = Map.of(
+                "properties", Map.of(NotionPerfumeMaster.DELETED.getColumnName(), NotionPerfumeMaster.DELETED.formatValue(true))
+        );
+        return notionWebClient.patch()
+                .uri("/pages/{pageId}", pageId)
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Void.class);
     }
 
 

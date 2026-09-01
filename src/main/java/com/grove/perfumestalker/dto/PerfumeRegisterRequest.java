@@ -14,4 +14,6 @@ public class PerfumeRegisterRequest {
     private String imageUrl;    // 프레그런티카 이미지 링크
     private Double lat;
     private Double lon;
+    private String date;
+    Boolean skipLog;
 }

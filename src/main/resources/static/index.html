@@ -292,15 +292,25 @@
 
 <!-- 2. WARDROBE VIEW -->
 <section id="view-wardrobe" class="view-section">
-    <div class="weather-widget">
-        <h2>My Wardrobe <span class="loc-btn" onclick="fetchWardrobe()" style="float: right;">[ refresh ]</span></h2>
-        <p>Your registered collection.</p>
+    <div style="position: sticky; top: -1px; background-color: var(--bg-color, #f4f4f0); z-index: 10; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 16px;">My Wardrobe</h2>
+            <div id="wardrobe-default-actions">
+                <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
+                <span class="loc-btn" onclick="fetchWardrobe()">[ refresh ]</span>
+            </div>
+            <div id="wardrobe-reorder-actions" style="display: none; gap: 10px;">
+                <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
+                <span class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+            </div>
+        </div>
     </div>
 
-    <div id="wardrobe-container" class="wardrobe-grid">
+    <div id="wardrobe-container" class="wardrobe-grid" style="margin-top: 15px;">
         <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>
     </div>
 </section>
+
 <!-- 💡 3. SUMMARY VIEW (통계 화면) -->
 <section id="view-summary" class="view-section">
     <div class="weather-widget">
@@ -411,9 +421,13 @@
 <!-- 💡 8. PERFUME DETAIL VIEW (옷장 상세 화면) -->
 <section id="view-perfume-detail" class="view-section">
     <div class="weather-widget">
-        <h2>Perfume Details <span class="loc-btn" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])" style="float: right;">[ back ]</span></h2>
+        <h2>Perfume Details
+            <span class="loc-btn" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])" style="float: right;">[ back ]</span>
+            <span id="detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
+        </h2>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
-        <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Perfume Name</p>
+        <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
+        <p id="detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
 
     <!-- 1. 이미지 & 노트 뱃지 영역 (팩폭 수정: 내부 스크롤 제거, 자연스러운 세로 확장) -->
@@ -443,9 +457,12 @@
 <!-- 💡 10. WISH DETAIL VIEW (위시리스트 상세 및 NFC 승격 화면) -->
 <section id="view-wish-detail" class="view-section">
     <div class="weather-widget">
-        <h2>Wish Details <span class="loc-btn" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])" style="float: right;">[ back ]</span></h2>
+        <h2>Wish Details
+            <span class="loc-btn" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])" style="float: right;">[ back ]</span>
+            <span id="wish-detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
+        </h2>
         <p id="wish-detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
-        <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Perfume Name</p>
+        <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
         <p id="wish-detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
 
@@ -1310,62 +1327,92 @@
 
     // 💡 1. 향수 상세 뷰에 넘겨줄 옷장 데이터 전용 보관함 (전역 변수)
     let globalWardrobeData = [];
+    let isWardrobeReorderMode = false;
+    let wardrobeSortableInstance = null;
 
-    // 💡 2. 옷장(Wardrobe) 데이터 불러오기 완성본
+    // 💡 2. 옷장(Wardrobe) 데이터 불러오기
     async function fetchWardrobe() {
         const container = document.getElementById('wardrobe-container');
         container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
-
         try {
             const res = await fetchWithAuth("/api/v1/perfumes/list");
-
             if (res.ok) {
-                // 💡 팩폭: 통신 성공 시 데이터를 전역 변수에 통째로 저장!
                 globalWardrobeData = await res.json();
-
                 if (globalWardrobeData.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">옷장이 비어있습니다.<br>새로운 태그를 스캔해 향수를 등록하세요.</div>`;
+                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">옷장이 비어있습니다.</div>`;
                     return;
                 }
-
                 container.innerHTML = globalWardrobeData.map(p => {
-                    const imgTag = p.imageUrl
-                        ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">`
-                        : `<div class="wardrobe-thumb">No Img</div>`;
-
-                    // 노트 파싱 (Top, Middle, Base 등 싹 다 긁어서 한 줄로 묶기)
+                    const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
+                    const shortDate = p.date ? p.date.split('T')[0] : '';
                     let notesPreview = "No notes recorded.";
                     if (p.notes) {
                         try {
-                            const parsedNotes = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+                            const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
                             const allNotes = [];
-                            if (parsedNotes.top) allNotes.push(...parsedNotes.top);
-                            if (parsedNotes.middle) allNotes.push(...parsedNotes.middle);
-                            if (parsedNotes.base) allNotes.push(...parsedNotes.base);
-                            if (parsedNotes.general) allNotes.push(...parsedNotes.general);
-
+                            if (parsed.top) allNotes.push(...parsed.top);
+                            if (parsed.middle) allNotes.push(...parsed.middle);
+                            if (parsed.base) allNotes.push(...parsed.base);
+                            if (parsed.general) allNotes.push(...parsed.general);
                             if (allNotes.length > 0) notesPreview = allNotes.join(', ');
                         } catch(e) {}
                     }
-
-                    // 💡 클릭 시 상세 뷰 함수(openPerfumeDetail)로 넘어가게 튜닝된 카드 HTML
                     return `
-                        <div class="wardrobe-card" style="cursor: pointer;" onclick="openPerfumeDetail('${p.id}')">
+                        <div class="wardrobe-card" data-id="${p.id}" style="cursor: pointer; display: flex; align-items: center;" onclick="openPerfumeDetail('${p.id}')">
+                            <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
                             ${imgTag}
-                            <div class="wardrobe-info">
-                                <div class="wardrobe-brand">${p.brand || 'Unknown Brand'}</div>
+                            <div class="wardrobe-info" style="flex: 1;">
+                                <!-- 💡 팩폭: 옷장도 위시리스트랑 똑같이 브랜드 옆에 날짜 배치! -->
+                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px;">
+                                    ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
+                                </div>
                                 <div class="wardrobe-name">${p.name}</div>
                                 <div class="wardrobe-notes">${notesPreview}</div>
                             </div>
                         </div>
                     `;
                 }).join('');
-            } else {
-                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load wardrobe.</div>`;
             }
-        } catch (e) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        } catch (e) { container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`; }
+    }
+
+    function toggleWardrobeReorderMode() {
+        isWardrobeReorderMode = !isWardrobeReorderMode;
+
+        document.getElementById('wardrobe-default-actions').style.display = isWardrobeReorderMode ? 'none' : 'block';
+        document.getElementById('wardrobe-reorder-actions').style.display = isWardrobeReorderMode ? 'flex' : 'none';
+
+        const handles = document.querySelectorAll('.wardrobe-drag-handle');
+        const delBtns = document.querySelectorAll('.wardrobe-del-btn');
+        const container = document.getElementById('wardrobe-container');
+
+        if (isWardrobeReorderMode) {
+            // 💡 모드 켜짐: 핸들 보이기 / 삭제 버튼 숨기기
+            handles.forEach(h => h.style.display = 'block');
+            delBtns.forEach(b => b.style.display = 'none');
+
+            wardrobeSortableInstance = new Sortable(container, { animation: 150, handle: '.wardrobe-drag-handle', ghostClass: 'sortable-ghost' });
+        } else {
+            // 💡 모드 꺼짐: 핸들 숨기기 / 삭제 버튼 복구
+            handles.forEach(h => h.style.display = 'none');
+            delBtns.forEach(b => b.style.display = 'block');
+
+            if(wardrobeSortableInstance) wardrobeSortableInstance.destroy();
+            fetchWardrobe();
         }
+    }
+
+    async function saveWardrobeOrder() {
+        if(!wardrobeSortableInstance) return;
+        const orderedIds = Array.from(document.querySelectorAll('.wardrobe-card')).map(card => card.getAttribute('data-id'));
+        try {
+            document.getElementById('wardrobe-reorder-actions').innerHTML = `<span style="font-size: 11px; color: var(--accent-color);">saving...</span>`;
+            const res = await fetchWithAuth("/api/v1/perfumes/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderedIds) });
+            if(res.ok) {
+                document.getElementById('wardrobe-reorder-actions').innerHTML = `<span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span><span class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>`;
+                toggleWardrobeReorderMode();
+            } else { alert("순서 저장 실패!"); }
+        } catch(e) { alert("네트워크 오류!"); }
     }
 
     // 💡 1. 향수 상세 화면 열기
@@ -1375,19 +1422,14 @@
 
         document.getElementById('detail-brand').innerText = p.brand || 'UNKNOWN BRAND';
         document.getElementById('detail-name').innerText = p.name;
+        document.getElementById('detail-date').innerText = p.date ? `Added: ${p.date.split('T')[0]}` : 'Added: N/A';
+        document.getElementById('detail-delete-btn').setAttribute('onclick', `deleteWardrobe('${p.id}')`);
 
         const imgEl = document.getElementById('detail-image');
         const boxEl = document.getElementById('detail-image-box');
-        if (p.imageUrl) {
-            imgEl.src = p.imageUrl;
-            imgEl.style.display = 'block';
-            boxEl.style.display = 'none';
-        } else {
-            imgEl.style.display = 'none';
-            boxEl.style.display = 'flex';
-        }
+        if (p.imageUrl) { imgEl.src = p.imageUrl; imgEl.style.display = 'block'; boxEl.style.display = 'none'; }
+        else { imgEl.style.display = 'none'; boxEl.style.display = 'flex'; }
 
-        // 노트 뱃지 렌더링 (크롤링 때 썼던 로직 100% 재활용!)
         const notesBox = document.getElementById('detail-notes-container');
         let html = '';
         if (p.notes && Object.keys(p.notes).length > 0) {
@@ -1399,7 +1441,6 @@
         }
         notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
 
-        // 화면 전환 후 히스토리 통신 시작
         switchView('perfume-detail', null);
         fetchPerfumeHistory(perfumeId);
     }
@@ -1738,26 +1779,21 @@
                     container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
                     return;
                 }
-
                 container.innerHTML = globalWishlistData.map(w => {
                     const imgTag = w.imageUrl ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">` : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
-                    const shortDate = w.date ? w.date.split('T')[0] : 'N/A';
-
+                    const shortDate = w.date ? w.date.split('T')[0] : '';
                     return `
-                    <div class="log-item wish-card" data-id="${w.id}" style="display: flex; justify-content: space-between; align-items: center; cursor: default; background: #fff;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;">≡</div>
-                            ${imgTag}
-                            <div>
-                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
-                                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-bottom: 5px;">${w.name}</div>
-                                <!-- 💡 INFO 버튼 클릭 시 상세 뷰(openWishDetail)로 연결! -->
-                                <span onclick="openWishDetail('${w.id}')" style="cursor:pointer; text-decoration: underline; color: var(--text-color); font-size: 11px; margin-right: 10px;">[ info ]</span>
+                        <div class="log-item wish-card" data-id="${w.id}" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #fff; padding: 10px;" onclick="openWishDetail('${w.id}')">
+                            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                                <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
+                                ${imgTag}
+                                <div>
+                                    <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
+                                    <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
+                                </div>
                             </div>
                         </div>
-                        <span class="wish-del-btn" onclick="deleteWish('${w.id}')" style="font-size: 11px; color: #f43f5e; cursor: pointer; user-select: none;">[ del ]</span>
-                    </div>
-                `;
+                    `;
                 }).join('');
             }
         } catch (e) { container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`; }
@@ -1769,11 +1805,14 @@
     function openWishDetail(wishId) {
         const w = globalWishlistData.find(x => x.id === wishId);
         if(!w) return;
-        currentWishPromotionId = wishId; // NFC 승격을 위해 저장
+        currentWishPromotionId = wishId;
 
         document.getElementById('wish-detail-brand').innerText = w.brand || 'UNKNOWN BRAND';
         document.getElementById('wish-detail-name').innerText = w.name;
-        document.getElementById('wish-detail-date').innerText = `Added: ${w.date || 'N/A'}`;
+        // 💡 위시 날짜 바인딩
+        document.getElementById('wish-detail-date').innerText = w.date ? `Added: ${w.date.split('T')[0]}` : 'Added: N/A';
+        // 💡 삭제 버튼 액션 바인딩
+        document.getElementById('wish-detail-delete-btn').setAttribute('onclick', `deleteWish('${w.id}')`);
 
         const imgEl = document.getElementById('wish-detail-image');
         const boxEl = document.getElementById('wish-detail-image-box');
@@ -1791,7 +1830,6 @@
         }
         notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
 
-        // NFC 버튼 초기화
         const btn = document.getElementById('wish-promote-btn');
         btn.classList.remove('scanning', 'success'); btn.innerText = "Purchase & Register (NFC)";
         document.getElementById('wish-promote-status').innerText = "";
@@ -1831,26 +1869,31 @@
 
                 btn.classList.remove('scanning'); btn.classList.add('success');
                 btn.innerText = "TAG DETECTED";
-                statusDiv.innerText = "옷장(마스터 DB)에 등록 중...";
+                statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
+
+                // 💡 팩폭: 승격된 '오늘 날짜'로 덮어쓰기!
+                const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
 
                 try {
-                    // 1. 위시 데이터를 그대로 옷장 등록 API에 전송
                     const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
                         method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ uid: uid, name: wish.name, brand: wish.brand, url: wish.url, imageUrl: wish.imageUrl, notes: wish.notes, lat: currentLat, lon: currentLon })
+                        body: JSON.stringify({
+                            uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
+                            imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate, // 승격 날짜 업데이트!
+                            lat: currentLat, lon: currentLon,
+                            skipLog: true
+                        })
                     });
 
                     if (regRes.ok) {
-                        statusDiv.innerText = "위시리스트에서 비우는 중...";
-                        // 2. 등록 완료 후 위시리스트에서 원본 삭제
                         await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, { method: "DELETE" });
 
-                        statusDiv.innerText = "[SUCCESS] 옷장에 완벽히 승격되었습니다!";
+                        // 💡 감성 터지는 성공 멘트!
+                        statusDiv.innerHTML = "<span style='color:#10b981; font-weight:bold;'>🎉 새 향수를 들이셨군요! 옷장에 예쁘게 넣어뒀습니다.</span>";
                         setTimeout(() => {
-                            fetchWardrobe(); // 옷장 데이터 새로고침
-                            fetchWishlist(); // 위시 데이터 새로고침
-                            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]); // 옷장으로 강제 이동!
-                        }, 1500);
+                            fetchWardrobe(); fetchWishlist();
+                            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+                        }, 2000);
                     } else {
                         statusDiv.innerText = `[ERROR] Registration failed.`; btn.innerText = "Purchase & Register (NFC)";
                     }
@@ -1862,18 +1905,14 @@
     // 💡 4. 위시리스트 삭제 API 찌르기
     async function deleteWish(pageId) {
         if(!confirm('위시리스트에서 삭제할까요?')) return;
-            try {
-                const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, {
-                method: "DELETE"
-            });
+        try {
+            const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, { method: "DELETE" });
             if(res.ok) {
-                fetchWishlist(); // 성공 시 리스트 갱신
-            } else {
-                alert('삭제 실패!');
-            }
-        } catch(e) {
-            alert('네트워크 오류');
-        }
+                fetchWishlist();
+                // 💡 삭제 성공 시 위시리스트로 강제 이동
+                switchView('wish', document.querySelectorAll('.nav-item')[3]);
+            } else { alert('삭제 실패!'); }
+        } catch(e) { alert('네트워크 오류'); }
     }
 
     let isWishReorderMode = false;
@@ -1943,6 +1982,19 @@
         } catch(e) {
             alert("네트워크 오류!");
         }
+    }
+
+    // 💡 옷장 Soft Delete 함수
+    async function deleteWardrobe(pageId) {
+        if(!confirm('진짜 옷장에서 빼시겠습니까? (과거 착향 로그는 보존됩니다)')) return;
+        try {
+            const res = await fetchWithAuth(`/api/v1/perfumes/${pageId}`, { method: "DELETE" });
+            if(res.ok) {
+                fetchWardrobe();
+                // 💡 삭제 성공 시 옷장 리스트로 강제 이동
+                switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+            } else { alert('삭제 실패!'); }
+        } catch(e) { alert('네트워크 오류'); }
     }
 
 

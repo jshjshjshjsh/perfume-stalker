@@ -102,4 +102,16 @@ public class PerfumeController {
         return notionService.getAllPerfumes(userPageId)
                 .map(ResponseEntity::ok);
     }
+
+    @PutMapping("/reorder")
+    public Mono<ResponseEntity<String>> reorderWardrobe(@RequestBody List<String> pageIds) {
+        return notionService.reorderWardrobe(pageIds)
+                .then(Mono.just(ResponseEntity.ok("✅ 옷장 순서 저장 완료")));
+    }
+
+    @DeleteMapping("/{pageId}")
+    public Mono<ResponseEntity<String>> deletePerfume(@PathVariable String pageId) {
+        return notionService.softDeletePerfume(pageId)
+                .then(Mono.just(ResponseEntity.ok("🗑️ 옷장에서 삭제 완료 (과거 로그 유지)")));
+    }
 }
