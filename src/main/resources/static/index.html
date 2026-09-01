@@ -6,6 +6,7 @@
     <title>Perfume Stalker</title>
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <style>
         :root { --bg-color: #f4f4f0; --text-color: #1a1a1a; --accent-color: #8c8c8c; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -333,8 +334,52 @@
         </div>
     </div>
 </section>
-<!-- 4. WISH LIST VIEW -->
-<section id="view-wish" class="view-section"><div class="weather-widget"><h2>Wishlist</h2><p>List of future additions...</p></div></section>
+
+<!-- 💡 4. WISH VIEW (위시리스트 화면) -->
+<section id="view-wish" class="view-section">
+    <div style="position: sticky; top: -1px; background-color: var(--bg-color, #f4f4f0); z-index: 10; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 16px;">Wishlist</h2>
+            <div id="wish-default-actions">
+                <span class="loc-btn" onclick="toggleWishReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
+                <span class="loc-btn" onclick="toggleWishForm()">[ + add ]</span>
+            </div>
+            <div id="wish-reorder-actions" style="display: none; gap: 10px;">
+                <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
+                <span class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 크롤링을 지원하는 폼으로 대공사 -->
+    <div id="wish-form-container" style="display: none; margin-top: 15px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 2px;">
+        <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
+
+        <div class="form-group" style="margin-bottom: 15px;">
+            <label style="display:block; margin-bottom:5px; font-size:10px; color:var(--accent-color);">Fragrantica URL <span class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">[ auto fill ]</span></label>
+            <input type="url" id="wish-url" class="form-input" placeholder="Paste URL here..." style="width: 100%; padding-bottom:5px; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
+            <div id="wish-crawl-terminal" class="crawl-terminal" style="margin-top:8px;">
+                <span id="wish-crawl-step">> Fetching Notes... <span class="blink">_</span></span>
+            </div>
+        </div>
+
+        <input type="text" id="wish-name" class="form-input" placeholder="향수 이름 (필수)" style="margin-bottom: 12px; width: 100%; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
+        <input type="text" id="wish-brand" class="form-input" placeholder="브랜드 (필수)" style="margin-bottom: 15px; width: 100%; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
+        <input type="hidden" id="wish-img">
+
+        <div class="form-group" id="wish-notes-preview-container" style="display: none; margin-bottom: 15px;">
+            <label style="display:block; margin-bottom:5px; font-size:10px; color:var(--accent-color);">Extracted Notes</label>
+            <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px;">
+            <button class="form-btn" style="background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); width: auto; padding: 4px 15px; cursor:pointer;" onclick="toggleWishForm()">Cancel</button>
+            <button class="form-btn" style="width: auto; padding: 4px 20px; border: 1px solid var(--text-color); background:var(--text-color); color:var(--bg-color); cursor:pointer;" onclick="submitWish()">Save</button>
+        </div>
+    </div>
+
+    <div id="wish-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
+</section>
 
 <!-- 💡 7. MANUAL LOG VIEW (수동 기록 화면) -->
 <section id="view-manual-log" class="view-section">
@@ -393,6 +438,30 @@
             <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>
         </div>
     </div>
+</section>
+
+<!-- 💡 10. WISH DETAIL VIEW (위시리스트 상세 및 NFC 승격 화면) -->
+<section id="view-wish-detail" class="view-section">
+    <div class="weather-widget">
+        <h2>Wish Details <span class="loc-btn" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])" style="float: right;">[ back ]</span></h2>
+        <p id="wish-detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
+        <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Perfume Name</p>
+        <p id="wish-detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
+    </div>
+
+    <!-- 이미지 & 노트 영역 (옷장 상세 뷰 재활용) -->
+    <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 25px;">
+        <div style="flex-shrink: 0;">
+            <div id="wish-detail-image-box" class="wardrobe-thumb" style="width: 85px; height: 115px; margin: 0;">No Img</div>
+            <img id="wish-detail-image" src="" style="width: 85px; height: 115px; object-fit: cover; border: 1px solid #e0e0dc; border-radius: 2px; display: none;">
+        </div>
+        <div id="wish-detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;">
+        </div>
+    </div>
+
+    <!-- 💡 NFC 태그로 옷장(마스터 DB)에 즉시 꽂아넣는 승격 버튼 -->
+    <button id="wish-promote-btn" class="scan-btn" style="width: 100%;" onclick="startWishPromoteScan()">Purchase & Register (NFC)</button>
+    <div id="wish-promote-status" class="status-msg"></div>
 </section>
 
 <!-- 💡 5. REGISTER VIEW -->
@@ -1209,7 +1278,11 @@
 
     async function fetchWithAuth(url, options = {}) {
         const token = localStorage.getItem('jwt_token');
-        const headers = { ...options.headers, 'Authorization': `Bearer ${token}` };
+        const headers = {
+            ...options.headers,
+            'Authorization': `Bearer ${token}`,
+            'ngrok-skip-browser-warning': 'true'
+        };
 
         const response = await fetch(url, { ...options, headers });
 
@@ -1550,7 +1623,8 @@
                 ? `<img src="${log.imageUrl}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
                 : `<div style="width: 35px; height: 50px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
 
-            return `<div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+            return `
+                    <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
                     <!-- 이미지가 텍스트 옆에 자연스럽게 배치되도록 flex + gap 적용 -->
                     <div class="log-left" style="display: flex; align-items: center; gap: 12px;">
                         ${imgTag}
@@ -1567,6 +1641,311 @@
         }).join('');
     }
 
+    // --- 💡 WISH LIST 전역 변수 ---
+    let isWishFormOpen = false;
+    let globalWishlistData = [];
+    let wishCrawledNotesData = null;
+    let wishCrawledImageUrl = "";
+
+    // 💡 1. 폼 토글
+    function toggleWishForm() {
+        isWishFormOpen = !isWishFormOpen;
+        document.getElementById('wish-form-container').style.display = isWishFormOpen ? 'block' : 'none';
+        if(isWishFormOpen) {
+            document.getElementById('wish-name').value = '';
+            document.getElementById('wish-brand').value = '';
+            document.getElementById('wish-url').value = '';
+            document.getElementById('wish-img').value = '';
+            document.getElementById('wish-notes-preview-container').style.display = 'none';
+            document.getElementById('wish-crawl-terminal').style.display = 'none';
+            wishCrawledNotesData = null; wishCrawledImageUrl = "";
+        }
+    }
+
+    // 💡 2. URL 크롤링 (위시리스트용)
+    async function crawlWishUrl() {
+        const urlInput = document.getElementById('wish-url').value.trim();
+        const terminal = document.getElementById('wish-crawl-terminal');
+        const step = document.getElementById('wish-crawl-step');
+        if(!urlInput) { alert("URL을 먼저 입력해주세요."); return; }
+
+        terminal.style.display = 'flex'; terminal.classList.remove('error');
+        step.innerHTML = '> Fetching Notes... <span class="blink">_</span>';
+        wishCrawledNotesData = null; wishCrawledImageUrl = "";
+
+        try {
+            const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
+            if (res.ok) {
+                const data = await res.json();
+                wishCrawledNotesData = data.notes;
+                wishCrawledImageUrl = data.imageUrl;
+                document.getElementById('wish-img').value = data.imageUrl; // 숨겨진 인풋에 이미지 저장
+
+                step.innerHTML = '> [SUCCESS] Notes extracted.';
+                // 재활용 중인 renderNotesPreview 함수를 호출해서 뱃지 렌더링
+                const box = document.getElementById('wish-notes-preview-box');
+                const container = document.getElementById('wish-notes-preview-container');
+                let html = '';
+                if(data.notes.top) html += `<div class="note-category">TOP</div>` + data.notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if(data.notes.middle) html += `<div class="note-category">MIDDLE</div>` + data.notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if(data.notes.base) html += `<div class="note-category">BASE</div>` + data.notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if(data.notes.general) html += `<div class="note-category">NOTES</div>` + data.notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
+                box.innerHTML = html; container.style.display = 'block';
+            } else {
+                terminal.classList.add('error'); step.innerHTML = '> [ERROR] Scraping failed.';
+            }
+        } catch(e) {
+            terminal.classList.add('error'); step.innerHTML = '> [ERROR] Network issue.';
+        }
+    }
+
+    // 💡 3. 위시리스트 등록 (날짜 & 노트 포함)
+    async function submitWish() {
+        const name = document.getElementById('wish-name').value.trim();
+        const brand = document.getElementById('wish-brand').value.trim();
+        if(!name) { alert('향수 이름을 입력해주세요.'); return; }
+
+        // 오늘 날짜 세팅
+        const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
+
+        const payload = {
+            name: name, brand: brand,
+            imageUrl: wishCrawledImageUrl,
+            url: document.getElementById('wish-url').value.trim(),
+            date: todayDate,
+            notes: wishCrawledNotesData
+        };
+
+        try {
+            const res = await fetchWithAuth("/api/v1/wishlist", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            if(res.ok) { toggleWishForm(); fetchWishlist(); }
+            else { alert('추가 실패!'); }
+        } catch(e) { alert('네트워크 오류'); }
+    }
+
+    // 💡 4. 리스트 렌더링 (날짜 표시 & info 버튼 팩폭 튜닝)
+    async function fetchWishlist() {
+        const container = document.getElementById('wish-container');
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+        try {
+            const res = await fetchWithAuth("/api/v1/wishlist");
+            if (res.ok) {
+                globalWishlistData = await res.json();
+                if (globalWishlistData.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
+                    return;
+                }
+
+                container.innerHTML = globalWishlistData.map(w => {
+                    const imgTag = w.imageUrl ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">` : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
+                    const shortDate = w.date ? w.date.split('T')[0] : 'N/A';
+
+                    return `
+                    <div class="log-item wish-card" data-id="${w.id}" style="display: flex; justify-content: space-between; align-items: center; cursor: default; background: #fff;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;">≡</div>
+                            ${imgTag}
+                            <div>
+                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
+                                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-bottom: 5px;">${w.name}</div>
+                                <!-- 💡 INFO 버튼 클릭 시 상세 뷰(openWishDetail)로 연결! -->
+                                <span onclick="openWishDetail('${w.id}')" style="cursor:pointer; text-decoration: underline; color: var(--text-color); font-size: 11px; margin-right: 10px;">[ info ]</span>
+                            </div>
+                        </div>
+                        <span class="wish-del-btn" onclick="deleteWish('${w.id}')" style="font-size: 11px; color: #f43f5e; cursor: pointer; user-select: none;">[ del ]</span>
+                    </div>
+                `;
+                }).join('');
+            }
+        } catch (e) { container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`; }
+    }
+
+    let currentWishPromotionId = null;
+
+    // 💡 5. 위시리스트 상세 뷰 열기
+    function openWishDetail(wishId) {
+        const w = globalWishlistData.find(x => x.id === wishId);
+        if(!w) return;
+        currentWishPromotionId = wishId; // NFC 승격을 위해 저장
+
+        document.getElementById('wish-detail-brand').innerText = w.brand || 'UNKNOWN BRAND';
+        document.getElementById('wish-detail-name').innerText = w.name;
+        document.getElementById('wish-detail-date').innerText = `Added: ${w.date || 'N/A'}`;
+
+        const imgEl = document.getElementById('wish-detail-image');
+        const boxEl = document.getElementById('wish-detail-image-box');
+        if (w.imageUrl) { imgEl.src = w.imageUrl; imgEl.style.display = 'block'; boxEl.style.display = 'none'; }
+        else { imgEl.style.display = 'none'; boxEl.style.display = 'flex'; }
+
+        const notesBox = document.getElementById('wish-detail-notes-container');
+        let html = '';
+        if (w.notes && Object.keys(w.notes).length > 0) {
+            const n = w.notes;
+            if (n.top && n.top.length > 0) html += `<div class="note-category">TOP</div>` + n.top.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.middle && n.middle.length > 0) html += `<div class="note-category">MIDDLE</div>` + n.middle.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.base && n.base.length > 0) html += `<div class="note-category">BASE</div>` + n.base.map(x => `<span class="note-chip">${x}</span>`).join('');
+            if (n.general && n.general.length > 0) html += `<div class="note-category">NOTES</div>` + n.general.map(x => `<span class="note-chip">${x}</span>`).join('');
+        }
+        notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
+
+        // NFC 버튼 초기화
+        const btn = document.getElementById('wish-promote-btn');
+        btn.classList.remove('scanning', 'success'); btn.innerText = "Purchase & Register (NFC)";
+        document.getElementById('wish-promote-status').innerText = "";
+
+        switchView('wish-detail', null);
+    }
+
+    // 💡 6. NFC 태깅으로 마스터 DB 승격 및 위시리스트 삭제 로직
+    let wishPromoteAbort = null;
+    async function startWishPromoteScan() {
+        const wish = globalWishlistData.find(w => w.id === currentWishPromotionId);
+        if(!wish) return;
+
+        const btn = document.getElementById('wish-promote-btn');
+        const statusDiv = document.getElementById('wish-promote-status');
+
+        if (!("NDEFReader" in window)) { statusDiv.innerText = "[ERROR] NFC not supported."; return; }
+        if (btn.classList.contains('scanning')) {
+            if(wishPromoteAbort) wishPromoteAbort.abort();
+            btn.classList.remove('scanning'); btn.innerText = "Purchase & Register (NFC)"; statusDiv.innerText = "";
+            return;
+        }
+
+        try {
+            wishPromoteAbort = new AbortController();
+            const ndef = new NDEFReader();
+            await ndef.scan({ signal: wishPromoteAbort.signal });
+
+            btn.classList.add('scanning');
+            btn.innerText = "Scanning Tag... (Tap to cancel)";
+            statusDiv.innerText = "NFC 태그를 스마트폰에 접촉하세요.";
+
+            ndef.onreading = async (event) => {
+                wishPromoteAbort.abort();
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                const uid = event.serialNumber;
+
+                btn.classList.remove('scanning'); btn.classList.add('success');
+                btn.innerText = "TAG DETECTED";
+                statusDiv.innerText = "옷장(마스터 DB)에 등록 중...";
+
+                try {
+                    // 1. 위시 데이터를 그대로 옷장 등록 API에 전송
+                    const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ uid: uid, name: wish.name, brand: wish.brand, url: wish.url, imageUrl: wish.imageUrl, notes: wish.notes, lat: currentLat, lon: currentLon })
+                    });
+
+                    if (regRes.ok) {
+                        statusDiv.innerText = "위시리스트에서 비우는 중...";
+                        // 2. 등록 완료 후 위시리스트에서 원본 삭제
+                        await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, { method: "DELETE" });
+
+                        statusDiv.innerText = "[SUCCESS] 옷장에 완벽히 승격되었습니다!";
+                        setTimeout(() => {
+                            fetchWardrobe(); // 옷장 데이터 새로고침
+                            fetchWishlist(); // 위시 데이터 새로고침
+                            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]); // 옷장으로 강제 이동!
+                        }, 1500);
+                    } else {
+                        statusDiv.innerText = `[ERROR] Registration failed.`; btn.innerText = "Purchase & Register (NFC)";
+                    }
+                } catch(e) { statusDiv.innerText = "[ERROR] Network failure."; btn.innerText = "Purchase & Register (NFC)"; }
+            };
+        } catch(error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; btn.classList.remove('scanning'); btn.innerText = "Purchase & Register (NFC)"; } }
+    }
+
+    // 💡 4. 위시리스트 삭제 API 찌르기
+    async function deleteWish(pageId) {
+        if(!confirm('위시리스트에서 삭제할까요?')) return;
+            try {
+                const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, {
+                method: "DELETE"
+            });
+            if(res.ok) {
+                fetchWishlist(); // 성공 시 리스트 갱신
+            } else {
+                alert('삭제 실패!');
+            }
+        } catch(e) {
+            alert('네트워크 오류');
+        }
+    }
+
+    let isWishReorderMode = false;
+    let wishSortableInstance = null;
+
+    // 💡 1. 정렬 모드 토글
+    function toggleWishReorderMode() {
+        isWishReorderMode = !isWishReorderMode;
+
+        document.getElementById('wish-default-actions').style.display = isWishReorderMode ? 'none' : 'block';
+        document.getElementById('wish-reorder-actions').style.display = isWishReorderMode ? 'flex' : 'none';
+
+        // 폼 열려있으면 닫기
+        if(isWishReorderMode) {
+            isWishFormOpen = false;
+            document.getElementById('wish-form-container').style.display = 'none';
+        }
+
+        const handles = document.querySelectorAll('.wish-drag-handle');
+        const delBtns = document.querySelectorAll('.wish-del-btn');
+        const container = document.getElementById('wish-container');
+
+        if (isWishReorderMode) {
+            // 모드 ON: 손잡이 보이고, 삭제 버튼 숨기고, Sortable 활성화
+            handles.forEach(h => h.style.display = 'block');
+            delBtns.forEach(b => b.style.display = 'none');
+
+            wishSortableInstance = new Sortable(container, {
+                animation: 150,
+                handle: '.wish-drag-handle', // ≡ 버튼 잡았을 때만 드래그 가능
+                ghostClass: 'sortable-ghost' // 드래그 중인 아이템의 CSS 클래스
+            });
+        } else {
+            // 모드 OFF: 복구 및 Sortable 파괴
+            handles.forEach(h => h.style.display = 'none');
+            delBtns.forEach(b => b.style.display = 'block');
+            if(wishSortableInstance) wishSortableInstance.destroy();
+            fetchWishlist(); // 순서 섞어놓고 취소했으니 원본 다시 불러오기
+        }
+    }
+
+    // 💡 2. 바뀐 순서 백엔드로 쏘기!
+    async function saveWishOrder() {
+        if(!wishSortableInstance) return;
+
+        const orderedIds = Array.from(document.querySelectorAll('.wish-card')).map(card => card.getAttribute('data-id'));
+
+        try {
+            document.getElementById('wish-reorder-actions').innerHTML = `<span style="font-size: 11px; color: var(--accent-color);">saving...</span>`;
+
+            const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
+                method: "PUT",
+                // 💡 팩폭: 여기서도 JSON 명찰 필수!
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(orderedIds)
+            });
+
+            if(res.ok) {
+                document.getElementById('wish-reorder-actions').innerHTML = `
+            <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
+            <span class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+        `;
+                toggleWishReorderMode();
+            } else {
+                alert("순서 저장 실패!");
+            }
+        } catch(e) {
+            alert("네트워크 오류!");
+        }
+    }
+
+
     function initializeAppData() {
         fetchRealWeather();
         fetchBrands();
@@ -1574,6 +1953,7 @@
         fetchPerfumeList();
         fetchWardrobe();
         fetchSummary();
+        fetchWishlist();
     }
 
     window.addEventListener('DOMContentLoaded', () => {

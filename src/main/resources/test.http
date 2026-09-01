@@ -34,22 +34,13 @@ Accept: application/json
 
 ##############################################################################
 
-### 1. 유저 로그인 테스트
-POST http://localhost:8080/api/v1/auth/login
-Content-Type: application/json
-
-{
-  "userId": "new_user",
-  "password": "password123"
-}
-
 ### 2. 회원가입 테스트 (아래 API 구현 후 실행)
 POST http://localhost:8080/api/v1/auth/signup
 Content-Type: application/json
 
 {
-  "userId": "new_user",
-  "password": "password123"
+  "userId": "testuser2",
+  "rawPassword": "1234"
 }
 
 
@@ -124,3 +115,30 @@ Authorization: Bearer {{auth_token}}
   "lat": 35.1796,
   "lon": 129.0756
 }
+
+
+
+### 1. 내 위시리스트 조회 (GET)
+GET http://localhost:8080/api/v1/wishlist
+Authorization: Bearer {{auth_token}}
+
+
+### 2. 위시리스트 추가 (POST)
+POST http://localhost:8080/api/v1/wishlist
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "name": "어벤투스 (Aventus)",
+  "brand": "크리드 (Creed)",
+  "imageUrl": "https://www.fragrantica.com/perfume/Maison-Francis-Kurkdjian/Oud-Satin-Mood-30352.html",
+  "url": "https://fimgs.net/mdimg/perfume-thumbs/375x500.30352.jpg"
+}
+
+
+### 3. 위시리스트 삭제 (DELETE)
+# 💡 2번 POST 요청 성공 시 응답으로 넘어온 '노션 Page ID'를 아래 변수에 복붙하고 실행!
+@targetPageId = 3cedb117-c930-81ff-b2cb-f89a787809fb
+
+DELETE http://localhost:8080/api/v1/wishlist/{{targetPageId}}
+Authorization: Bearer {{auth_token}}
