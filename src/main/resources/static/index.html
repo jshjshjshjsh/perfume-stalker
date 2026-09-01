@@ -423,6 +423,7 @@
     <div class="weather-widget">
         <h2>Perfume Details
             <span class="loc-btn" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])" style="float: right;">[ back ]</span>
+            <span id="detail-edit-btn" class="loc-btn" style="float: right; margin-right: 15px;">[ edit ]</span>
             <span id="detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
         </h2>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
@@ -459,6 +460,7 @@
     <div class="weather-widget">
         <h2>Wish Details
             <span class="loc-btn" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])" style="float: right;">[ back ]</span>
+            <span id="wish-detail-edit-btn" class="loc-btn" style="float: right; margin-right: 15px;">[ edit ]</span>
             <span id="wish-detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
         </h2>
         <p id="wish-detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
@@ -479,6 +481,28 @@
     <!-- 💡 NFC 태그로 옷장(마스터 DB)에 즉시 꽂아넣는 승격 버튼 -->
     <button id="wish-promote-btn" class="scan-btn" style="width: 100%;" onclick="startWishPromoteScan()">Purchase & Register (NFC)</button>
     <div id="wish-promote-status" class="status-msg"></div>
+</section>
+
+<!-- 💡 11. EDIT INFO VIEW (옷장/위시 공통 텍스트 수정 화면) -->
+<section id="view-edit-info" class="view-section">
+    <div class="weather-widget">
+        <h2>Edit Details <span class="loc-btn" onclick="cancelEditInfo()">[ cancel ]</span></h2>
+        <p>Update name and brand.</p>
+    </div>
+    <div class="form-container">
+        <input type="hidden" id="edit-info-type"> <!-- wardrobe or wish -->
+        <input type="hidden" id="edit-info-id">
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="edit-info-name" required autocomplete="off" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
+        </div>
+        <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="edit-info-brand" autocomplete="off" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
+        </div>
+        <button id="edit-info-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitEditInfo()">Update Data</button>
+        <div id="edit-info-status" class="status-msg"></div>
+    </div>
 </section>
 
 <!-- 💡 5. REGISTER VIEW -->
@@ -1424,6 +1448,7 @@
         document.getElementById('detail-name').innerText = p.name;
         document.getElementById('detail-date').innerText = p.date ? `Added: ${p.date.split('T')[0]}` : 'Added: N/A';
         document.getElementById('detail-delete-btn').setAttribute('onclick', `deleteWardrobe('${p.id}')`);
+        document.getElementById('detail-edit-btn').setAttribute('onclick', `openEditInfo('wardrobe', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.brand||'').replace(/'/g, "\\'")}')`);
 
         const imgEl = document.getElementById('detail-image');
         const boxEl = document.getElementById('detail-image-box');
@@ -1813,6 +1838,7 @@
         document.getElementById('wish-detail-date').innerText = w.date ? `Added: ${w.date.split('T')[0]}` : 'Added: N/A';
         // 💡 삭제 버튼 액션 바인딩
         document.getElementById('wish-detail-delete-btn').setAttribute('onclick', `deleteWish('${w.id}')`);
+        document.getElementById('wish-detail-edit-btn').setAttribute('onclick', `openEditInfo('wish', '${w.id}', '${w.name.replace(/'/g, "\\'")}', '${(w.brand||'').replace(/'/g, "\\'")}')`);
 
         const imgEl = document.getElementById('wish-detail-image');
         const boxEl = document.getElementById('wish-detail-image-box');
@@ -1995,6 +2021,55 @@
                 switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
             } else { alert('삭제 실패!'); }
         } catch(e) { alert('네트워크 오류'); }
+    }
+
+    // 💡 수정 뷰 열기 및 닫기 통신 로직
+    function openEditInfo(type, id, name, brand) {
+        document.getElementById('edit-info-type').value = type;
+        document.getElementById('edit-info-id').value = id;
+        document.getElementById('edit-info-name').value = name;
+        document.getElementById('edit-info-brand').value = brand;
+        document.getElementById('edit-info-status').innerText = "";
+
+        switchView('edit-info', null);
+    }
+
+    function cancelEditInfo() {
+        const type = document.getElementById('edit-info-type').value;
+        switchView(type === 'wardrobe' ? 'perfume-detail' : 'wish-detail', null);
+    }
+
+    async function submitEditInfo() {
+        const type = document.getElementById('edit-info-type').value;
+        const pageId = document.getElementById('edit-info-id').value;
+        const name = document.getElementById('edit-info-name').value.trim();
+        const brand = document.getElementById('edit-info-brand').value.trim();
+
+        const btn = document.getElementById('edit-info-submit-btn');
+        const statusMsg = document.getElementById('edit-info-status');
+
+        if(!name) { statusMsg.innerText = "[ERROR] Name is required."; return; }
+
+        btn.innerText = "Updating..."; statusMsg.innerText = "Saving to Notion DB...";
+
+        const endpoint = type === 'wardrobe' ? `/api/v1/perfumes/${pageId}` : `/api/v1/wishlist/${pageId}`;
+
+        try {
+            const res = await fetchWithAuth(endpoint, {
+                method: "PATCH", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: name, brand: brand })
+            });
+
+            if(res.ok) {
+                btn.classList.add('success'); btn.innerText = "UPDATED";
+                statusMsg.innerText = "[SUCCESS] Details updated.";
+                setTimeout(() => {
+                    btn.classList.remove('success'); btn.innerText = "Update Data";
+                    if(type === 'wardrobe') { fetchWardrobe().then(() => openPerfumeDetail(pageId)); }
+                    else { fetchWishlist().then(() => openWishDetail(pageId)); }
+                }, 1000);
+            } else { statusMsg.innerText = "[ERROR] Update failed."; btn.innerText = "Update Data"; }
+        } catch(e) { statusMsg.innerText = "[ERROR] Network failure."; btn.innerText = "Update Data"; }
     }
 
 

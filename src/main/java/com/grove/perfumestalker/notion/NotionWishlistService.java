@@ -30,6 +30,19 @@ public class NotionWishlistService {
     @Value("${notion.wishlist-data-source-id}")
     private String wishlistSourceDbId;
 
+    // 💡 위시리스트 정보 수정
+    public Mono<Void> updateWishlist(String pageId, WishlistRequest request) {
+        Map<String, Object> properties = new java.util.HashMap<>();
+        if (request.name() != null) properties.put(NotionWishlist.NAME.getColumnName(), NotionWishlist.NAME.formatValue(request.name()));
+        if (request.brand() != null) properties.put(NotionWishlist.BRAND.getColumnName(), NotionWishlist.BRAND.formatValue(request.brand()));
+        if (request.imageUrl() != null) properties.put(NotionWishlist.IMAGE_URL.getColumnName(), NotionWishlist.IMAGE_URL.formatValue(request.imageUrl()));
+
+        return notionWebClient.patch().uri("/pages/{pageId}", pageId)
+                .bodyValue(Map.of("properties", properties))
+                .retrieve()
+                .bodyToMono(Void.class);
+    }
+
     // 💡 1. 내 위시리스트 조회
     public Mono<List<WishlistResponse>> getWishlist(String userPageId) {
         String formattedDbId = notionTokenUtils.formatUuid(wishlistSourceDbId);

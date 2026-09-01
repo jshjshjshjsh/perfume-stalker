@@ -47,4 +47,10 @@ public class WishlistController {
         return wishlistService.reorderWishlist(pageIds)
                 .then(Mono.just(ResponseEntity.ok("✅ 정렬 순서 저장 완료")));
     }
+
+    @PatchMapping("/{pageId}")
+    public Mono<ResponseEntity<String>> updateWishlist(@PathVariable String pageId, @RequestBody WishlistRequest request) {
+        return wishlistService.updateWishlist(pageId, request)
+                .then(Mono.just(ResponseEntity.ok("✅ 위시 수정 완료")));
+    }
 }

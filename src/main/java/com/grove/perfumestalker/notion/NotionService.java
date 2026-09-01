@@ -13,6 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -104,9 +105,12 @@ public class NotionService {
             }
             properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
 
-            if (req.getDate() != null && !req.getDate().isBlank()) {
-                properties.put(NotionPerfumeMaster.DATE.getColumnName(), NotionPerfumeMaster.DATE.formatValue(req.getDate()));
-            }
+            // 💡 팩폭: 날짜가 비어있으면 백엔드에서 KST 기준 오늘 날짜 강제 주입!
+            String targetDate = (req.getDate() != null && !req.getDate().isBlank())
+                    ? req.getDate()
+                    : LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).toString();
+
+            properties.put(NotionPerfumeMaster.DATE.getColumnName(), NotionPerfumeMaster.DATE.formatValue(targetDate));
 
             Map<String, List<String>> notes = req.getNotes();
             if (notes != null) {
@@ -130,6 +134,17 @@ public class NotionService {
                     .doOnSuccess(id -> log.info("✅ 새 향수 등록 완료: {}", req.getName()))
                     .doOnError(this::handleNotionError);
         }
+    }
+
+    // 💡 옷장 정보 수정
+    public Mono<Void> updatePerfume(String pageId, PerfumeRegisterRequest request) {
+        Map<String, Object> properties = new java.util.HashMap<>();
+        if (request.getName() != null) properties.put(NotionPerfumeMaster.NAME.getColumnName(), NotionPerfumeMaster.NAME.formatValue(request.getName()));
+        if (request.getBrand() != null) properties.put(NotionPerfumeMaster.BRAND.getColumnName(), NotionPerfumeMaster.BRAND.formatValue(request.getBrand()));
+        if (request.getImageUrl() != null) properties.put(NotionPerfumeMaster.IMAGE_URL.getColumnName(), NotionPerfumeMaster.IMAGE_URL.formatValue(request.getImageUrl()));
+
+        return notionWebClient.patch().uri("/pages/{pageId}", pageId)
+                .bodyValue(Map.of("properties", properties)).retrieve().bodyToMono(Void.class);
     }
 
     /**

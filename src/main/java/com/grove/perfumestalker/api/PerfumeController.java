@@ -114,4 +114,10 @@ public class PerfumeController {
         return notionService.softDeletePerfume(pageId)
                 .then(Mono.just(ResponseEntity.ok("🗑️ 옷장에서 삭제 완료 (과거 로그 유지)")));
     }
+
+    @PatchMapping("/{pageId}")
+    public Mono<ResponseEntity<String>> updatePerfume(@PathVariable String pageId, @RequestBody PerfumeRegisterRequest request) {
+        return notionService.updatePerfume(pageId, request).then(Mono.just(ResponseEntity.ok("✅ 옷장 수정 완료")));
+    }
+
 }
