@@ -1305,13 +1305,7 @@
         localStorage.removeItem('jwt_token');
 
         // 폼 초기화
-        document.getElementById('auth-id').value = '';
-        document.getElementById('auth-pw').value = '';
-        document.getElementById('auth-status').innerText = 'Logged out successfully.';
-
-        // 하단 네비 숨기고 로그인 창으로 추방
-        document.querySelector('.bottom-nav').style.display = 'none';
-        switchView('auth', null);
+        window.location.reload();
     }
 
     // 알람 폭격 방지용 플래그
@@ -1328,21 +1322,13 @@
         const response = await fetch(url, { ...options, headers });
 
         if (response.status === 401) {
-            // 여러 API가 동시에 401을 맞아도 경고창은 딱 1번만!
             if (!isSessionExpired) {
                 isSessionExpired = true;
                 alert("세션이 만료되었습니다. 다시 로그인해주세요.");
 
-                // 컨펌 없이 강제 로그아웃
+                // 토큰 삭제 후 즉시 강제 새로고침
                 localStorage.removeItem('jwt_token');
-                document.getElementById('auth-id').value = '';
-                document.getElementById('auth-pw').value = '';
-                document.getElementById('auth-status').innerText = 'Session expired.';
-                document.querySelector('.bottom-nav').style.display = 'none';
-                switchView('auth', null);
-
-                // 3초 뒤 플래그 초기화
-                setTimeout(() => { isSessionExpired = false; }, 3000);
+                window.location.reload();
             }
             throw new Error("Unauthorized");
         }
