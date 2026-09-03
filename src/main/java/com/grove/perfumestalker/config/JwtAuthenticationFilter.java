@@ -29,7 +29,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.startsWith("/favicon.ico") ||
                 path.startsWith("/static/") ||
                 path.startsWith("/.well-known/") ||
-                path.startsWith("/api/v1/auth/");
+                path.startsWith("/api/v1/auth/") ||
+                path.endsWith(".html")                ||
+                path.endsWith(".css") ||
+                path.endsWith(".js") ||
+                path.endsWith(".json") ||
+                path.endsWith(".png") ||
+                path.endsWith(".ico");
     }
 
     @Override

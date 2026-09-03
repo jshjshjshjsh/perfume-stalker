@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Perfume Stalker</title>
+    <link rel="manifest" href="/config/manifest.json">
+    <meta name="theme-color" content="#f4f4f0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Perfume Stalker">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="icon" type="image/png" href="/icon-192.png?v=2">
+
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
@@ -704,7 +712,7 @@
         statusMsg.innerText = isLoginMode ? "Authenticating..." : "Creating account...";
         const endpoint = isLoginMode ? '/api/v1/auth/login' : '/api/v1/auth/signup';
         const payload = isLoginMode
-            ? { userId: fields['auth-id'].value.trim(), rawPassword: fields['auth-pw'].value }
+            ? {userId: fields['auth-id'].value.trim(), rawPassword: fields['auth-pw'].value}
             : {
                 userId: fields['auth-id'].value.trim(),
                 rawPassword: fields['auth-pw'].value,
@@ -716,7 +724,7 @@
         try {
             const res = await fetchWithAuth(endpoint, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(payload)
             });
 
@@ -743,7 +751,11 @@
         }
     }
 
-    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
 
     let currentLat = null;
     let currentLon = null;
@@ -760,7 +772,7 @@
             if (response.ok) {
                 const data = await response.json();
 
-                recWeatherData = { weather: data.weather, temp: parseFloat(data.temp) };
+                recWeatherData = {weather: data.weather, temp: parseFloat(data.temp)};
                 updateRecommendation();
 
                 let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()" style="font-size: 9px; margin-left: 5px;">[ update ]</span>`;
@@ -770,24 +782,37 @@
 
                 locText.innerHTML = `${data.location} ${buttonsHtml}`;
                 weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${data.temp}°C / ${data.humidity}%</span>`;
-            } else { weatherInfo.innerText = "[ERROR] Failed to load weather data."; }
-        } catch (error) { weatherInfo.innerText = "[ERROR] Network failure."; }
+            } else {
+                weatherInfo.innerText = "[ERROR] Failed to load weather data.";
+            }
+        } catch (error) {
+            weatherInfo.innerText = "[ERROR] Network failure.";
+        }
     }
 
     function updateLocation() {
         document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
-                (position) => { currentLat = position.coords.latitude; currentLon = position.coords.longitude; fetchRealWeather(currentLat, currentLon); },
-                (error) => { alert("GPS access denied."); fetchRealWeather(); },
-                { enableHighAccuracy: true, maximumAge: 0 }
+                (position) => {
+                    currentLat = position.coords.latitude;
+                    currentLon = position.coords.longitude;
+                    fetchRealWeather(currentLat, currentLon);
+                },
+                (error) => {
+                    alert("GPS access denied.");
+                    fetchRealWeather();
+                },
+                {enableHighAccuracy: true, maximumAge: 0}
             );
         }
     }
 
     function resetLocation() {
         document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
-        currentLat = null; currentLon = null; fetchRealWeather();
+        currentLat = null;
+        currentLon = null;
+        fetchRealWeather();
     }
 
     // --- 뷰 전환 모듈 ---
@@ -796,7 +821,9 @@
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         document.getElementById('view-' + viewId).classList.add('active');
         // element가 null이 아닐 때만 active 클래스 추가 (수동 전환 시 에러 방지)
-        if (element) { element.classList.add('active'); }
+        if (element) {
+            element.classList.add('active');
+        }
     }
 
     // 등록 취소하고 메인으로 돌아가기
@@ -820,24 +847,35 @@
     // --- NFC 스캔 모듈 ---
     const scanBtn = document.getElementById('scan-btn');
     const statusDiv = document.getElementById('status');
-    let isScanning = false; let abortController = null;
+    let isScanning = false;
+    let abortController = null;
 
     function resetScanUI() {
-        isScanning = false; scanBtn.classList.remove('scanning', 'success');
-        scanBtn.innerText = "Tap to Scan"; statusDiv.innerText = "waiting for interaction...";
+        isScanning = false;
+        scanBtn.classList.remove('scanning', 'success');
+        scanBtn.innerText = "Tap to Scan";
+        statusDiv.innerText = "waiting for interaction...";
         if (abortController) abortController.abort();
     }
 
     scanBtn.addEventListener('click', async () => {
-        if (!("NDEFReader" in window)) { statusDiv.innerText = "[ERROR] NFC not supported."; return; }
-        if (isScanning) { resetScanUI(); statusDiv.innerText = "[CANCELLED] Scan aborted."; return; }
+        if (!("NDEFReader" in window)) {
+            statusDiv.innerText = "[ERROR] NFC not supported.";
+            return;
+        }
+        if (isScanning) {
+            resetScanUI();
+            statusDiv.innerText = "[CANCELLED] Scan aborted.";
+            return;
+        }
 
         try {
             abortController = new AbortController();
             const ndef = new NDEFReader();
-            await ndef.scan({ signal: abortController.signal });
+            await ndef.scan({signal: abortController.signal});
 
-            isScanning = true; scanBtn.classList.add('scanning');
+            isScanning = true;
+            scanBtn.classList.add('scanning');
             scanBtn.innerText = "Scanning... (Tap to cancel)";
             statusDiv.innerText = "Please approach the tag.";
 
@@ -846,14 +884,15 @@
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 const uid = event.serialNumber;
 
-                scanBtn.classList.remove('scanning'); scanBtn.classList.add('success');
+                scanBtn.classList.remove('scanning');
+                scanBtn.classList.add('success');
                 scanBtn.innerText = "STAMPED";
                 statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
 
                 try {
                     const response = await fetchWithAuth("/api/v1/logs/scan", {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
+                        method: "POST", headers: {"Content-Type": "application/json"},
+                        body: JSON.stringify({uid: uid, lat: currentLat, lon: currentLon})
                     });
                     const resultText = await response.text();
 
@@ -879,7 +918,12 @@
                     setTimeout(resetScanUI, 2500);
                 }
             };
-        } catch (error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; resetScanUI(); } }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                statusDiv.innerText = `[ERROR] ${error}`;
+                resetScanUI();
+            }
+        }
     });
 
     // --- 1. 브랜드 목록 불러오기 (초기 로딩 시) ---
@@ -891,7 +935,9 @@
                 const datalist = document.getElementById('brand-list');
                 datalist.innerHTML = brands.map(b => `<option value="${b}">`).join('');
             }
-        } catch (e) { console.error("Brand load failed"); }
+        } catch (e) {
+            console.error("Brand load failed");
+        }
     }
 
     // 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
@@ -1026,7 +1072,10 @@
         const regStatus = document.getElementById('reg-status');
         const submitBtn = document.getElementById('register-submit-btn');
 
-        if (!name) { regStatus.innerText = "[ERROR] Name is required."; return; }
+        if (!name) {
+            regStatus.innerText = "[ERROR] Name is required.";
+            return;
+        }
 
         submitBtn.innerText = "Registering...";
         regStatus.innerText = "Syncing with Master DB...";
@@ -1035,7 +1084,7 @@
             // 💡 팩폭: 토큰을 실어 보내는 fetchWithAuth 적용!
             const res = await fetchWithAuth("/api/v1/perfumes/register", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     uid, name, brand, url,
                     imageUrl: crawledImageUrl,
@@ -1185,7 +1234,7 @@
         try {
             const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     weather: weather,
                     temp: temp ? parseFloat(temp) : null,
@@ -1230,7 +1279,7 @@
         updateBtn.disabled = true;
 
         try {
-            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, { method: "DELETE" });
+            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {method: "DELETE"});
 
             if (res.ok) {
                 delBtn.classList.add('success');
@@ -1291,7 +1340,7 @@
         try {
             const res = await fetchWithAuth("/api/v1/logs/manual", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     perfumeId: perfumeId,
                     date: manualDate || null, // 빈 값이면 null 전송
@@ -1347,7 +1396,7 @@
             'ngrok-skip-browser-warning': 'true'
         };
 
-        const response = await fetch(url, { ...options, headers });
+        const response = await fetch(url, {...options, headers});
 
         if (response.status === 401) {
             if (!isSessionExpired) {
@@ -1393,7 +1442,8 @@
                             if (parsed.base) allNotes.push(...parsed.base);
                             if (parsed.general) allNotes.push(...parsed.general);
                             if (allNotes.length > 0) notesPreview = allNotes.join(', ');
-                        } catch(e) {}
+                        } catch (e) {
+                        }
                     }
                     return `
                         <div class="wardrobe-card" data-id="${p.id}" style="cursor: pointer; display: flex; align-items: center;" onclick="openPerfumeDetail('${p.id}')">
@@ -1411,7 +1461,9 @@
                     `;
                 }).join('');
             }
-        } catch (e) { container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`; }
+        } catch (e) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
     }
 
     function toggleWardrobeReorderMode() {
@@ -1429,28 +1481,40 @@
             handles.forEach(h => h.style.display = 'block');
             delBtns.forEach(b => b.style.display = 'none');
 
-            wardrobeSortableInstance = new Sortable(container, { animation: 150, handle: '.wardrobe-drag-handle', ghostClass: 'sortable-ghost' });
+            wardrobeSortableInstance = new Sortable(container, {
+                animation: 150,
+                handle: '.wardrobe-drag-handle',
+                ghostClass: 'sortable-ghost'
+            });
         } else {
             // 💡 모드 꺼짐: 핸들 숨기기 / 삭제 버튼 복구
             handles.forEach(h => h.style.display = 'none');
             delBtns.forEach(b => b.style.display = 'block');
 
-            if(wardrobeSortableInstance) wardrobeSortableInstance.destroy();
+            if (wardrobeSortableInstance) wardrobeSortableInstance.destroy();
             fetchWardrobe();
         }
     }
 
     async function saveWardrobeOrder() {
-        if(!wardrobeSortableInstance) return;
+        if (!wardrobeSortableInstance) return;
         const orderedIds = Array.from(document.querySelectorAll('.wardrobe-card')).map(card => card.getAttribute('data-id'));
         try {
             document.getElementById('wardrobe-reorder-actions').innerHTML = `<span style="font-size: 11px; color: var(--accent-color);">saving...</span>`;
-            const res = await fetchWithAuth("/api/v1/perfumes/reorder", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderedIds) });
-            if(res.ok) {
+            const res = await fetchWithAuth("/api/v1/perfumes/reorder", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(orderedIds)
+            });
+            if (res.ok) {
                 document.getElementById('wardrobe-reorder-actions').innerHTML = `<span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span><span class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>`;
                 toggleWardrobeReorderMode();
-            } else { alert("순서 저장 실패!"); }
-        } catch(e) { alert("네트워크 오류!"); }
+            } else {
+                alert("순서 저장 실패!");
+            }
+        } catch (e) {
+            alert("네트워크 오류!");
+        }
     }
 
     // 💡 1. 향수 상세 화면 열기
@@ -1462,12 +1526,18 @@
         document.getElementById('detail-name').innerText = p.name;
         document.getElementById('detail-date').innerText = p.date ? `Added: ${p.date.split('T')[0]}` : 'Added: N/A';
         document.getElementById('detail-delete-btn').setAttribute('onclick', `deleteWardrobe('${p.id}')`);
-        document.getElementById('detail-edit-btn').setAttribute('onclick', `openEditInfo('wardrobe', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.brand||'').replace(/'/g, "\\'")}')`);
+        document.getElementById('detail-edit-btn').setAttribute('onclick', `openEditInfo('wardrobe', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.brand || '').replace(/'/g, "\\'")}')`);
 
         const imgEl = document.getElementById('detail-image');
         const boxEl = document.getElementById('detail-image-box');
-        if (p.imageUrl) { imgEl.src = p.imageUrl; imgEl.style.display = 'block'; boxEl.style.display = 'none'; }
-        else { imgEl.style.display = 'none'; boxEl.style.display = 'flex'; }
+        if (p.imageUrl) {
+            imgEl.src = p.imageUrl;
+            imgEl.style.display = 'block';
+            boxEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            boxEl.style.display = 'flex';
+        }
 
         const notesBox = document.getElementById('detail-notes-container');
         let html = '';
@@ -1563,18 +1633,20 @@
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
+                        legend: {display: false},
                         // 클릭 시 이름이 뜨는 트렌디한 블랙 툴팁(Tooltip)
                         tooltip: {
                             enabled: true,
                             backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleFont: { size: 10 },
-                            bodyFont: { size: 12, weight: 'bold' },
+                            titleFont: {size: 10},
+                            bodyFont: {size: 12, weight: 'bold'},
                             displayColors: false,
                             padding: 8,
                             callbacks: {
-                                title: function() { return ''; }, // 쓸데없는 기본 타이틀 제거
-                                label: function(context) {
+                                title: function () {
+                                    return '';
+                                }, // 쓸데없는 기본 타이틀 제거
+                                label: function (context) {
                                     return `${context.label} : ${context.parsed}회`;
                                 }
                             }
@@ -1620,7 +1692,10 @@
             const weatherCount = (conditionList) => {
                 const filtered = recentLogs.filter(l => l.weather && conditionList.some(c => l.weather.includes(c)));
                 if (filtered.length === 0) return '기록 부족';
-                const fCounts = filtered.reduce((acc, log) => { acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1; return acc; }, {});
+                const fCounts = filtered.reduce((acc, log) => {
+                    acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1;
+                    return acc;
+                }, {});
                 return Object.entries(fCounts).sort((a, b) => b[1] - a[1])[0][0];
             };
 
@@ -1734,14 +1809,15 @@
     function toggleWishForm() {
         isWishFormOpen = !isWishFormOpen;
         document.getElementById('wish-form-container').style.display = isWishFormOpen ? 'block' : 'none';
-        if(isWishFormOpen) {
+        if (isWishFormOpen) {
             document.getElementById('wish-name').value = '';
             document.getElementById('wish-brand').value = '';
             document.getElementById('wish-url').value = '';
             document.getElementById('wish-img').value = '';
             document.getElementById('wish-notes-preview-container').style.display = 'none';
             document.getElementById('wish-crawl-terminal').style.display = 'none';
-            wishCrawledNotesData = null; wishCrawledImageUrl = "";
+            wishCrawledNotesData = null;
+            wishCrawledImageUrl = "";
         }
     }
 
@@ -1750,11 +1826,16 @@
         const urlInput = document.getElementById('wish-url').value.trim();
         const terminal = document.getElementById('wish-crawl-terminal');
         const step = document.getElementById('wish-crawl-step');
-        if(!urlInput) { alert("URL을 먼저 입력해주세요."); return; }
+        if (!urlInput) {
+            alert("URL을 먼저 입력해주세요.");
+            return;
+        }
 
-        terminal.style.display = 'flex'; terminal.classList.remove('error');
+        terminal.style.display = 'flex';
+        terminal.classList.remove('error');
         step.innerHTML = '> Fetching Notes... <span class="blink">_</span>';
-        wishCrawledNotesData = null; wishCrawledImageUrl = "";
+        wishCrawledNotesData = null;
+        wishCrawledImageUrl = "";
 
         try {
             const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
@@ -1769,16 +1850,19 @@
                 const box = document.getElementById('wish-notes-preview-box');
                 const container = document.getElementById('wish-notes-preview-container');
                 let html = '';
-                if(data.notes.top) html += `<div class="note-category">TOP</div>` + data.notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if(data.notes.middle) html += `<div class="note-category">MIDDLE</div>` + data.notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if(data.notes.base) html += `<div class="note-category">BASE</div>` + data.notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if(data.notes.general) html += `<div class="note-category">NOTES</div>` + data.notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
-                box.innerHTML = html; container.style.display = 'block';
+                if (data.notes.top) html += `<div class="note-category">TOP</div>` + data.notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if (data.notes.middle) html += `<div class="note-category">MIDDLE</div>` + data.notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if (data.notes.base) html += `<div class="note-category">BASE</div>` + data.notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
+                if (data.notes.general) html += `<div class="note-category">NOTES</div>` + data.notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
+                box.innerHTML = html;
+                container.style.display = 'block';
             } else {
-                terminal.classList.add('error'); step.innerHTML = '> [ERROR] Scraping failed.';
+                terminal.classList.add('error');
+                step.innerHTML = '> [ERROR] Scraping failed.';
             }
-        } catch(e) {
-            terminal.classList.add('error'); step.innerHTML = '> [ERROR] Network issue.';
+        } catch (e) {
+            terminal.classList.add('error');
+            step.innerHTML = '> [ERROR] Network issue.';
         }
     }
 
@@ -1786,10 +1870,17 @@
     async function submitWish() {
         const name = document.getElementById('wish-name').value.trim();
         const brand = document.getElementById('wish-brand').value.trim();
-        if(!name) { alert('향수 이름을 입력해주세요.'); return; }
+        if (!name) {
+            alert('향수 이름을 입력해주세요.');
+            return;
+        }
 
         // 오늘 날짜 세팅
-        const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
+        const todayDate = new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).replace(/\. /g, '-').replace('.', '');
 
         const payload = {
             name: name, brand: brand,
@@ -1801,12 +1892,18 @@
 
         try {
             const res = await fetchWithAuth("/api/v1/wishlist", {
-                method: "POST", headers: { "Content-Type": "application/json" },
+                method: "POST", headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(payload)
             });
-            if(res.ok) { toggleWishForm(); fetchWishlist(); }
-            else { alert('추가 실패!'); }
-        } catch(e) { alert('네트워크 오류'); }
+            if (res.ok) {
+                toggleWishForm();
+                fetchWishlist();
+            } else {
+                alert('추가 실패!');
+            }
+        } catch (e) {
+            alert('네트워크 오류');
+        }
     }
 
     // 💡 4. 리스트 렌더링 (날짜 표시 & info 버튼 팩폭 튜닝)
@@ -1838,7 +1935,9 @@
                     `;
                 }).join('');
             }
-        } catch (e) { container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`; }
+        } catch (e) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+        }
     }
 
     let currentWishPromotionId = null;
@@ -1846,7 +1945,7 @@
     // 💡 5. 위시리스트 상세 뷰 열기
     function openWishDetail(wishId) {
         const w = globalWishlistData.find(x => x.id === wishId);
-        if(!w) return;
+        if (!w) return;
         currentWishPromotionId = wishId;
 
         document.getElementById('wish-detail-brand').innerText = w.brand || 'UNKNOWN BRAND';
@@ -1855,12 +1954,18 @@
         document.getElementById('wish-detail-date').innerText = w.date ? `Added: ${w.date.split('T')[0]}` : 'Added: N/A';
         // 💡 삭제 버튼 액션 바인딩
         document.getElementById('wish-detail-delete-btn').setAttribute('onclick', `deleteWish('${w.id}')`);
-        document.getElementById('wish-detail-edit-btn').setAttribute('onclick', `openEditInfo('wish', '${w.id}', '${w.name.replace(/'/g, "\\'")}', '${(w.brand||'').replace(/'/g, "\\'")}')`);
+        document.getElementById('wish-detail-edit-btn').setAttribute('onclick', `openEditInfo('wish', '${w.id}', '${w.name.replace(/'/g, "\\'")}', '${(w.brand || '').replace(/'/g, "\\'")}')`);
 
         const imgEl = document.getElementById('wish-detail-image');
         const boxEl = document.getElementById('wish-detail-image-box');
-        if (w.imageUrl) { imgEl.src = w.imageUrl; imgEl.style.display = 'block'; boxEl.style.display = 'none'; }
-        else { imgEl.style.display = 'none'; boxEl.style.display = 'flex'; }
+        if (w.imageUrl) {
+            imgEl.src = w.imageUrl;
+            imgEl.style.display = 'block';
+            boxEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            boxEl.style.display = 'flex';
+        }
 
         const notesBox = document.getElementById('wish-detail-notes-container');
         let html = '';
@@ -1874,7 +1979,8 @@
         notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
 
         const btn = document.getElementById('wish-promote-btn');
-        btn.classList.remove('scanning', 'success'); btn.innerText = "Purchase & Register (NFC)";
+        btn.classList.remove('scanning', 'success');
+        btn.innerText = "Purchase & Register (NFC)";
         document.getElementById('wish-promote-status').innerText = "";
 
         switchView('wish-detail', null);
@@ -1882,24 +1988,30 @@
 
     // 💡 6. NFC 태깅으로 마스터 DB 승격 및 위시리스트 삭제 로직
     let wishPromoteAbort = null;
+
     async function startWishPromoteScan() {
         const wish = globalWishlistData.find(w => w.id === currentWishPromotionId);
-        if(!wish) return;
+        if (!wish) return;
 
         const btn = document.getElementById('wish-promote-btn');
         const statusDiv = document.getElementById('wish-promote-status');
 
-        if (!("NDEFReader" in window)) { statusDiv.innerText = "[ERROR] NFC not supported."; return; }
+        if (!("NDEFReader" in window)) {
+            statusDiv.innerText = "[ERROR] NFC not supported.";
+            return;
+        }
         if (btn.classList.contains('scanning')) {
-            if(wishPromoteAbort) wishPromoteAbort.abort();
-            btn.classList.remove('scanning'); btn.innerText = "Purchase & Register (NFC)"; statusDiv.innerText = "";
+            if (wishPromoteAbort) wishPromoteAbort.abort();
+            btn.classList.remove('scanning');
+            btn.innerText = "Purchase & Register (NFC)";
+            statusDiv.innerText = "";
             return;
         }
 
         try {
             wishPromoteAbort = new AbortController();
             const ndef = new NDEFReader();
-            await ndef.scan({ signal: wishPromoteAbort.signal });
+            await ndef.scan({signal: wishPromoteAbort.signal});
 
             btn.classList.add('scanning');
             btn.innerText = "Scanning Tag... (Tap to cancel)";
@@ -1910,16 +2022,21 @@
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
                 const uid = event.serialNumber;
 
-                btn.classList.remove('scanning'); btn.classList.add('success');
+                btn.classList.remove('scanning');
+                btn.classList.add('success');
                 btn.innerText = "TAG DETECTED";
                 statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
 
                 // 💡 팩폭: 승격된 '오늘 날짜'로 덮어쓰기!
-                const todayDate = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '-').replace('.', '');
+                const todayDate = new Date().toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                }).replace(/\. /g, '-').replace('.', '');
 
                 try {
                     const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
-                        method: "POST", headers: { "Content-Type": "application/json" },
+                        method: "POST", headers: {"Content-Type": "application/json"},
                         body: JSON.stringify({
                             uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
                             imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate, // 승격 날짜 업데이트!
@@ -1929,33 +2046,48 @@
                     });
 
                     if (regRes.ok) {
-                        await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, { method: "DELETE" });
+                        await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, {method: "DELETE"});
 
                         // 💡 감성 터지는 성공 멘트!
                         statusDiv.innerHTML = "<span style='color:#10b981; font-weight:bold;'>🎉 새 향수를 들이셨군요! 옷장에 예쁘게 넣어뒀습니다.</span>";
                         setTimeout(() => {
-                            fetchWardrobe(); fetchWishlist();
+                            fetchWardrobe();
+                            fetchWishlist();
                             switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
                         }, 2000);
                     } else {
-                        statusDiv.innerText = `[ERROR] Registration failed.`; btn.innerText = "Purchase & Register (NFC)";
+                        statusDiv.innerText = `[ERROR] Registration failed.`;
+                        btn.innerText = "Purchase & Register (NFC)";
                     }
-                } catch(e) { statusDiv.innerText = "[ERROR] Network failure."; btn.innerText = "Purchase & Register (NFC)"; }
+                } catch (e) {
+                    statusDiv.innerText = "[ERROR] Network failure.";
+                    btn.innerText = "Purchase & Register (NFC)";
+                }
             };
-        } catch(error) { if (error.name !== 'AbortError') { statusDiv.innerText = `[ERROR] ${error}`; btn.classList.remove('scanning'); btn.innerText = "Purchase & Register (NFC)"; } }
+        } catch (error) {
+            if (error.name !== 'AbortError') {
+                statusDiv.innerText = `[ERROR] ${error}`;
+                btn.classList.remove('scanning');
+                btn.innerText = "Purchase & Register (NFC)";
+            }
+        }
     }
 
     // 💡 4. 위시리스트 삭제 API 찌르기
     async function deleteWish(pageId) {
-        if(!confirm('위시리스트에서 삭제할까요?')) return;
+        if (!confirm('위시리스트에서 삭제할까요?')) return;
         try {
-            const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, { method: "DELETE" });
-            if(res.ok) {
+            const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, {method: "DELETE"});
+            if (res.ok) {
                 fetchWishlist();
                 // 💡 삭제 성공 시 위시리스트로 강제 이동
                 switchView('wish', document.querySelectorAll('.nav-item')[3]);
-            } else { alert('삭제 실패!'); }
-        } catch(e) { alert('네트워크 오류'); }
+            } else {
+                alert('삭제 실패!');
+            }
+        } catch (e) {
+            alert('네트워크 오류');
+        }
     }
 
     let isWishReorderMode = false;
@@ -1969,7 +2101,7 @@
         document.getElementById('wish-reorder-actions').style.display = isWishReorderMode ? 'flex' : 'none';
 
         // 폼 열려있으면 닫기
-        if(isWishReorderMode) {
+        if (isWishReorderMode) {
             isWishFormOpen = false;
             document.getElementById('wish-form-container').style.display = 'none';
         }
@@ -1992,14 +2124,14 @@
             // 모드 OFF: 복구 및 Sortable 파괴
             handles.forEach(h => h.style.display = 'none');
             delBtns.forEach(b => b.style.display = 'block');
-            if(wishSortableInstance) wishSortableInstance.destroy();
+            if (wishSortableInstance) wishSortableInstance.destroy();
             fetchWishlist(); // 순서 섞어놓고 취소했으니 원본 다시 불러오기
         }
     }
 
     // 💡 2. 바뀐 순서 백엔드로 쏘기!
     async function saveWishOrder() {
-        if(!wishSortableInstance) return;
+        if (!wishSortableInstance) return;
 
         const orderedIds = Array.from(document.querySelectorAll('.wish-card')).map(card => card.getAttribute('data-id'));
 
@@ -2009,11 +2141,11 @@
             const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
                 method: "PUT",
                 // 💡 팩폭: 여기서도 JSON 명찰 필수!
-                headers: { "Content-Type": "application/json" },
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(orderedIds)
             });
 
-            if(res.ok) {
+            if (res.ok) {
                 document.getElementById('wish-reorder-actions').innerHTML = `
             <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
             <span class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
@@ -2022,22 +2154,26 @@
             } else {
                 alert("순서 저장 실패!");
             }
-        } catch(e) {
+        } catch (e) {
             alert("네트워크 오류!");
         }
     }
 
     // 💡 옷장 Soft Delete 함수
     async function deleteWardrobe(pageId) {
-        if(!confirm('진짜 옷장에서 빼시겠습니까? (과거 착향 로그는 보존됩니다)')) return;
+        if (!confirm('진짜 옷장에서 빼시겠습니까? (과거 착향 로그는 보존됩니다)')) return;
         try {
-            const res = await fetchWithAuth(`/api/v1/perfumes/${pageId}`, { method: "DELETE" });
-            if(res.ok) {
+            const res = await fetchWithAuth(`/api/v1/perfumes/${pageId}`, {method: "DELETE"});
+            if (res.ok) {
                 fetchWardrobe();
                 // 💡 삭제 성공 시 옷장 리스트로 강제 이동
                 switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
-            } else { alert('삭제 실패!'); }
-        } catch(e) { alert('네트워크 오류'); }
+            } else {
+                alert('삭제 실패!');
+            }
+        } catch (e) {
+            alert('네트워크 오류');
+        }
     }
 
     // 💡 수정 뷰 열기 및 닫기 통신 로직
@@ -2065,28 +2201,43 @@
         const btn = document.getElementById('edit-info-submit-btn');
         const statusMsg = document.getElementById('edit-info-status');
 
-        if(!name) { statusMsg.innerText = "[ERROR] Name is required."; return; }
+        if (!name) {
+            statusMsg.innerText = "[ERROR] Name is required.";
+            return;
+        }
 
-        btn.innerText = "Updating..."; statusMsg.innerText = "Saving to Notion DB...";
+        btn.innerText = "Updating...";
+        statusMsg.innerText = "Saving to Notion DB...";
 
         const endpoint = type === 'wardrobe' ? `/api/v1/perfumes/${pageId}` : `/api/v1/wishlist/${pageId}`;
 
         try {
             const res = await fetchWithAuth(endpoint, {
-                method: "PATCH", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name: name, brand: brand })
+                method: "PATCH", headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({name: name, brand: brand})
             });
 
-            if(res.ok) {
-                btn.classList.add('success'); btn.innerText = "UPDATED";
+            if (res.ok) {
+                btn.classList.add('success');
+                btn.innerText = "UPDATED";
                 statusMsg.innerText = "[SUCCESS] Details updated.";
                 setTimeout(() => {
-                    btn.classList.remove('success'); btn.innerText = "Update Data";
-                    if(type === 'wardrobe') { fetchWardrobe().then(() => openPerfumeDetail(pageId)); }
-                    else { fetchWishlist().then(() => openWishDetail(pageId)); }
+                    btn.classList.remove('success');
+                    btn.innerText = "Update Data";
+                    if (type === 'wardrobe') {
+                        fetchWardrobe().then(() => openPerfumeDetail(pageId));
+                    } else {
+                        fetchWishlist().then(() => openWishDetail(pageId));
+                    }
                 }, 1000);
-            } else { statusMsg.innerText = "[ERROR] Update failed."; btn.innerText = "Update Data"; }
-        } catch(e) { statusMsg.innerText = "[ERROR] Network failure."; btn.innerText = "Update Data"; }
+            } else {
+                statusMsg.innerText = "[ERROR] Update failed.";
+                btn.innerText = "Update Data";
+            }
+        } catch (e) {
+            statusMsg.innerText = "[ERROR] Network failure.";
+            btn.innerText = "Update Data";
+        }
     }
 
     // 💡 날씨 + 온도 기반 실시간 추천 엔진
@@ -2104,11 +2255,11 @@
 
         // 필터링 유틸 함수
         const matchWeather = (logW) => {
-            if(!logW) return false;
+            if (!logW) return false;
             const w = logW.toLowerCase();
-            if(isClear && (w.includes('clear') || w.includes('sun'))) return true;
-            if(isCloud && (w.includes('cloud'))) return true;
-            if(isRainSnow && (w.includes('rain') || w.includes('snow'))) return true;
+            if (isClear && (w.includes('clear') || w.includes('sun'))) return true;
+            if (isCloud && (w.includes('cloud'))) return true;
+            if (isRainSnow && (w.includes('rain') || w.includes('snow'))) return true;
             return false;
         };
 
@@ -2131,7 +2282,7 @@
         // 필터링된 후보군 중 최다 빈도수(가장 많이 뿌린 향수) 추출
         const counts = {};
         candidates.forEach(l => {
-            if(l.perfumeName) counts[l.perfumeName] = (counts[l.perfumeName] || 0) + 1;
+            if (l.perfumeName) counts[l.perfumeName] = (counts[l.perfumeName] || 0) + 1;
         });
 
         // 횟수가 가장 높은 향수 이름 찾기
@@ -2171,6 +2322,16 @@
     window.addEventListener('DOMContentLoaded', () => {
         checkAuth();
     });
+
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('Service Worker 등록 완료:', reg.scope))
+                .catch(err => console.log('Service Worker 등록 실패:', err));
+        });
+    }
+</script>
 </script>
 </body>
 </html>
