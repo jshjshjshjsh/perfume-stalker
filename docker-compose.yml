@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   perfume-backend:
     build: .
@@ -11,3 +9,15 @@ services:
     environment:
       - TZ=Asia/Seoul
     restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: perfume-stalker-tunnel
+    command: tunnel run
+    env_file:
+      - .env
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - perfume-backend
