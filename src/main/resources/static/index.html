@@ -391,30 +391,37 @@
         </div>
     </div>
 
-    <!-- 크롤링을 지원하는 폼으로 대공사 -->
-    <div id="wish-form-container" style="display: none; margin-top: 15px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 2px;">
+    <!-- 크롤링을 지원하는 폼으로 -->
+    <div id="wish-form-container" class="form-container" style="display: none; margin-top: 15px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 2px;">
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
 
-        <div class="form-group" style="margin-bottom: 15px;">
-            <label style="display:block; margin-bottom:5px; font-size:10px; color:var(--accent-color);">Fragrantica URL <span class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">[ auto fill ]</span></label>
-            <input type="url" id="wish-url" class="form-input" placeholder="Paste URL here..." style="width: 100%; padding-bottom:5px; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
-            <div id="wish-crawl-terminal" class="crawl-terminal" style="margin-top:8px;">
+        <div class="form-group">
+            <label>Fragrantica URL <span class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">[ auto fill ]</span></label>
+            <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
+            <!-- 프로그레스 터미널 -->
+            <div id="wish-crawl-terminal" class="crawl-terminal">
                 <span id="wish-crawl-step">> Fetching Notes... <span class="blink">_</span></span>
             </div>
         </div>
 
-        <input type="text" id="wish-name" class="form-input" placeholder="향수 이름 (필수)" style="margin-bottom: 12px; width: 100%; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
-        <input type="text" id="wish-brand" class="form-input" placeholder="브랜드 (필수)" style="margin-bottom: 15px; width: 100%; border:none; border-bottom:1px solid var(--text-color); background:transparent;">
-        <input type="hidden" id="wish-img">
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="wish-name" placeholder="e.g. Santal 33" required autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Brand *</label>
+            <input type="text" id="wish-brand" placeholder="e.g. Le Labo" required autocomplete="off">
+            <input type="hidden" id="wish-img">
+        </div>
 
-        <div class="form-group" id="wish-notes-preview-container" style="display: none; margin-bottom: 15px;">
-            <label style="display:block; margin-bottom:5px; font-size:10px; color:var(--accent-color);">Extracted Notes</label>
+        <div class="form-group" id="wish-notes-preview-container" style="display: none;">
+            <label>Extracted Notes</label>
             <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 8px;">
-            <button class="form-btn" style="background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); width: auto; padding: 4px 15px; cursor:pointer;" onclick="toggleWishForm()">Cancel</button>
-            <button class="form-btn" style="width: auto; padding: 4px 20px; border: 1px solid var(--text-color); background:var(--text-color); color:var(--bg-color); cursor:pointer;" onclick="submitWish()">Save</button>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="scan-btn" style="flex: 2;" onclick="submitWish()">Save Wish</button>
+            <button class="scan-btn delete-btn" style="flex: 1; padding: 10px;" onclick="toggleWishForm()">Cancel</button>
         </div>
     </div>
 
