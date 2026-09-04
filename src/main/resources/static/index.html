@@ -2315,6 +2315,38 @@
         document.getElementById('recommendation-widget').style.display = 'block';
     }
 
+    // 아이폰 전용 NFC 스캔 처리 함수
+    async function handleIosNfcScan(uid) {
+        const statusDiv = document.getElementById('status');
+        statusDiv.innerText = `[iOS NFC] 태그(${uid}) 확인 중...`;
+
+        try {
+            const response = await fetchWithAuth("/api/v1/logs/scan", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
+            });
+
+            const resultText = await response.text();
+
+            if (response.ok) {
+                // ✅ 기존 등록된 향수: 1초 만에 기록 완료
+                statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
+                fetchRecentLogs();
+            } else if (response.status === 400 && resultText.includes("Unregistered")) {
+                // ❌ 미등록 향수: 신규 등록 화면으로 납치 후 UID 자동 완성
+                alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
+                document.getElementById('reg-uid').value = uid; // 폼에 UID 박아주기
+                switchView('register', null);
+                statusDiv.innerText = "waiting for interaction...";
+            } else {
+                statusDiv.innerText = `[ERROR] ${resultText}`;
+            }
+        } catch (e) {
+            statusDiv.innerText = "[ERROR] 서버 통신 실패";
+        }
+    }
+
 
     function initializeAppData() {
         fetchRealWeather();
@@ -2327,7 +2359,22 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+        // 1. 기존 앱 인증 및 초기화 로직
         checkAuth();
+
+        // 2. iOS(아이폰) 딥링크 NFC 파라미터 가로채기
+        const urlParams = new URLSearchParams(window.location.search);
+        const scannedUid = urlParams.get('uid') || urlParams.get('id');
+
+        if (scannedUid) {
+            // 주소창 파라미터 즉시 삭제 (새로고침 시 무한 스캔 방지)
+            window.history.replaceState({}, document.title, window.location.pathname);
+
+            // checkAuth()로 토큰이 로딩될 시간을 벌어준 뒤 백엔드 찌르기
+            setTimeout(() => {
+                handleIosNfcScan(scannedUid);
+            }, 500);
+        }
     });
 
 
