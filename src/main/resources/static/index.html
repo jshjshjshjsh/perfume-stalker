@@ -325,9 +325,9 @@
 
 <!-- 2. WARDROBE VIEW -->
 <section id="view-wardrobe" class="view-section">
-    <div style="position: sticky; top: -1px; background-color: var(--bg-color, #f4f4f0); z-index: 10; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+    <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 16px;">My Wardrobe</h2>
+            <h2 id="wardrobe-title" style="margin: 0; font-size: 16px;">My Wardrobe</h2>
             <div id="wardrobe-default-actions">
                 <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
                 <span class="loc-btn" onclick="fetchWardrobe()">[ refresh ]</span>
@@ -380,9 +380,9 @@
 
 <!-- 💡 4. WISH VIEW (위시리스트 화면) -->
 <section id="view-wish" class="view-section">
-    <div style="position: sticky; top: -1px; background-color: var(--bg-color, #f4f4f0); z-index: 10; padding: 15px 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+    <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 16px;">Wishlist</h2>
+            <h2 id="wish-title" style="margin: 0; font-size: 16px;">Wishlist</h2>
             <div id="wish-default-actions">
                 <span class="loc-btn" onclick="toggleWishReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
                 <span class="loc-btn" onclick="toggleWishForm()">[ + add ]</span>
@@ -941,7 +941,11 @@
 
                     if (response.ok) {
                         statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
-                        setTimeout(resetScanUI, 2500);
+                        setTimeout(() => {
+                            fetchRecentLogs(); // 최근 로그 갱신
+                            fetchSummary();    // 통계 잔디 및 차트 갱신
+                            resetScanUI();     // 버튼 및 상태 메시지 초기화
+                        }, 1500);
                     }
                     // 💡 미등록 태그 감지 시 'Register View'로 화면 자동 전환!
                     else if (response.status === 400 && resultText.includes("Unregistered")) {
@@ -1189,7 +1193,7 @@
     async function fetchRecentLogs() {
         const container = document.getElementById('recent-logs-container');
         try {
-            const response = await fetchWithAuth("/api/v1/logs/recent?limit=5");
+            const response = await fetchWithAuth("/api/v1/logs/recent?limit=5&t=");
             if (response.ok) {
                 const logs = await response.json();
 
@@ -1468,6 +1472,10 @@
             const res = await fetchWithAuth("/api/v1/perfumes/list");
             if (res.ok) {
                 globalWardrobeData = await res.json();
+
+                // 💡 데이터 로드 후 개수 찍어주기
+                document.getElementById('wardrobe-title').innerText = `My Wardrobe (${globalWardrobeData.length})`;
+
                 if (globalWardrobeData.length === 0) {
                     container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">옷장이 비어있습니다.</div>`;
                     return;
@@ -1771,7 +1779,7 @@
         clearSearchDates(); // 검색창 초기화
 
         try {
-            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
+            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100&t=");
             if (res.ok) {
                 globalAllLogsData = await res.json();
                 renderAllLogs();
@@ -1957,6 +1965,10 @@
             const res = await fetchWithAuth("/api/v1/wishlist");
             if (res.ok) {
                 globalWishlistData = await res.json();
+
+                // 💡 데이터 로드 후 개수 찍어주기
+                document.getElementById('wish-title').innerText = `Wishlist (${globalWishlistData.length})`;
+
                 if (globalWishlistData.length === 0) {
                     container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
                     return;
@@ -2368,7 +2380,10 @@
             if (response.ok) {
                 // ✅ 기존 등록된 향수: 1초 만에 기록 완료
                 statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
-                fetchRecentLogs();
+                setTimeout(() => {
+                    fetchRecentLogs();
+                    fetchSummary();
+                }, 1500);
             } else if (response.status === 400 && resultText.includes("Unregistered")) {
                 // ❌ 미등록 향수: 신규 등록 화면으로 납치 후 UID 자동 완성
                 alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
