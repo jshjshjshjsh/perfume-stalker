@@ -2,6 +2,8 @@ package com.grove.perfumestalker.user;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.grove.perfumestalker.dto.UserAccountCommand;
+import com.grove.perfumestalker.dto.UserResponse;
+import com.grove.perfumestalker.dto.UserUpdateRequest;
 import com.grove.perfumestalker.enums.NotionUser;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
 import com.grove.perfumestalker.notion.util.NotionTokenUtils;
@@ -159,6 +161,57 @@ public class UserService {
                     }
                 })
                 .onErrorReturn("Busan"); // 에러 나도 멈추지 않고 기본값 리턴
+    }
+
+    public Mono<UserResponse> getUserInfo(String userPageId) {
+        return notionWebClient.get()
+                .uri("/pages/{pageId}", userPageId)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(page -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> props = (Map<String, Object>) page.get("properties");
+                    String userId = NotionParserUtils.extractDefaultTitle(props);
+                    String name = NotionParserUtils.extractRichText(props, NotionUser.NAME.getColumnName());
+                    String loc = NotionParserUtils.extractRichText(props, NotionUser.DEFAULT_LOCATION.getColumnName());
+
+                    // 체크박스 속성 안전하게 파싱
+                    boolean notiEnabled = false;
+                    try {
+                        Map<String, Object> notiProp = (Map<String, Object>) props.get(NotionUser.NOTI_ENABLED.getColumnName());
+                        if (notiProp != null && notiProp.get("checkbox") != null) {
+                            notiEnabled = (Boolean) notiProp.get("checkbox");
+                        }
+                    } catch (Exception e) {}
+
+                    return new UserResponse(userId, name, loc, notiEnabled);
+                });
+    }
+
+    public Mono<Void> updateUserInfo(String userPageId, UserUpdateRequest request) {
+        Map<String, Object> properties = new java.util.HashMap<>();
+
+        if (request.name() != null) {
+            properties.put(NotionUser.NAME.getColumnName(), NotionUser.NAME.formatValue(request.name()));
+        }
+        if (request.defaultLocation() != null) {
+            properties.put(NotionUser.DEFAULT_LOCATION.getColumnName(), NotionUser.DEFAULT_LOCATION.formatValue(request.defaultLocation()));
+        }
+        if (request.notiEnabled() != null) {
+            properties.put(NotionUser.NOTI_ENABLED.getColumnName(), NotionUser.NOTI_ENABLED.formatValue(request.notiEnabled()));
+        }
+
+        // 비밀번호가 입력되었을 경우에만 암호화해서 업데이트
+        if (request.password() != null && !request.password().trim().isEmpty()) {
+            String hashedPassword = BCrypt.hashpw(request.password(), BCrypt.gensalt());
+            properties.put("PASSWORD", Map.of("rich_text", List.of(Map.of("text", Map.of("content", hashedPassword)))));
+        }
+
+        return notionWebClient.patch()
+                .uri("/pages/{pageId}", userPageId)
+                .bodyValue(Map.of("properties", properties))
+                .retrieve()
+                .bodyToMono(Void.class);
     }
 
     // --- 💡 내부 전용 JSON 파싱 DTO ---

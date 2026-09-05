@@ -275,7 +275,10 @@
     <div class="weather-widget" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--text-color); flex-shrink: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">DATE: <span id="current-date" style="color: var(--text-color);"></span></h2>
-            <span class="loc-btn" onclick="logout()" style="margin: 0;">[ logout ]</span>
+            <div>
+                <span class="loc-btn" onclick="openSettingsView()" style="margin-right: 10px;">[ settings ]</span>
+                <span class="loc-btn" onclick="logout()" style="margin: 0;">[ logout ]</span>
+            </div>
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">LOC: <span id="current-loc" style="color: var(--text-color);">loading...</span></h2>
@@ -654,6 +657,39 @@
     </div>
 
     <div id="all-logs-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+    </div>
+</section>
+
+<section id="view-settings" class="view-section">
+    <div class="weather-widget">
+        <h2>My Settings <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ back ]</span></h2>
+        <p>Update your profile information.</p>
+    </div>
+
+    <div class="form-container">
+        <div class="form-group">
+            <label>User ID (Read Only)</label>
+            <input type="text" id="setting-id" readonly>
+        </div>
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="setting-name" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Default Location (City)</label>
+            <input type="text" id="setting-loc" autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>New Password (비워두면 유지)</label>
+            <input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password">
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="setting-noti" style="width: auto;">
+            <label style="margin: 0;">Enable Notifications</label>
+        </div>
+
+        <button id="setting-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitSettings()">Save Changes</button>
+        <div id="setting-status" class="status-msg"></div>
     </div>
 </section>
 
@@ -2344,6 +2380,84 @@
             }
         } catch (e) {
             statusDiv.innerText = "[ERROR] 서버 통신 실패";
+        }
+    }
+
+    // 설정 화면 열기 (기존 정보 불러오기)
+    async function openSettingsView() {
+        switchView('settings', null);
+        document.getElementById('setting-status').innerText = "Loading user info...";
+        // 진입 시 비밀번호 칸 무조건 비우기
+        document.getElementById('setting-pw').value = '';
+
+        try {
+            const res = await fetchWithAuth("/api/v1/users/me");
+            if (res.ok) {
+                const user = await res.json();
+                document.getElementById('setting-id').value = user.userId || '';
+                document.getElementById('setting-name').value = user.name || '';
+                document.getElementById('setting-loc').value = user.defaultLocation || '';
+                // 알림 설정 체크박스 연동
+                document.getElementById('setting-noti').checked = user.notiEnabled === true;
+                document.getElementById('setting-status').innerText = "";
+            } else {
+                document.getElementById('setting-status').innerText = "[ERROR] Failed to load.";
+            }
+        } catch (e) {
+            document.getElementById('setting-status').innerText = "[ERROR] Network failure.";
+        }
+    }
+
+    async function submitSettings() {
+        const name = document.getElementById('setting-name').value.trim();
+        const loc = document.getElementById('setting-loc').value.trim();
+        const pw = document.getElementById('setting-pw').value;
+        const noti = document.getElementById('setting-noti').checked;
+
+        const statusMsg = document.getElementById('setting-status');
+        const btn = document.getElementById('setting-submit-btn');
+
+        statusMsg.innerText = "Updating profile...";
+        btn.innerText = "Saving...";
+
+        // 전송할 페이로드 (비밀번호는 값이 있을 때만 추가)
+        const payload = { name: name, defaultLocation: loc, notiEnabled: noti };
+        if (pw) {
+            payload.password = pw;
+        }
+
+        try {
+            const res = await fetchWithAuth("/api/v1/users/me", {
+                method: "PATCH",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                btn.classList.add('success');
+                btn.innerText = "UPDATED";
+                statusMsg.innerText = "[SUCCESS] Profile updated.";
+
+                // 비밀번호를 바꿨다면 다시 로그인하게 유도
+                if (pw) {
+                    alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
+                    logout();
+                    return;
+                }
+
+                setTimeout(() => {
+                    btn.classList.remove('success');
+                    btn.innerText = "Save Changes";
+                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                    fetchRealWeather();
+                }, 1500);
+            } else {
+                statusMsg.innerText = "[ERROR] Update failed.";
+                btn.innerText = "Save Changes";
+            }
+        } catch (e) {
+            statusMsg.innerText = "[ERROR] Network failure.";
+            btn.innerText = "Save Changes";
         }
     }
 
