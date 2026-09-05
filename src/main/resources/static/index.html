@@ -938,8 +938,14 @@
         crawledNotesData = null;
         crawledImageUrl = "";
 
-        // 메인 뷰로 복귀
-        switchView('main', document.querySelector('.nav-item.main-tab'));
+        // 💡 샘플 등록 중이었다면 메인이 아니라 옷장 'Samples' 탭으로 귀환
+        if (currentIsSample) {
+            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]); // 하단 네비게이션 옷장 탭 활성화
+            switchWardrobeTab('sample'); // 샘플 탭으로 전환
+        } else {
+            // 본품 등록 중이었다면 기존대로 메인으로 복귀
+            switchView('main', document.querySelector('.nav-item.main-tab'));
+        }
     }
 
     // --- NFC 스캔 모듈 ---
@@ -2731,11 +2737,11 @@
         const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
 
         if (isSample) {
-            if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ cancel ]</span>`;
+            if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
             if (uidGroup) uidGroup.style.display = 'none'; // 샘플일 땐 NFC UID 칸 숨김
             if (uidInput) uidInput.value = '';
         } else {
-            if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ cancel ]</span>`;
+            if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
             if (uidGroup) uidGroup.style.display = 'block'; // 본품일 땐 노출
         }
     }
