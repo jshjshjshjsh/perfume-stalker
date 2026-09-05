@@ -103,7 +103,13 @@ public enum NotionPerfumeMaster {
         public Map<String, Object> formatValue(Object value) {
             return Map.of("checkbox", Boolean.parseBoolean(String.valueOf(value)));
         }
-    };;
+    },
+    IS_SAMPLE("IS_SAMPLE", "checkbox") { // 💡 샘플 플래그 추가
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of("checkbox", Boolean.parseBoolean(String.valueOf(value)));
+        }
+    };
 
     private final String columnName;
     private final String propertyType;

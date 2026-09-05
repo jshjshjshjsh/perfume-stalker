@@ -28,7 +28,7 @@ public enum NotionWishlist {
             return Map.of(getPropertyType(), String.valueOf(value));
         }
     },
-    URL("URL", "url") { // 형님 요청대로 FRAGRANTICA_URL에서 URL로 팩폭 수정 완료
+    URL("URL", "url") {
         @Override
         public Map<String, Object> formatValue(Object value) {
             return Map.of(getPropertyType(), String.valueOf(value));

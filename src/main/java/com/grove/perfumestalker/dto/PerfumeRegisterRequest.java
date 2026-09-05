@@ -15,5 +15,6 @@ public class PerfumeRegisterRequest {
     private Double lat;
     private Double lon;
     private String date;
-    Boolean skipLog;
+    private Boolean skipLog;
+    private Boolean isSample;
 }

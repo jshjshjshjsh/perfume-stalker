@@ -105,7 +105,7 @@ public class NotionService {
             }
             properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
 
-            // 💡 팩폭: 날짜가 비어있으면 백엔드에서 KST 기준 오늘 날짜 강제 주입!
+            // 날짜가 비어있으면 백엔드에서 KST 기준 오늘 날짜 강제 주입!
             String targetDate = (req.getDate() != null && !req.getDate().isBlank())
                     ? req.getDate()
                     : LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).toString();
@@ -118,6 +118,15 @@ public class NotionService {
                 properties.put(NotionPerfumeMaster.MIDDLE_NOTES.name(), buildMultiSelect(notes.get("middle")));
                 properties.put(NotionPerfumeMaster.BASE_NOTES.name(), buildMultiSelect(notes.get("base")));
                 properties.put(NotionPerfumeMaster.NOTES.name(), buildMultiSelect(notes.get("general")));
+            }
+
+            boolean isSample = Boolean.TRUE.equals(req.getIsSample());
+            properties.put(NotionPerfumeMaster.IS_SAMPLE.getColumnName(), NotionPerfumeMaster.IS_SAMPLE.formatValue(isSample));
+
+            // 만약 샘플이라면 UID를 강제로 "SAMPLE-랜덤문자열"로 덮어쓰기
+            if (isSample && (req.getUid() == null || req.getUid().trim().isEmpty())) {
+                String dummyUid = "SAMPLE-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+                properties.put(NotionPerfumeMaster.UID.getColumnName(), NotionPerfumeMaster.UID.formatValue(dummyUid));
             }
 
             Map<String, Object> body = Map.of(
@@ -231,6 +240,15 @@ public class NotionService {
 
                         String date = NotionParserUtils.extractDate(props, NotionPerfumeMaster.DATE.getColumnName());
 
+                        // 샘플 여부 파싱 로직 추가
+                        boolean isSample = false;
+                        try {
+                            Map<String, Object> sampleProp = (Map<String, Object>) props.get(NotionPerfumeMaster.IS_SAMPLE.getColumnName());
+                            if (sampleProp != null && sampleProp.get("checkbox") != null) {
+                                isSample = (Boolean) sampleProp.get("checkbox");
+                            }
+                        } catch (Exception e) {}
+
                         List<String> topNotes = NotionParserUtils.extractMultiSelect(props, "TOP_NOTES");
                         List<String> middleNotes = NotionParserUtils.extractMultiSelect(props, "MIDDLE_NOTES");
                         List<String> baseNotes = NotionParserUtils.extractMultiSelect(props, "BASE_NOTES");
@@ -250,6 +268,7 @@ public class NotionService {
                         dto.put("notes", notesMap);
                         dto.put("imageUrl", imageUrl);
                         dto.put("date", date);
+                        dto.put("isSample", isSample);
                         return dto;
                     }).collect(Collectors.toList());
                 });

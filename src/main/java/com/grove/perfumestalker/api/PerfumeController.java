@@ -103,7 +103,7 @@ public class PerfumeController {
                 .map(ResponseEntity::ok);
     }
 
-    @PutMapping("/reorder")
+    @PatchMapping("/reorder")
     public Mono<ResponseEntity<String>> reorderWardrobe(@RequestBody List<String> pageIds) {
         return notionService.reorderWardrobe(pageIds)
                 .then(Mono.just(ResponseEntity.ok("✅ 옷장 순서 저장 완료")));

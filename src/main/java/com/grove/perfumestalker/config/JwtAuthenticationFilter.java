@@ -20,7 +20,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final NotionTokenUtils tokenUtils;
 
-    // 💡 팩폭 해결: 인증 검사를 '건너뛸' 경로들을 여기에 깔끔하게 정의!
+    // 💡 인증 검사를 '건너뛸' 경로들을 여기에 깔끔하게 정의
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();

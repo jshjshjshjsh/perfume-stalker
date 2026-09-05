@@ -114,7 +114,7 @@ public class LogController {
 
         return weatherMono.flatMap(weather -> {
 
-            // 💡 팩폭 해결: 수동 입력은 프론트에서 넘어온 커스텀 날짜(date)를 통째로 넣어서 포장!
+            // 💡 수동 입력은 프론트에서 넘어온 커스텀 날짜(date)를 통째로 넣어서 포장
             UsageLogCreateCommand command = new UsageLogCreateCommand(
                     request.getPerfumeId(),
                     weather,

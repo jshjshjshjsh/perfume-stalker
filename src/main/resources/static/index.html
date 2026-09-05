@@ -224,6 +224,25 @@
             -webkit-user-select: none;
             user-select: none;
         }
+
+        /* 💡 드래그되어 빠져나간 '빈 자리(그림자)' 스타일 */
+        .sortable-ghost {
+            opacity: 0.3 !important;
+            background-color: rgba(244, 63, 94, 0.05); /* accent-color의 아주 연한 핑크 배경 */
+            border: 2px dashed var(--accent-color);
+            border-radius: 8px;
+        }
+
+        /* 💡 손가락/마우스를 따라다니며 허공에 뜬 '진짜 아이템' 스타일 */
+        .sortable-drag {
+            background-color: var(--bg-color) !important;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
+            opacity: 1 !important;
+            border-radius: 8px;
+            cursor: grabbing !important;
+            z-index: 9999 !important;
+            transition: none !important;
+        }
     </style>
 </head>
 <body>
@@ -331,17 +350,25 @@
 
 <!-- 2. WARDROBE VIEW -->
 <section id="view-wardrobe" class="view-section">
-    <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="wardrobe-title" style="margin: 0; font-size: 16px;">My Wardrobe</h2>
-            <div id="wardrobe-default-actions">
-                <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
+    <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 0 0; margin-top: -40px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+            <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Wardrobe</h2>
+
+            <div id="wardrobe-default-actions" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
+                <span id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">[ + sample ]</span>
+                <span class="loc-btn" onclick="toggleWardrobeReorderMode()">[ reorder ]</span>
                 <span class="loc-btn" onclick="fetchWardrobe()">[ refresh ]</span>
             </div>
-            <div id="wardrobe-reorder-actions" style="display: none; gap: 10px;">
+
+            <div id="wardrobe-reorder-actions" style="display: none; gap: 10px; justify-content: flex-end;">
                 <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
-                <span class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+                <span id="btn-save-w-order" class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
             </div>
+        </div>
+
+        <div style="display: flex; margin-top: 15px; border-bottom: 1px solid #e0e0dc;">
+            <div id="tab-bottle" onclick="switchWardrobeTab('bottle')" style="flex: 1; text-align: center; padding-bottom: 8px; cursor: pointer; font-size: 14px; font-weight: bold; color: var(--accent-color); border-bottom: 2px solid var(--accent-color);">Full Bottles</div>
+            <div id="tab-sample" onclick="switchWardrobeTab('sample')" style="flex: 1; text-align: center; padding-bottom: 8px; cursor: pointer; font-size: 14px; color: #a1a1aa; border-bottom: 2px solid transparent;">Samples</div>
         </div>
     </div>
 
@@ -361,7 +388,7 @@
     <div class="future-dashboard">
         <div class="dashboard-header">Top 3 Hall of Fame</div>
         <div style="display: flex; align-items: center; justify-content: flex-start; height: 100px; gap: 20px;">
-            <!-- 💡 팩폭: 차트 크기를 75px로 줄여서 훨씬 세련되게! -->
+            <!-- 💡 차트 크기를 75px로 줄여서 훨씬 세련되게! -->
             <div style="width: 75px; height: 75px; flex-shrink: 0;">
                 <canvas id="topPerfumeChart"></canvas>
             </div>
@@ -395,7 +422,7 @@
             </div>
             <div id="wish-reorder-actions" style="display: none; gap: 10px;">
                 <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
-                <span class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+                <span id="btn-save-wish-order" class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
             </div>
         </div>
     </div>
@@ -477,7 +504,7 @@
         <p id="detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
 
-    <!-- 1. 이미지 & 노트 뱃지 영역 (팩폭 수정: 내부 스크롤 제거, 자연스러운 세로 확장) -->
+    <!-- 1. 이미지 & 노트 뱃지 영역 -->
     <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 10px;">
 
         <!-- 썸네일 고정 영역 (flex-shrink: 0 으로 찌그러짐 방지) -->
@@ -590,6 +617,11 @@
             <div id="notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;">
                 <!-- JS에서 뱃지가 렌더링됨 -->
             </div>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; margin-bottom: 20px;">
+            <input type="checkbox" id="reg-auto-log" style="width: auto;">
+            <label for="reg-auto-log" style="margin: 0; font-size: 13px; color: var(--text-color);">등록과 동시에 오늘 착향 기록 남기기</label>
         </div>
 
         <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
@@ -1047,7 +1079,7 @@
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 70000);
 
-        // 💡 4. 핵심 팩폭: 백엔드 재시도 주기에 맞춘 실시간 터미널 텍스트 교체!
+        // 💡 4. 백엔드 재시도 주기에 맞춘 실시간 터미널 텍스트 교체
         let retryPhase = 0;
         const progressInterval = setInterval(() => {
             retryPhase++;
@@ -1135,23 +1167,30 @@
 
     // --- 💡 신규 향수 등록 (Submit) 모듈 ---
     document.getElementById('register-submit-btn').addEventListener('click', async () => {
-        const uid = document.getElementById('reg-uid').value;
+        let uid = document.getElementById('reg-uid').value;
         const name = document.getElementById('reg-name').value.trim();
         const brand = document.getElementById('reg-brand').value.trim();
         const url = document.getElementById('reg-url').value.trim();
+        const autoLog = document.getElementById('reg-auto-log').checked; // 체크박스 값 읽기
         const regStatus = document.getElementById('reg-status');
         const submitBtn = document.getElementById('register-submit-btn');
+
+        if (currentIsSample) {
+            uid = `SAMPLE-${new Date().getTime()}`;
+        } else if (!uid) {
+            regStatus.innerText = "[ERROR] NFC UID is required.";
+            return;
+        }
 
         if (!name) {
             regStatus.innerText = "[ERROR] Name is required.";
             return;
         }
 
-        submitBtn.innerText = "Registering...";
+        submitBtn.innerText = "Processing...";
         regStatus.innerText = "Syncing with Master DB...";
 
         try {
-            // 💡 팩폭: 토큰을 실어 보내는 fetchWithAuth 적용!
             const res = await fetchWithAuth("/api/v1/perfumes/register", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -1159,7 +1198,9 @@
                     uid, name, brand, url,
                     imageUrl: crawledImageUrl,
                     notes: crawledNotesData,
-                    lat: currentLat, lon: currentLon
+                    lat: currentLat, lon: currentLon,
+                    isSample: currentIsSample,
+                    skipLog: !autoLog // 💡 체크를 해제했다면 로그 생성을 스킵(true)
                 })
             });
 
@@ -1167,15 +1208,16 @@
 
             if (res.ok) {
                 submitBtn.classList.add('success');
-                submitBtn.innerText = "REGISTERED";
-                regStatus.innerText = "[SUCCESS] Perfume added to Wardrobe.";
+                submitBtn.innerText = "SUCCESS";
+                regStatus.innerText = `[SUCCESS] ${currentIsSample ? 'Sample' : 'Perfume'} added to Wardrobe.`;
 
                 setTimeout(() => {
-                    // 1. 폼 데이터 싹 비우기
-                    document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
+                    document.querySelectorAll('#view-register input:not(#reg-uid):not([type="checkbox"])').forEach(el => el.value = '');
                     document.getElementById('notes-preview-container').style.display = 'none';
 
-                    // 💡 핵심 팩폭 해결: 유령 태그 대신 새로 만든 터미널을 확실하게 숨김!
+                    // 체크박스 기본값(checked)으로 원복
+                    document.getElementById('reg-auto-log').checked = true;
+
                     const terminal = document.getElementById('crawl-terminal');
                     if (terminal) terminal.style.display = 'none';
 
@@ -1185,17 +1227,19 @@
                     submitBtn.innerText = "Register & Log";
                     regStatus.innerText = "";
 
-                    // 2. 메인 화면 복귀 및 대시보드 리프레시! (이제 뻗지 않고 완벽 실행됨)
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                    // 옷장 화면으로 이동하고, 방금 등록한 탭 열어주기
+                    switchView('wardrobe', document.querySelector('.nav-item.wardrobe-tab') || null);
+                    switchWardrobeTab(currentIsSample ? 'sample' : 'bottle');
+                    fetchWardrobe();
                     fetchRecentLogs();
                 }, 2000);
             } else {
                 regStatus.innerText = `[ERROR] ${resultText}`;
-                submitBtn.innerText = "Register & Log";
+                submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
             }
         } catch (e) {
             regStatus.innerText = "[ERROR] Network failure.";
-            submitBtn.innerText = "Register & Log";
+            submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
         }
     });
 
@@ -1511,54 +1555,19 @@
     let globalWardrobeData = [];
     let isWardrobeReorderMode = false;
     let wardrobeSortableInstance = null;
+    let wardrobeSortable = null;
 
     // 💡 2. 옷장(Wardrobe) 데이터 불러오기
     async function fetchWardrobe() {
         const container = document.getElementById('wardrobe-container');
         container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
         try {
+            // 형님의 올바른 엔드포인트 유지!
             const res = await fetchWithAuth("/api/v1/perfumes/list");
             if (res.ok) {
                 globalWardrobeData = await res.json();
-
-                // 💡 데이터 로드 후 개수 찍어주기
-                document.getElementById('wardrobe-title').innerText = `My Wardrobe (${globalWardrobeData.length})`;
-
-                if (globalWardrobeData.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">옷장이 비어있습니다.</div>`;
-                    return;
-                }
-                container.innerHTML = globalWardrobeData.map(p => {
-                    const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
-                    const shortDate = p.date ? p.date.split('T')[0] : '';
-                    let notesPreview = "No notes recorded.";
-                    if (p.notes) {
-                        try {
-                            const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
-                            const allNotes = [];
-                            if (parsed.top) allNotes.push(...parsed.top);
-                            if (parsed.middle) allNotes.push(...parsed.middle);
-                            if (parsed.base) allNotes.push(...parsed.base);
-                            if (parsed.general) allNotes.push(...parsed.general);
-                            if (allNotes.length > 0) notesPreview = allNotes.join(', ');
-                        } catch (e) {
-                        }
-                    }
-                    return `
-                        <div class="wardrobe-card" data-id="${p.id}" style="cursor: pointer; display: flex; align-items: center;" onclick="openPerfumeDetail('${p.id}')">
-                            <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
-                            ${imgTag}
-                            <div class="wardrobe-info" style="flex: 1;">
-                                <!-- 💡 팩폭: 옷장도 위시리스트랑 똑같이 브랜드 옆에 날짜 배치! -->
-                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px;">
-                                    ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
-                                </div>
-                                <div class="wardrobe-name">${p.name}</div>
-                                <div class="wardrobe-notes">${notesPreview}</div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                // 데이터 로드 성공 시 렌더링 함수로 토스
+                renderWardrobeGrid();
             }
         } catch (e) {
             container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
@@ -1567,52 +1576,78 @@
 
     function toggleWardrobeReorderMode() {
         isWardrobeReorderMode = !isWardrobeReorderMode;
-
-        document.getElementById('wardrobe-default-actions').style.display = isWardrobeReorderMode ? 'none' : 'block';
-        document.getElementById('wardrobe-reorder-actions').style.display = isWardrobeReorderMode ? 'flex' : 'none';
-
-        const handles = document.querySelectorAll('.wardrobe-drag-handle');
-        const delBtns = document.querySelectorAll('.wardrobe-del-btn');
-        const container = document.getElementById('wardrobe-container');
+        const defaultActions = document.getElementById('wardrobe-default-actions');
+        const reorderActions = document.getElementById('wardrobe-reorder-actions');
+        const dragHandles = document.querySelectorAll('.wardrobe-drag-handle');
 
         if (isWardrobeReorderMode) {
-            // 💡 모드 켜짐: 핸들 보이기 / 삭제 버튼 숨기기
-            handles.forEach(h => h.style.display = 'block');
-            delBtns.forEach(b => b.style.display = 'none');
-
-            wardrobeSortableInstance = new Sortable(container, {
-                animation: 150,
-                handle: '.wardrobe-drag-handle',
-                ghostClass: 'sortable-ghost'
-            });
+            defaultActions.style.display = 'none';
+            reorderActions.style.display = 'flex';
+            dragHandles.forEach(el => el.style.display = 'block');
+            initWardrobeSortable();
         } else {
-            // 💡 모드 꺼짐: 핸들 숨기기 / 삭제 버튼 복구
-            handles.forEach(h => h.style.display = 'none');
-            delBtns.forEach(b => b.style.display = 'block');
-
-            if (wardrobeSortableInstance) wardrobeSortableInstance.destroy();
-            fetchWardrobe();
+            defaultActions.style.display = 'flex';
+            reorderActions.style.display = 'none';
+            dragHandles.forEach(el => el.style.display = 'none');
+            if (wardrobeSortable) {
+                wardrobeSortable.destroy();
+                wardrobeSortable = null;
+            }
         }
     }
 
+    // 💡 옷장 드래그 앤 드롭 활성화 함수
+    function initWardrobeSortable() {
+        const container = document.getElementById('wardrobe-container');
+        if (container) {
+            wardrobeSortable = new Sortable(container, {
+                animation: 200, // 💡 애니메이션 속도를 150 -> 200으로 늘려 더 부드럽게
+                handle: '.wardrobe-drag-handle',
+                ghostClass: 'sortable-ghost', // 빈 자리 클래스
+                dragClass: 'sortable-drag',   // 허공에 뜬 아이템 클래스
+                forceFallback: true,
+                fallbackClass: 'sortable-drag'
+            });
+        }
+    }
+
+    // 💡 3. 정렬(Reorder) 저장 시 인터랙션 추가
     async function saveWardrobeOrder() {
-        if (!wardrobeSortableInstance) return;
-        const orderedIds = Array.from(document.querySelectorAll('.wardrobe-card')).map(card => card.getAttribute('data-id'));
+        const cards = document.querySelectorAll('#wardrobe-container .wardrobe-card');
+        const orderedIds = Array.from(cards).map(card => card.getAttribute('data-id'));
+
+        if (orderedIds.length === 0) {
+            toggleWardrobeReorderMode();
+            return;
+        }
+
+        // 💡 저장 중 UI 피드백 추가
+        const saveBtn = document.getElementById('btn-save-w-order');
+        const originalText = saveBtn.innerText;
+        saveBtn.innerText = "[ saving... ]";
+        saveBtn.style.color = "#f59e0b"; // 주황색으로 변경
+        saveBtn.style.pointerEvents = "none"; // 더블 클릭 방지
+
         try {
-            document.getElementById('wardrobe-reorder-actions').innerHTML = `<span style="font-size: 11px; color: var(--accent-color);">saving...</span>`;
             const res = await fetchWithAuth("/api/v1/perfumes/reorder", {
-                method: "PUT",
-                headers: {"Content-Type": "application/json"},
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(orderedIds)
             });
+
             if (res.ok) {
-                document.getElementById('wardrobe-reorder-actions').innerHTML = `<span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span><span class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>`;
                 toggleWardrobeReorderMode();
+                fetchWardrobe(); // 저장 후 목록 새로고침
             } else {
-                alert("순서 저장 실패!");
+                alert("순서 저장에 실패했습니다.");
             }
         } catch (e) {
-            alert("네트워크 오류!");
+            alert("네트워크 오류가 발생했습니다.");
+        } finally {
+            // 💡 통신 끝나면 원래 버튼 상태로 복구
+            saveBtn.innerText = originalText;
+            saveBtn.style.color = "#10b981";
+            saveBtn.style.pointerEvents = "auto";
         }
     }
 
@@ -1790,7 +1825,7 @@
             }
             heatmapBox.innerHTML = heatmapHtml;
 
-            // --- 3. 날씨 픽 (최근 30일 필터링 팩폭 적용) ---
+            // --- 3. 날씨 픽 (최근 30일 필터링 적용) ---
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(today.getDate() - 30);
 
@@ -2025,7 +2060,7 @@
         }
     }
 
-    // 💡 4. 리스트 렌더링 (날짜 표시 & info 버튼 팩폭 튜닝)
+    // 💡 4. 리스트 렌더링 (날짜 표시 & info 버튼 튜닝)
     async function fetchWishlist() {
         const container = document.getElementById('wish-container');
         container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
@@ -2150,7 +2185,7 @@
                 btn.innerText = "TAG DETECTED";
                 statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
 
-                // 💡 팩폭: 승격된 '오늘 날짜'로 덮어쓰기!
+                // 💡 승격된 '오늘 날짜'로 덮어쓰기!
                 const todayDate = new Date().toLocaleDateString('ko-KR', {
                     year: 'numeric',
                     month: '2-digit',
@@ -2236,7 +2271,7 @@
         if (isWishReorderMode) {
             // 모드 ON: 손잡이 보이고, 삭제 버튼 숨기고, Sortable 활성화
             handles.forEach(h => h.style.display = 'block');
-            delBtns.forEach(b => b.style.display = 'none');
+            delBtns.forEach(b => b.style.display = 'flex');
 
             wishSortableInstance = new Sortable(container, {
                 animation: 150,
@@ -2246,7 +2281,7 @@
         } else {
             // 모드 OFF: 복구 및 Sortable 파괴
             handles.forEach(h => h.style.display = 'none');
-            delBtns.forEach(b => b.style.display = 'block');
+            delBtns.forEach(b => b.style.display = 'flex');
             if (wishSortableInstance) wishSortableInstance.destroy();
             fetchWishlist(); // 순서 섞어놓고 취소했으니 원본 다시 불러오기
         }
@@ -2258,27 +2293,40 @@
 
         const orderedIds = Array.from(document.querySelectorAll('.wish-card')).map(card => card.getAttribute('data-id'));
 
-        try {
-            document.getElementById('wish-reorder-actions').innerHTML = `<span style="font-size: 11px; color: var(--accent-color);">saving...</span>`;
+        if (orderedIds.length === 0) {
+            toggleWishReorderMode();
+            return;
+        }
 
+        // 💡 HTML 통째로 덮어쓰지 않고, 저장 버튼만 콕 집어서 상태 변경
+        const saveBtn = document.getElementById('btn-save-wish-order');
+        const originalText = saveBtn.innerText;
+        saveBtn.innerText = "[ saving... ]";
+        saveBtn.style.color = "#f59e0b"; // 오렌지색 피드백
+        saveBtn.style.pointerEvents = "none";
+
+        try {
             const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
-                method: "PUT",
-                // 💡 팩폭: 여기서도 JSON 명찰 필수!
+                method: "PUT", // 형님이 쓰던 PUT 방식 유지
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(orderedIds)
             });
 
             if (res.ok) {
-                document.getElementById('wish-reorder-actions').innerHTML = `
-            <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
-            <span class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
-        `;
                 toggleWishReorderMode();
+                fetchWishlist();
             } else {
                 alert("순서 저장 실패!");
             }
         } catch (e) {
             alert("네트워크 오류!");
+        } finally {
+            // 💡 성공하든 실패하든 통신이 끝나면 버튼 상태 원래대로 원복
+            if (saveBtn) {
+                saveBtn.innerText = originalText;
+                saveBtn.style.color = "#10b981"; // 기존 초록색
+                saveBtn.style.pointerEvents = "auto";
+            }
         }
     }
 
@@ -2583,6 +2631,123 @@
         rateDisplay.innerText = `${num.toFixed(1)} / 5.0`;
         rateDisplay.style.color = '#f59e0b';
     }
+
+    // 💡 1. 탭 상태 관리 변수 및 전환 함수 추가
+    let currentWardrobeTab = 'bottle';
+
+    function switchWardrobeTab(tab) {
+        if (isWardrobeReorderMode) {
+            toggleWardrobeReorderMode();
+        }
+
+        currentWardrobeTab = tab;
+
+        const btnBottle = document.getElementById('tab-bottle');
+        const btnSample = document.getElementById('tab-sample');
+        const btnAddSample = document.getElementById('btn-add-sample');
+
+        if (tab === 'bottle') {
+            btnBottle.style.color = 'var(--accent-color)';
+            btnBottle.style.fontWeight = 'bold';
+            btnBottle.style.borderBottom = '2px solid var(--accent-color)';
+
+            btnSample.style.color = '#a1a1aa';
+            btnSample.style.fontWeight = 'normal';
+            btnSample.style.borderBottom = '2px solid transparent';
+
+            btnAddSample.style.display = 'none';
+        } else {
+            btnSample.style.color = 'var(--accent-color)';
+            btnSample.style.fontWeight = 'bold';
+            btnSample.style.borderBottom = '2px solid var(--accent-color)';
+
+            btnBottle.style.color = '#a1a1aa';
+            btnBottle.style.fontWeight = 'normal';
+            btnBottle.style.borderBottom = '2px solid transparent';
+
+            btnAddSample.style.display = 'inline-block';
+        }
+        renderWardrobeGrid();
+    }
+
+    function renderWardrobeGrid() {
+        const container = document.getElementById('wardrobe-container');
+
+        // 현재 탭 상태에 따라 본품/샘플 필터링
+        const filteredData = globalWardrobeData.filter(p =>
+            currentWardrobeTab === 'sample' ? p.isSample === true : p.isSample !== true
+        );
+
+        document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
+
+        if (filteredData.length === 0) {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">${currentWardrobeTab === 'sample' ? '샘플이' : '옷장이'} 비어있습니다.</div>`;
+            return;
+        }
+
+        // 형님의 완벽한 map.join 렌더링 로직 100% 복붙
+        container.innerHTML = filteredData.map(p => {
+            const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
+            const shortDate = p.date ? p.date.split('T')[0] : '';
+            let notesPreview = "No notes recorded.";
+            if (p.notes) {
+                try {
+                    const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
+                    const allNotes = [];
+                    if (parsed.top) allNotes.push(...parsed.top);
+                    if (parsed.middle) allNotes.push(...parsed.middle);
+                    if (parsed.base) allNotes.push(...parsed.base);
+                    if (parsed.general) allNotes.push(...parsed.general);
+                    if (allNotes.length > 0) notesPreview = allNotes.join(', ');
+                } catch (e) {
+                }
+            }
+            return `
+            <div class="wardrobe-card" data-id="${p.id}" style="cursor: pointer; display: flex; align-items: center;" onclick="openPerfumeDetail('${p.id}')">
+                <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
+                ${imgTag}
+                <div class="wardrobe-info" style="flex: 1;">
+                    <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px;">
+                        ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
+                    </div>
+                    <div class="wardrobe-name">${p.name}</div>
+                    <div class="wardrobe-notes">${notesPreview}</div>
+                </div>
+            </div>
+        `;
+        }).join('');
+    }
+
+    // 💡 2. 샘플 등록 창 열기 (NFC 입력창 자동 숨김)
+    let currentIsSample = false;
+
+    function openRegisterView(isSample = false) {
+        currentIsSample = isSample;
+        switchView('register', null);
+
+        // 등록 폼 UI 분기 처리
+        const titleEl = document.querySelector('#view-register h2');
+        const uidInput = document.getElementById('reg-uid');
+        const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
+
+        if (isSample) {
+            if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ cancel ]</span>`;
+            if (uidGroup) uidGroup.style.display = 'none'; // 샘플일 땐 NFC UID 칸 숨김
+            if (uidInput) uidInput.value = '';
+        } else {
+            if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ cancel ]</span>`;
+            if (uidGroup) uidGroup.style.display = 'block'; // 본품일 땐 노출
+        }
+    }
+
+    document.getElementById('reg-auto-log').addEventListener('change', (e) => {
+        const btn = document.getElementById('register-submit-btn');
+        if (e.target.checked) {
+            btn.innerText = "Register & Log";
+        } else {
+            btn.innerText = "Register Only";
+        }
+    });
 
 
     function initializeAppData() {
