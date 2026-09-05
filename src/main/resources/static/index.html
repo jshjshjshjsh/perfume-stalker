@@ -47,7 +47,13 @@
 
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); } }
         @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
+        @keyframes badge-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); }
+            70% { box-shadow: 0 0 0 5px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
         .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
+
 
         .manual-trigger-container {
             margin-top: 25px; /* 스캔 버튼과의 간격을 시원하게 벌림 */
@@ -622,6 +628,23 @@
                 <label>Humidity (%)</label>
                 <input type="number" id="edit-humidity" placeholder="e.g. 60">
             </div>
+        </div>
+
+        <!-- 💡 터치형 0.5단위 별점 UI -->
+        <div class="form-group" style="margin-top: 20px; text-align: center;">
+            <label style="margin-bottom: 10px;">Rating (터치해서 평가)</label>
+            <div id="star-rating-container" style="font-size: 40px; color: #e0e0dc; cursor: pointer; position: relative; display: inline-block; user-select: none; letter-spacing: 5px;">
+                ★★★★★
+                <div id="star-rating-fill" style="color: #f59e0b; position: absolute; top: 0; left: 0; white-space: nowrap; overflow: hidden; width: 0%; pointer-events: none;">★★★★★</div>
+            </div>
+            <input type="hidden" id="edit-rate">
+            <div id="edit-rate-display" style="font-size: 14px; font-weight: bold; color: var(--accent-color); margin-top: 5px;">평가 안함</div>
+        </div>
+
+        <!-- 💡 코멘트 입력창 -->
+        <div class="form-group">
+            <label>Comment</label>
+            <textarea id="edit-comment" placeholder="오늘의 착향 느낌, 주변의 반응은 어땠나요?" style="width: 100%; height: 80px; background: transparent; border: 1px solid var(--text-color); border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; color: var(--text-color); outline: none; resize: none;"></textarea>
         </div>
 
         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -1220,13 +1243,23 @@
 
                     const weatherIcon = getWeatherIcon(log.weather);
 
+                    // 💡 평가 유도 뱃지 로직
+                    let rateHtml = '';
+                    // \` 기호 이스케이프 주의 (백틱)
+                    if (log.rate && log.rate !== 'null' && log.rate > 0) {
+                        rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
+                    } else {
+                        rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+                    }
+
                     return `
-                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
                             <div class="log-left">
                                 ${imgTag}
                                 <div class="log-details">
                                     <div class="log-perfume">${log.perfumeName}</div>
                                     <div class="log-date">[${shortDate}]</div>
+                                    ${rateHtml}
                                 </div>
                             </div>
                             <div class="log-weather">
@@ -1246,7 +1279,12 @@
     }
 
     // 수정 뷰 열기 (어디서든 재활용 가능!)
-    function openEditLog(pageId, name, date, weather, temp, humidity) {
+    function openEditLog(pageId, name, date, weather, temp, humidity, rate, comment) {
+
+        console.log("1. 클릭된 향수:", name);
+        console.log("2. 백엔드에서 받은 rate 원본 값:", rate, "타입:", typeof rate);
+        console.log("3. parseFloat 변환 결과:", parseFloat(rate));
+
         document.getElementById('edit-page-id').value = pageId;
         document.getElementById('edit-perfume-name').innerText = name;
         document.getElementById('edit-date').innerText = `[${date}]`;
@@ -1254,7 +1292,13 @@
         document.getElementById('edit-weather').value = weather || 'Clear';
         document.getElementById('edit-temp').value = temp || '';
         document.getElementById('edit-humidity').value = humidity || '';
+        document.getElementById('edit-rate').value = rate && rate !== 'null' && rate !== 'undefined' ? rate : ''; // 별점 세팅
+        document.getElementById('edit-comment').value = comment && comment !== 'null' ? comment : '';
 
+        document.getElementById('edit-status').innerText = "";
+
+        // 별점 UI 동기화
+        updateStarUI(rate);
         document.getElementById('edit-status').innerText = "";
 
         // 하단 네비게이션 선택은 해제한 상태로 수정 화면 띄우기
@@ -1274,6 +1318,8 @@
         const humidity = document.getElementById('edit-humidity').value;
         const statusMsg = document.getElementById('edit-status');
         const submitBtn = document.getElementById('edit-submit-btn');
+        const rate = document.getElementById('edit-rate').value;
+        const comment = document.getElementById('edit-comment').value.trim();
 
         statusMsg.innerText = "Updating Notion DB...";
         submitBtn.innerText = "Updating...";
@@ -1285,7 +1331,9 @@
                 body: JSON.stringify({
                     weather: weather,
                     temp: temp ? parseFloat(temp) : null,
-                    humidity: humidity ? parseFloat(humidity) : null
+                    humidity: humidity ? parseFloat(humidity) : null,
+                    rate: rate ? parseFloat(rate) : null,
+                    comment: comment || null
                 })
             });
 
@@ -1626,11 +1674,21 @@
                     const weatherIcon = getWeatherIcon(log.weather);
                     const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
 
+                    // 💡 평가 유도 뱃지 로직
+                    let rateHtml = '';
+                    // \` 기호 이스케이프 주의 (백틱)
+                    if (log.rate && log.rate !== 'null' && log.rate > 0) {
+                        rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
+                    } else {
+                        rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite;  border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+                    }
+
                     return `
-                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
                             <div class="log-left">
                                 <div class="log-details">
                                     <div class="log-date" style="font-size: 12px; color: var(--text-color); font-weight: bold;">${shortDate}</div>
+                                    ${rateHtml}
                                 </div>
                             </div>
                             <div class="log-weather">
@@ -1827,19 +1885,29 @@
             const weatherIcon = getWeatherIcon(log.weather);
             const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
 
-            // 💡 팩폭 수정: 리스트 좌측에 들어갈 앙증맞은 35x50 썸네일 셋업 (이미지가 없으면 빈 박스)
+            // 💡 리스트 좌측에 들어갈 앙증맞은 35x50 썸네일 셋업 (이미지가 없으면 빈 박스)
             const imgTag = log.imageUrl
                 ? `<img src="${log.imageUrl}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
                 : `<div style="width: 35px; height: 50px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
 
+            // 💡 평가 유도 뱃지 로직
+            let rateHtml = '';
+            // \` 기호 이스케이프 주의 (백틱)
+            if (log.rate && log.rate !== 'null' && log.rate > 0) {
+                rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
+            } else {
+                rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite;  border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+            }
+
             return `
-                    <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}')">
+                    <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
                     <!-- 이미지가 텍스트 옆에 자연스럽게 배치되도록 flex + gap 적용 -->
                     <div class="log-left" style="display: flex; align-items: center; gap: 12px;">
                         ${imgTag}
                         <div class="log-details">
                             <div class="log-perfume" style="font-weight: bold; color: var(--text-color);">${log.perfumeName || 'Unknown Perfume'}</div>
                             <div class="log-date" style="font-size: 11px; margin-top: 3px;">${shortDate}</div>
+                            ${rateHtml}
                         </div>
                     </div>
                     <div class="log-weather">
@@ -2474,6 +2542,46 @@
             statusMsg.innerText = "[ERROR] Network failure.";
             btn.innerText = "Save Changes";
         }
+    }
+
+    // 💡 배민 스타일 0.5단위 별점 터치/드래그 로직
+    const starContainer = document.getElementById('star-rating-container');
+    const starFill = document.getElementById('star-rating-fill');
+    const rateInput = document.getElementById('edit-rate');
+    const rateDisplay = document.getElementById('edit-rate-display');
+
+    function handleStarInteraction(e) {
+        const rect = starContainer.getBoundingClientRect();
+        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+        const x = clientX - rect.left;
+        const percent = x / rect.width;
+
+        let score = Math.ceil(percent * 10) / 2; // 0.5 단위 반올림
+        if (score < 0.5) score = 0.5;
+        if (score > 5) score = 5;
+
+        updateStarUI(score);
+    }
+
+    starContainer.addEventListener('mousedown', handleStarInteraction);
+    starContainer.addEventListener('touchstart', handleStarInteraction, {passive: true});
+    starContainer.addEventListener('touchmove', handleStarInteraction, {passive: true});
+
+    function updateStarUI(score) {
+        const num = parseFloat(score);
+
+        if (isNaN(num) || num <= 0) {
+            starFill.style.width = '0%';
+            rateInput.value = '';
+            rateDisplay.innerText = '평가 안함';
+            rateDisplay.style.color = 'var(--accent-color)';
+            return;
+        }
+
+        starFill.style.width = `${(num / 5) * 100}%`;
+        rateInput.value = num;
+        rateDisplay.innerText = `${num.toFixed(1)} / 5.0`;
+        rateDisplay.style.color = '#f59e0b';
     }
 
 

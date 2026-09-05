@@ -75,7 +75,9 @@ public class NotionLogService {
                                 NotionParserUtils.extractSelect(props, NotionUsageLog.WEATHER.getColumnName()),
                                 Double.valueOf(NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName())),
                                 Double.valueOf(NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName())),
-                                NotionParserUtils.extractRollupImage(props, NotionUsageLog.IMAGE_ROLLUP.getColumnName())
+                                NotionParserUtils.extractRollupImage(props, NotionUsageLog.IMAGE_ROLLUP.getColumnName()),
+                                NotionParserUtils.extractNumber(props, NotionUsageLog.RATE.getColumnName()).isEmpty() ? null : Double.valueOf(NotionParserUtils.extractNumber(props, NotionUsageLog.RATE.getColumnName())),
+                                NotionParserUtils.extractRichText(props, NotionUsageLog.COMMENT.getColumnName())
                         );
                     }).collect(Collectors.toList());
                 });
@@ -163,6 +165,8 @@ public class NotionLogService {
                         String imageUrl = NotionParserUtils.extractRollupImage(props, NotionUsageLog.IMAGE_ROLLUP.getColumnName());
                         String temp = NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName());
                         String humidity = NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName());
+                        String rate = NotionParserUtils.extractNumber(props, NotionUsageLog.RATE.getColumnName());
+                        String comment = NotionParserUtils.extractRichText(props, NotionUsageLog.COMMENT.getColumnName());
 
                         return Map.of(
                                 "pageId", pageId,
@@ -171,7 +175,9 @@ public class NotionLogService {
                                 "imageUrl", imageUrl,
                                 "weather", weather,
                                 "temp", temp,
-                                "humidity", humidity
+                                "humidity", humidity,
+                                "rate", rate,
+                                "comment", comment
                         );
                     }).collect(Collectors.toList());
                 })
@@ -192,6 +198,12 @@ public class NotionLogService {
         }
         if (request.getHumidity() != null) {
             properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(request.getHumidity()));
+        }
+        if (request.getRate() != null) {
+            properties.put(NotionUsageLog.RATE.getColumnName(), NotionUsageLog.RATE.formatValue(request.getRate()));
+        }
+        if (request.getComment() != null) {
+            properties.put(NotionUsageLog.COMMENT.getColumnName(), NotionUsageLog.COMMENT.formatValue(request.getComment()));
         }
 
         return notionWebClient.patch()

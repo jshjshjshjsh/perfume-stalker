@@ -7,5 +7,7 @@ public record UsageLogResponse(
         String weather,
         Double temp,
         Double humidity,
-        String imageUrl
+        String imageUrl,
+        Double rate,
+        String comment
 ) {}

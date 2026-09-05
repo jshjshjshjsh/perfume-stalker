@@ -9,4 +9,6 @@ public class LogUpdateRequest {
     private String weather;
     private Double temp;
     private Double humidity;
+    private Double rate;
+    private String comment;
 }
