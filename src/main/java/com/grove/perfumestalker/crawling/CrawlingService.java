@@ -3,6 +3,8 @@ package com.grove.perfumestalker.crawling;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+
+import com.microsoft.playwright.options.WaitUntilState;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,6 @@ public class CrawlingService {
     private static final String SELECTOR_IMAGE = "img[itemprop='image']";
     private static final int TIMEOUT_MS = 25000;
 
-    // 브라우저 엔진을 재사용하기 위한 전역 변수
     private Playwright playwright;
     private Browser browser;
 
@@ -32,8 +33,20 @@ public class CrawlingService {
     public void init() {
         log.info("🚀 Playwright 브라우저 엔진 초기화 시작...");
         playwright = Playwright.create();
-        browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-        log.info("✅ Playwright 브라우저 엔진 준비 완료!");
+
+        browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
+                .setHeadless(false)
+                .setChannel("chrome")
+                .setIgnoreDefaultArgs(List.of("--enable-automation"))
+                .setArgs(List.of(
+                        "--disable-blink-features=AutomationControlled",
+                        "--window-position=-32000,-32000",
+                        "--window-size=1920,1080",
+                        "--no-sandbox", // 💡 도커(리눅스) 환경 크롬 실행 필수 옵션 1
+                        "--disable-dev-shm-usage" // 💡 도커 환경 크롬 실행 필수 옵션 2 (메모리 크래시 방지)
+                )));
+
+        log.info("✅ Playwright 브라우저 엔진 준비 완료 (Docker Xvfb + 진짜 크롬 모드)!");
     }
 
     @PreDestroy
@@ -43,34 +56,36 @@ public class CrawlingService {
         log.info("🛑 Playwright 브라우저 엔진 종료 완료.");
     }
 
-    /**
-     * 프레그런티카 URL을 받아 이미지와 입체적 노트 정보를 크롤링하여 반환
-     */
     public Mono<Map<String, Object>> crawl(String url) {
         return Mono.fromCallable(() -> {
-                    log.info("🌐 백그라운드 스레드에서 새 탭(Context) 열고 크롤링 시작: {}", url);
+                    log.info("🌐 크롤링 시작: {}", url);
 
                     try (BrowserContext context = browser.newContext(new Browser.NewContextOptions()
-                            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
+                            .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
                             .setViewportSize(1920, 1080))) {
 
                         Page page = context.newPage();
+
+                        page.addInitScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined});");
                         page.setDefaultNavigationTimeout(TIMEOUT_MS);
 
                         try {
-                            page.navigate(url);
-                            // 💡 빠른 실패(Fail Fast): 15초 안에 못 찾으면 바로 던짐!
+                            // HTML 로딩 완료 시점에 즉시 파싱 대기 진입 (광고 로딩 무시)
+                            page.navigate(url, new Page.NavigateOptions().setWaitUntil(WaitUntilState.DOMCONTENTLOADED));
+
+                            // CF 방어막 통과 3초 대기
+                            page.waitForTimeout(3000);
+
                             page.waitForSelector(SELECTOR_NOTE_LABEL, new Page.WaitForSelectorOptions().setTimeout(15000));
                         } catch (Exception e) {
-                            log.warn("⚠️ [디버그] 방어막 걸림! 리액터에게 재시도를 요청합니다. URL: {}", url);
-                            // 빈 맵을 리턴하는 대신 강제로 예외를 던져야 retryWhen이 발동함!
+                            log.warn("⚠️ [디버그] 타임아웃 발생 (원인: {}), URL: {}", e.getMessage(), url);
                             throw new RuntimeException("CRAWL_TIMEOUT_FOR_RETRY");
                         }
 
                         String imageUrl = extractImageUrl(page);
                         Map<String, Object> notesData = extractNotesData(page);
 
-                        log.info("✅ [디버그] 크롤링 결과 - 이미지: [{}], 노트 추출 완료", !imageUrl.isEmpty() ? "성공" : "실패");
+                        log.info("✅ 크롤링 결과 - 이미지: [{}], 노트 추출 완료", !imageUrl.isEmpty() ? "성공" : "실패");
 
                         return Map.<String, Object>of(
                                 "imageUrl", imageUrl,
@@ -79,18 +94,14 @@ public class CrawlingService {
                     }
                 })
                 .subscribeOn(Schedulers.boundedElastic())
-                // =====================================================================
-                // 재시도(Retry) 오케스트레이션 구역
-                // =====================================================================
-                .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2)) // 2초 쉬고 최대 3번까지 재시도
-                        .filter(throwable -> "CRAWL_TIMEOUT_FOR_RETRY".equals(throwable.getMessage())) // 이 예외일 때만 재시도
+                .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2))
+                        .filter(throwable -> "CRAWL_TIMEOUT_FOR_RETRY".equals(throwable.getMessage()))
                         .doBeforeRetry(retrySignal ->
-                                log.info("🔄 [디버그] 클라우드플레어 우회 재시도 ({}회차): {}", retrySignal.totalRetries() + 1, url)
+                                log.info("🔄 클라우드플레어 우회 재시도 ({}회차): {}", retrySignal.totalRetries() + 1, url)
                         )
                 )
                 .onErrorResume(e -> {
-                    // 3번 다 실패했거나, 아예 다른 치명적 에러가 났을 때 최종적으로 방어막 발동
-                    log.error("❌ [디버그] 최종 크롤링 실패 (재시도 3회 초과 또는 치명적 에러): {}", e.getMessage());
+                    log.error("❌ 최종 크롤링 실패: {}", e.getMessage());
                     return Mono.just(Map.of("imageUrl", "", "notes", Map.of()));
                 });
     }
@@ -100,12 +111,10 @@ public class CrawlingService {
             String url = page.getAttribute(SELECTOR_IMAGE, "src");
             return url != null ? url : "";
         } catch (Exception e) {
-            log.warn("⚠️ [디버그] 이미지 태그 추출 실패");
             return "";
         }
     }
 
-    // 탑, 미들, 베이스, 일반(선형)을 분류해오는 지능형 스크립트
     @SuppressWarnings("unchecked")
     private Map<String, Object> extractNotesData(Page page) {
         try {
@@ -138,7 +147,6 @@ public class CrawlingService {
                     "return result;" +
                     "}");
         } catch (Exception e) {
-            log.warn("⚠️ [디버그] 노트 분류 추출 실패");
             return Map.of("top", List.of(), "middle", List.of(), "base", List.of(), "general", List.of());
         }
     }
