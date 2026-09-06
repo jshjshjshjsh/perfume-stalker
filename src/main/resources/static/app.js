@@ -1,0 +1,1757 @@
+// ==========================================
+// 1. 전역 상태 및 유틸리티
+// ==========================================
+let currentLat = null;
+let currentLon = null;
+let recWeatherData = null;
+let globalRecentLogs = [];
+let globalAllLogsData = [];
+let globalWardrobeData = [];
+let globalWishlistData = [];
+
+let isLoginMode = true;
+let isSessionExpired = false;
+let currentWardrobeTab = 'bottle';
+let currentIsSample = false;
+let isWardrobeReorderMode = false;
+let wardrobeSortable = null;
+
+let isWishFormOpen = false;
+let isWishReorderMode = false;
+let wishSortableInstance = null;
+let currentWishPromotionId = null;
+
+let crawledNotesData = null;
+let crawledImageUrl = "";
+let wishCrawledNotesData = null;
+let wishCrawledImageUrl = "";
+
+let summaryChartInstance = null;
+let abortController = null;
+let isScanning = false;
+let wishPromoteAbort = null;
+
+async function fetchWithAuth(url, options = {}) {
+    const token = localStorage.getItem('jwt_token');
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`,
+        'ngrok-skip-browser-warning': 'true'
+    };
+
+    const response = await fetch(url, { ...options, headers });
+
+    if (response.status === 401) {
+        if (!isSessionExpired) {
+            isSessionExpired = true;
+            alert("세션이 만료되었습니다. 다시 로그인해주세요.");
+            localStorage.removeItem('jwt_token');
+            window.location.reload();
+        }
+        throw new Error("Unauthorized");
+    }
+    return response;
+}
+
+function getWeatherIcon(weatherText) {
+    if (!weatherText) return '❓';
+    const w = weatherText.toLowerCase();
+    if (w.includes('clear')) return '☀️';
+    if (w.includes('cloud')) return '☁️';
+    if (w.includes('rain') || w.includes('drizzle')) return '🌧️';
+    if (w.includes('thunder') || w.includes('storm')) return '⛈️';
+    if (w.includes('snow')) return '❄️';
+    if (w.includes('mist') || w.includes('fog') || w.includes('haze')) return '🌫️';
+    return '🌤️';
+}
+
+function renderNotesHtml(notes) {
+    if (!notes || Object.keys(notes).length === 0) return '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
+    let html = '';
+    const categories = [
+        { key: 'top', label: 'TOP' },
+        { key: 'middle', label: 'MIDDLE' },
+        { key: 'base', label: 'BASE' },
+        { key: 'general', label: 'NOTES' }
+    ];
+    categories.forEach(cat => {
+        if (notes[cat.key] && notes[cat.key].length > 0) {
+            html += `<div class="note-category">${cat.label}</div>`;
+            html += notes[cat.key].map(n => `<span class="note-chip">${n}</span>`).join('');
+        }
+    });
+    return html;
+}
+
+function parseNotesPreview(notesRaw) {
+    if (!notesRaw) return "No notes recorded.";
+    try {
+        const parsed = typeof notesRaw === 'string' ? JSON.parse(notesRaw) : notesRaw;
+        const allNotes = [];
+        ['top', 'middle', 'base', 'general'].forEach(k => {
+            if (parsed[k]) allNotes.push(...parsed[k]);
+        });
+        return allNotes.length > 0 ? allNotes.join(', ') : "No notes recorded.";
+    } catch (e) {
+        return "No notes recorded.";
+    }
+}
+
+// ==========================================
+// 2. 인증 & 네비게이션
+// ==========================================
+function checkAuth() {
+    const token = localStorage.getItem('jwt_token');
+    if (token) {
+        switchView('main', document.querySelector('.nav-item.main-tab'));
+        initializeAppData();
+    } else {
+        document.querySelector('.bottom-nav').style.display = 'none';
+        switchView('auth', null);
+    }
+}
+
+function toggleAuthMode() {
+    isLoginMode = !isLoginMode;
+    document.getElementById('signup-fields').style.display = isLoginMode ? 'none' : 'block';
+    document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'LOGIN' : 'SIGN UP';
+    document.getElementById('auth-toggle-btn').innerText = isLoginMode ? '[ Switch to Sign Up ]' : '[ Back to Login ]';
+    document.getElementById('auth-status').innerText = '';
+}
+
+async function submitAuth() {
+    const fields = {
+        'auth-id': document.getElementById('auth-id'),
+        'auth-pw': document.getElementById('auth-pw'),
+        'auth-name': document.getElementById('auth-name'),
+        'auth-loc': document.getElementById('auth-loc')
+    };
+    const noti = document.getElementById('auth-noti').checked;
+    const statusMsg = document.getElementById('auth-status');
+
+    Object.values(fields).forEach(el => el.classList.remove('error-border'));
+    const requiredKeys = isLoginMode ? ['auth-id', 'auth-pw'] : ['auth-id', 'auth-pw', 'auth-name', 'auth-loc'];
+    let hasError = false;
+
+    for (const key of requiredKeys) {
+        if (!fields[key].value.trim()) {
+            fields[key].classList.add('error-border');
+            if (!hasError) fields[key].focus();
+            hasError = true;
+        }
+    }
+
+    if (hasError) {
+        statusMsg.innerText = "[ERROR] Required fields are missing.";
+        return;
+    }
+
+    statusMsg.innerText = isLoginMode ? "Authenticating..." : "Creating account...";
+    const endpoint = isLoginMode ? '/api/v1/auth/login' : '/api/v1/auth/signup';
+    const payload = isLoginMode
+        ? { userId: fields['auth-id'].value.trim(), rawPassword: fields['auth-pw'].value }
+        : {
+            userId: fields['auth-id'].value.trim(),
+            rawPassword: fields['auth-pw'].value,
+            name: fields['auth-name'].value.trim(),
+            defaultLocation: fields['auth-loc'].value.trim(),
+            notiEnabled: noti
+        };
+
+    try {
+        const res = await fetchWithAuth(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            if (isLoginMode) {
+                const data = await res.json();
+                localStorage.setItem('jwt_token', data.token);
+                statusMsg.innerText = "[SUCCESS] Access granted.";
+                setTimeout(() => {
+                    document.querySelector('.bottom-nav').style.display = 'flex';
+                    switchView('main', document.querySelector('.nav-item.main-tab'));
+                    initializeAppData();
+                }, 1000);
+            } else {
+                statusMsg.innerText = "[SUCCESS] Account created. Please login.";
+                setTimeout(() => toggleAuthMode(), 1500);
+            }
+        } else {
+            const errorData = await res.json();
+            statusMsg.innerText = `[ERROR] ${errorData.error || 'Request failed'}`;
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+    }
+}
+
+function logout() {
+    if (!confirm("로그아웃 하시겠습니까?")) return;
+    localStorage.removeItem('jwt_token');
+    window.location.reload();
+}
+
+function switchView(viewId, element) {
+    document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+    const targetView = document.getElementById('view-' + viewId);
+    if (targetView) targetView.classList.add('active');
+    if (element) element.classList.add('active');
+}
+
+// ==========================================
+// 3. 날씨 및 실시간 추천
+// ==========================================
+async function fetchRealWeather(lat = null, lon = null) {
+    const locText = document.getElementById('current-loc');
+    const weatherInfo = document.getElementById('weather-info');
+    weatherInfo.innerText = "fetching real-time data...";
+    try {
+        let url = "/api/v1/weather";
+        if (lat !== null && lon !== null) url += `?lat=${lat}&lon=${lon}`;
+        const response = await fetchWithAuth(url);
+        if (response.ok) {
+            const data = await response.json();
+            recWeatherData = { weather: data.weather, temp: parseFloat(data.temp) };
+            updateRecommendation();
+
+            let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()" style="font-size: 9px; margin-left: 5px;">[ update ]</span>`;
+            if (lat !== null) buttonsHtml += `<span class="loc-btn" onclick="resetLocation()" style="font-size: 9px; margin-left: 5px;">[ default ]</span>`;
+
+            const weatherIcon = getWeatherIcon(data.weather);
+            locText.innerHTML = `${data.location} ${buttonsHtml}`;
+            weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${data.temp}°C / ${data.humidity}%</span>`;
+        } else {
+            weatherInfo.innerText = "[ERROR] Failed to load weather data.";
+        }
+    } catch (error) {
+        weatherInfo.innerText = "[ERROR] Network failure.";
+    }
+}
+
+function updateLocation() {
+    document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
+    if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                currentLat = position.coords.latitude;
+                currentLon = position.coords.longitude;
+                fetchRealWeather(currentLat, currentLon);
+            },
+            () => {
+                alert("GPS access denied.");
+                fetchRealWeather();
+            },
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+    }
+}
+
+function resetLocation() {
+    document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
+    currentLat = null;
+    currentLon = null;
+    fetchRealWeather();
+}
+
+function updateRecommendation() {
+    if (!recWeatherData || globalRecentLogs.length === 0) return;
+
+    const currentW = (recWeatherData.weather || '').toLowerCase();
+    const currentT = recWeatherData.temp;
+
+    const isClear = currentW.includes('clear') || currentW.includes('sun');
+    const isCloud = currentW.includes('cloud') || currentW.includes('haze') || currentW.includes('fog');
+    const isRainSnow = currentW.includes('rain') || currentW.includes('snow') || currentW.includes('drizzle') || currentW.includes('storm');
+
+    const matchWeather = (logW) => {
+        if (!logW) return false;
+        const w = logW.toLowerCase();
+        if (isClear && (w.includes('clear') || w.includes('sun'))) return true;
+        if (isCloud && (w.includes('cloud'))) return true;
+        if (isRainSnow && (w.includes('rain') || w.includes('snow'))) return true;
+        return false;
+    };
+
+    let candidates = globalRecentLogs.filter(l => matchWeather(l.weather) && l.temp !== null && Math.abs(parseFloat(l.temp) - currentT) <= 5);
+    let reason = "🌡️ 현재 날씨와 온도에 가장 완벽한 픽";
+
+    if (candidates.length === 0) {
+        candidates = globalRecentLogs.filter(l => matchWeather(l.weather));
+        reason = "☁️ 오늘 같은 날씨에 유독 자주 찾은 향수";
+    }
+    if (candidates.length === 0) {
+        candidates = globalRecentLogs;
+        reason = "👑 날씨 무관, 요즘 가장 손이 많이 가는 향수";
+    }
+
+    const counts = {};
+    candidates.forEach(l => {
+        if (l.perfumeName) counts[l.perfumeName] = (counts[l.perfumeName] || 0) + 1;
+    });
+
+    const bestName = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+    if (!bestName) return;
+
+    const bestLog = candidates.find(l => l.perfumeName === bestName);
+    const imgTag = bestLog.imageUrl
+        ? `<img src="${bestLog.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc;">`
+        : `<div style="width: 50px; height: 70px; background: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--accent-color);">No Img</div>`;
+
+    document.getElementById('recommendation-content').innerHTML = `
+        ${imgTag}
+        <div style="flex: 1; overflow: hidden;">
+            <div style="font-size: 10px; color: #10b981; text-transform: uppercase; font-weight: bold;">RECOMMENDED</div>
+            <div style="font-weight: bold; font-size: 15px; color: var(--text-color); margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${bestLog.perfumeName}</div>
+            <div style="font-size: 11px; color: var(--accent-color);">${reason}</div>
+        </div>
+    `;
+    document.getElementById('recommendation-widget').style.display = 'block';
+}
+
+// ==========================================
+// 4. 착향 로그 및 모달 (기록 / 수정 / 수동)
+// ==========================================
+async function fetchRecentLogs() {
+    const container = document.getElementById('recent-logs-container');
+    try {
+        const response = await fetchWithAuth("/api/v1/logs/recent?limit=5&t=");
+        if (response.ok) {
+            const logs = await response.json();
+            if (logs.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No records found.</div>`;
+                return;
+            }
+            container.innerHTML = logs.map(log => renderLogItemHtml(log)).join('');
+        } else {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load.</div>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+    }
+}
+
+function renderLogItemHtml(log) {
+    const imgTag = log.imageUrl
+        ? `<img src="${log.imageUrl}" class="log-thumb" alt="thumb">`
+        : `<div class="log-thumb">No Img</div>`;
+
+    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+    const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
+    const weatherIcon = getWeatherIcon(log.weather);
+
+    let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
+        ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
+        : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+
+    return `
+        <div class="log-item" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
+            <div class="log-left">
+                ${imgTag}
+                <div class="log-details">
+                    <div class="log-perfume">${log.perfumeName}</div>
+                    <div class="log-date">[${shortDate}]</div>
+                    ${rateHtml}
+                </div>
+            </div>
+            <div class="log-weather">
+                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
+            </div>
+        </div>
+    `;
+}
+
+function openEditLog(pageId, name, date, weather, temp, humidity, rate, comment) {
+    document.getElementById('edit-page-id').value = pageId;
+    document.getElementById('edit-perfume-name').innerText = name;
+    document.getElementById('edit-date').innerText = `[${date}]`;
+    document.getElementById('edit-weather').value = weather || 'Clear';
+    document.getElementById('edit-temp').value = temp || '';
+    document.getElementById('edit-humidity').value = humidity || '';
+    document.getElementById('edit-rate').value = rate && rate !== 'null' && rate !== 'undefined' ? rate : '';
+    document.getElementById('edit-comment').value = comment && comment !== 'null' ? comment : '';
+    document.getElementById('edit-status').innerText = "";
+
+    updateStarUI(rate);
+    switchView('edit-log', null);
+}
+
+function cancelEditLog() {
+    switchView('main', document.querySelector('.nav-item.main-tab'));
+}
+
+async function submitEditLog() {
+    const pageId = document.getElementById('edit-page-id').value;
+    const weather = document.getElementById('edit-weather').value;
+    const temp = document.getElementById('edit-temp').value;
+    const humidity = document.getElementById('edit-humidity').value;
+    const statusMsg = document.getElementById('edit-status');
+    const submitBtn = document.getElementById('edit-submit-btn');
+    const rate = document.getElementById('edit-rate').value;
+    const comment = document.getElementById('edit-comment').value.trim();
+
+    statusMsg.innerText = "Updating Notion DB...";
+    submitBtn.innerText = "Updating...";
+
+    try {
+        const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                weather: weather,
+                temp: temp ? parseFloat(temp) : null,
+                humidity: humidity ? parseFloat(humidity) : null,
+                rate: rate ? parseFloat(rate) : null,
+                comment: comment || null
+            })
+        });
+
+        if (res.ok) {
+            submitBtn.classList.add('success');
+            submitBtn.innerText = "UPDATED";
+            statusMsg.innerText = "[SUCCESS] Log modified.";
+            setTimeout(() => {
+                submitBtn.classList.remove('success');
+                submitBtn.innerText = "Update Log";
+                switchView('main', document.querySelector('.nav-item.main-tab'));
+                fetchRecentLogs();
+            }, 1500);
+        } else {
+            statusMsg.innerText = "[ERROR] Update failed.";
+            submitBtn.innerText = "Update Log";
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+        submitBtn.innerText = "Update Log";
+    }
+}
+
+async function deleteLog() {
+    if (!confirm("진짜로 이 착향 기록을 삭제하시겠습니까?")) return;
+    const pageId = document.getElementById('edit-page-id').value;
+    const statusMsg = document.getElementById('edit-status');
+    const delBtn = document.getElementById('edit-delete-btn');
+    const updateBtn = document.getElementById('edit-submit-btn');
+
+    statusMsg.innerText = "Deleting from Notion...";
+    delBtn.innerText = "Wait...";
+    updateBtn.disabled = true;
+
+    try {
+        const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, { method: "DELETE" });
+        if (res.ok) {
+            delBtn.classList.add('success');
+            delBtn.innerText = "DELETED";
+            statusMsg.innerText = "[SUCCESS] Log deleted.";
+            setTimeout(() => {
+                delBtn.classList.remove('success');
+                delBtn.innerText = "Delete";
+                updateBtn.disabled = false;
+                switchView('main', document.querySelector('.nav-item.main-tab'));
+                fetchRecentLogs();
+            }, 1500);
+        } else {
+            statusMsg.innerText = "[ERROR] Delete failed.";
+            delBtn.innerText = "Delete";
+            updateBtn.disabled = false;
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+        delBtn.innerText = "Delete";
+        updateBtn.disabled = false;
+    }
+}
+
+// 수동 기록
+async function fetchPerfumeList() {
+    try {
+        const res = await fetchWithAuth("/api/v1/perfumes/list");
+        if (res.ok) {
+            const perfumes = await res.json();
+            const selectBox = document.getElementById('manual-perfume-select');
+            selectBox.innerHTML = '<option value="">-- Choose a perfume --</option>' +
+                perfumes.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        }
+    } catch (e) {
+        console.error("Perfume list load failed");
+    }
+}
+
+async function submitManualLog() {
+    const perfumeId = document.getElementById('manual-perfume-select').value;
+    const manualDate = document.getElementById('manual-date').value;
+    const statusMsg = document.getElementById('manual-status');
+    const submitBtn = document.getElementById('manual-submit-btn');
+
+    if (!perfumeId) {
+        statusMsg.innerText = "[ERROR] Please select a perfume.";
+        return;
+    }
+
+    statusMsg.innerText = "Saving log to Notion...";
+    submitBtn.innerText = "Saving...";
+
+    try {
+        const res = await fetchWithAuth("/api/v1/logs/manual", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                perfumeId: perfumeId,
+                date: manualDate || null,
+                lat: currentLat,
+                lon: currentLon
+            })
+        });
+
+        if (res.ok) {
+            submitBtn.classList.add('success');
+            submitBtn.innerText = "LOGGED";
+            statusMsg.innerText = "[SUCCESS] Manual log saved.";
+            setTimeout(() => {
+                submitBtn.classList.remove('success');
+                submitBtn.innerText = "Save Log";
+                statusMsg.innerText = "";
+                document.getElementById('manual-date').value = '';
+                switchView('main', document.querySelector('.nav-item.main-tab'));
+                fetchRecentLogs();
+            }, 1500);
+        } else {
+            statusMsg.innerText = "[ERROR] Failed to save log.";
+            submitBtn.innerText = "Save Log";
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+        submitBtn.innerText = "Save Log";
+    }
+}
+
+// 전체 로그 검색
+async function openAllLogsView() {
+    switchView('all-logs', null);
+    const container = document.getElementById('all-logs-container');
+    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+    clearSearchDates();
+
+    try {
+        const res = await fetchWithAuth("/api/v1/logs/recent?limit=100&t=");
+        if (res.ok) {
+            globalAllLogsData = await res.json();
+            renderAllLogs();
+        } else {
+            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load logs.</div>`;
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+    }
+}
+
+function clearSearchDates() {
+    document.getElementById('search-start-date').value = '';
+    document.getElementById('search-end-date').value = '';
+    renderAllLogs();
+}
+
+function renderAllLogs() {
+    const container = document.getElementById('all-logs-container');
+    const startDate = document.getElementById('search-start-date').value;
+    const endDate = document.getElementById('search-end-date').value;
+
+    let filteredLogs = globalAllLogsData;
+    if (startDate || endDate) {
+        filteredLogs = globalAllLogsData.filter(log => {
+            if (!log.date) return false;
+            const logDate = log.date.split('T')[0];
+            if (startDate && endDate) return logDate >= startDate && logDate <= endDate;
+            if (startDate) return logDate >= startDate;
+            if (endDate) return logDate <= endDate;
+            return true;
+        });
+    }
+
+    if (filteredLogs.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 로그가 없습니다.</div>`;
+        return;
+    }
+
+    container.innerHTML = filteredLogs.map(log => renderLogItemHtml(log)).join('');
+}
+
+// ==========================================
+// 5. 옷장(Wardrobe) 모듈
+// ==========================================
+async function fetchWardrobe() {
+    const container = document.getElementById('wardrobe-container');
+    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+    try {
+        const res = await fetchWithAuth("/api/v1/perfumes/list");
+        if (res.ok) {
+            globalWardrobeData = await res.json();
+            renderWardrobeGrid();
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+    }
+}
+
+function renderWardrobeGrid() {
+    const container = document.getElementById('wardrobe-container');
+    const filteredData = globalWardrobeData.filter(p =>
+        currentWardrobeTab === 'sample' ? p.isSample === true : p.isSample !== true
+    );
+
+    document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
+
+    if (filteredData.length === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">${currentWardrobeTab === 'sample' ? '샘플이' : '옷장이'} 비어있습니다.</div>`;
+        return;
+    }
+
+    container.innerHTML = filteredData.map(p => {
+        const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
+        const shortDate = p.date ? p.date.split('T')[0] : '';
+        const notesPreview = parseNotesPreview(p.notes);
+
+        return `
+            <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
+                <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
+                ${imgTag}
+                <div class="wardrobe-info">
+                    <div class="wardrobe-brand">
+                        ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
+                    </div>
+                    <div class="wardrobe-name">${p.name}</div>
+                    <div class="wardrobe-notes">${notesPreview}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function switchWardrobeTab(tab) {
+    if (isWardrobeReorderMode) toggleWardrobeReorderMode();
+
+    currentWardrobeTab = tab;
+    const btnBottle = document.getElementById('tab-bottle');
+    const btnSample = document.getElementById('tab-sample');
+    const btnAddSample = document.getElementById('btn-add-sample');
+
+    if (tab === 'bottle') {
+        btnBottle.style.color = 'var(--accent-color)';
+        btnBottle.style.fontWeight = 'bold';
+        btnBottle.style.borderBottom = '2px solid var(--accent-color)';
+        btnSample.style.color = '#a1a1aa';
+        btnSample.style.fontWeight = 'normal';
+        btnSample.style.borderBottom = '2px solid transparent';
+        if (btnAddSample) btnAddSample.style.display = 'none';
+    } else {
+        btnSample.style.color = 'var(--accent-color)';
+        btnSample.style.fontWeight = 'bold';
+        btnSample.style.borderBottom = '2px solid var(--accent-color)';
+        btnBottle.style.color = '#a1a1aa';
+        btnBottle.style.fontWeight = 'normal';
+        btnBottle.style.borderBottom = '2px solid transparent';
+        if (btnAddSample) btnAddSample.style.display = 'inline-block';
+    }
+    renderWardrobeGrid();
+}
+
+function toggleWardrobeReorderMode() {
+    isWardrobeReorderMode = !isWardrobeReorderMode;
+    const defaultActions = document.getElementById('wardrobe-default-actions');
+    const reorderActions = document.getElementById('wardrobe-reorder-actions');
+    const dragHandles = document.querySelectorAll('.wardrobe-drag-handle');
+
+    if (isWardrobeReorderMode) {
+        defaultActions.style.display = 'none';
+        reorderActions.style.display = 'flex';
+        dragHandles.forEach(el => el.style.display = 'block');
+        initWardrobeSortable();
+    } else {
+        defaultActions.style.display = 'flex';
+        reorderActions.style.display = 'none';
+        dragHandles.forEach(el => el.style.display = 'none');
+        if (wardrobeSortable) {
+            wardrobeSortable.destroy();
+            wardrobeSortable = null;
+        }
+    }
+}
+
+function initWardrobeSortable() {
+    const container = document.getElementById('wardrobe-container');
+    if (container) {
+        wardrobeSortable = new Sortable(container, {
+            animation: 200,
+            handle: '.wardrobe-drag-handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            forceFallback: true,
+            fallbackClass: 'sortable-drag'
+        });
+    }
+}
+
+async function saveWardrobeOrder() {
+    const cards = document.querySelectorAll('#wardrobe-container .wardrobe-card');
+    const orderedIds = Array.from(cards).map(card => card.getAttribute('data-id'));
+
+    if (orderedIds.length === 0) {
+        toggleWardrobeReorderMode();
+        return;
+    }
+
+    const saveBtn = document.getElementById('btn-save-w-order');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = "[ saving... ]";
+    saveBtn.style.color = "#f59e0b";
+    saveBtn.style.pointerEvents = "none";
+
+    try {
+        const res = await fetchWithAuth("/api/v1/perfumes/reorder", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderedIds)
+        });
+
+        if (res.ok) {
+            toggleWardrobeReorderMode();
+            fetchWardrobe();
+        } else {
+            alert("순서 저장에 실패했습니다.");
+        }
+    } catch (e) {
+        alert("네트워크 오류가 발생했습니다.");
+    } finally {
+        saveBtn.innerText = originalText;
+        saveBtn.style.color = "#10b981";
+        saveBtn.style.pointerEvents = "auto";
+    }
+}
+
+function openPerfumeDetail(perfumeId) {
+    const p = globalWardrobeData.find(x => x.id === perfumeId);
+    if (!p) return;
+
+    document.getElementById('detail-brand').innerText = p.brand || 'UNKNOWN BRAND';
+    document.getElementById('detail-name').innerText = p.name;
+    document.getElementById('detail-date').innerText = p.date ? `Added: ${p.date.split('T')[0]}` : 'Added: N/A';
+    document.getElementById('detail-delete-btn').setAttribute('onclick', `deleteWardrobe('${p.id}')`);
+    document.getElementById('detail-edit-btn').setAttribute('onclick', `openEditInfo('wardrobe', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.brand || '').replace(/'/g, "\\'")}')`);
+
+    const imgEl = document.getElementById('detail-image');
+    const boxEl = document.getElementById('detail-image-box');
+    if (p.imageUrl) {
+        imgEl.src = p.imageUrl;
+        imgEl.style.display = 'block';
+        boxEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        boxEl.style.display = 'flex';
+    }
+
+    document.getElementById('detail-notes-container').innerHTML = renderNotesHtml(p.notes);
+    switchView('perfume-detail', null);
+    fetchPerfumeHistory(perfumeId);
+}
+
+async function fetchPerfumeHistory(perfumeId) {
+    const container = document.getElementById('detail-history-container');
+    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>`;
+
+    try {
+        const response = await fetchWithAuth(`/api/v1/logs/perfume/${perfumeId}`);
+        if (response.ok) {
+            const logs = await response.json();
+            if (logs.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No wearing history found.</div>`;
+                return;
+            }
+            container.innerHTML = logs.map(log => {
+                const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+                const weatherIcon = getWeatherIcon(log.weather);
+                const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
+                let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
+                    ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
+                    : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+
+                return `
+                    <div class="log-item" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
+                        <div class="log-left">
+                            <div class="log-details">
+                                <div class="log-date" style="font-size: 12px; color: var(--text-color); font-weight: bold;">${shortDate}</div>
+                                ${rateHtml}
+                            </div>
+                        </div>
+                        <div class="log-weather">
+                            <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+    }
+}
+
+async function deleteWardrobe(pageId) {
+    if (!confirm('진짜 옷장에서 빼시겠습니까? (과거 착향 로그는 보존됩니다)')) return;
+    try {
+        const res = await fetchWithAuth(`/api/v1/perfumes/${pageId}`, { method: "DELETE" });
+        if (res.ok) {
+            fetchWardrobe();
+            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+        } else {
+            alert('삭제 실패!');
+        }
+    } catch (e) {
+        alert('네트워크 오류');
+    }
+}
+
+// ==========================================
+// 6. NFC 스캔 & 향수 등록 파이프라인
+// ==========================================
+const scanBtn = document.getElementById('scan-btn');
+const statusDiv = document.getElementById('status');
+
+function resetScanUI() {
+    isScanning = false;
+    scanBtn.classList.remove('scanning', 'success');
+    scanBtn.innerText = "Tap to Scan";
+    statusDiv.innerText = "waiting for interaction...";
+    if (abortController) abortController.abort();
+}
+
+scanBtn.addEventListener('click', async () => {
+    if (!("NDEFReader" in window)) {
+        statusDiv.innerText = "[ERROR] NFC not supported.";
+        return;
+    }
+    if (isScanning) {
+        resetScanUI();
+        statusDiv.innerText = "[CANCELLED] Scan aborted.";
+        return;
+    }
+
+    try {
+        abortController = new AbortController();
+        const ndef = new NDEFReader();
+        await ndef.scan({ signal: abortController.signal });
+
+        isScanning = true;
+        scanBtn.classList.add('scanning');
+        scanBtn.innerText = "Scanning... (Tap to cancel)";
+        statusDiv.innerText = "Please approach the tag.";
+
+        ndef.onreading = async (event) => {
+            abortController.abort();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            const uid = event.serialNumber;
+
+            scanBtn.classList.remove('scanning');
+            scanBtn.classList.add('success');
+            scanBtn.innerText = "STAMPED";
+            statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
+
+            try {
+                const response = await fetchWithAuth("/api/v1/logs/scan", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
+                });
+                const resultText = await response.text();
+
+                if (response.ok) {
+                    statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
+                    setTimeout(() => {
+                        fetchRecentLogs();
+                        fetchSummary();
+                        resetScanUI();
+                    }, 1500);
+                } else if (response.status === 400 && resultText.includes("Unregistered")) {
+                    statusDiv.innerText = `[UNKNOWN] Redirecting to form...`;
+                    setTimeout(() => {
+                        document.getElementById('reg-uid').value = uid;
+                        switchView('register', null);
+                        resetScanUI();
+                        fetchRecentLogs();
+                    }, 1200);
+                } else {
+                    statusDiv.innerText = `[ERROR] ${resultText}`;
+                    setTimeout(resetScanUI, 2500);
+                }
+            } catch (apiError) {
+                statusDiv.innerText = "[ERROR] Network failure.";
+                setTimeout(resetScanUI, 2500);
+            }
+        };
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            statusDiv.innerText = `[ERROR] ${error}`;
+            resetScanUI();
+        }
+    }
+});
+
+async function handleIosNfcScan(uid) {
+    const statusDiv = document.getElementById('status');
+    statusDiv.innerText = `[iOS NFC] 태그(${uid}) 확인 중...`;
+
+    try {
+        const response = await fetchWithAuth("/api/v1/logs/scan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
+        });
+        const resultText = await response.text();
+
+        if (response.ok) {
+            statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
+            setTimeout(() => {
+                fetchRecentLogs();
+                fetchSummary();
+            }, 1500);
+        } else if (response.status === 400 && resultText.includes("Unregistered")) {
+            alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
+            document.getElementById('reg-uid').value = uid;
+            switchView('register', null);
+            statusDiv.innerText = "waiting for interaction...";
+        } else {
+            statusDiv.innerText = `[ERROR] ${resultText}`;
+        }
+    } catch (e) {
+        statusDiv.innerText = "[ERROR] 서버 통신 실패";
+    }
+}
+
+async function fetchBrands() {
+    try {
+        const res = await fetchWithAuth("/api/v1/perfumes/brands");
+        if (res.ok) {
+            const brands = await res.json();
+            document.getElementById('brand-list').innerHTML = brands.map(b => `<option value="${b}">`).join('');
+        }
+    } catch (e) {
+        console.error("Brand load failed");
+    }
+}
+
+async function crawlUrl() {
+    const urlInput = document.getElementById('reg-url').value.trim();
+    const crawlBtn = document.getElementById('crawl-btn');
+    const terminal = document.getElementById('crawl-terminal');
+    const step2 = document.getElementById('crawl-step-2');
+    const regStatus = document.getElementById('reg-status');
+    const previewContainer = document.getElementById('notes-preview-container');
+    const previewBox = document.getElementById('notes-preview-box');
+
+    if (!urlInput) {
+        regStatus.innerText = "Please paste a URL first.";
+        return;
+    }
+
+    crawledNotesData = null;
+    crawledImageUrl = "";
+    previewContainer.style.display = 'none';
+    previewBox.innerHTML = '';
+    regStatus.innerText = "";
+
+    crawlBtn.style.pointerEvents = 'none';
+    crawlBtn.style.opacity = '0.5';
+    terminal.style.display = 'flex';
+    terminal.classList.remove('error');
+    step2.innerHTML = '> Fetching Fragrantica Notes... <span class="blink">_</span>';
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 70000);
+
+    let retryPhase = 0;
+    const progressInterval = setInterval(() => {
+        retryPhase++;
+        if (retryPhase === 1) step2.innerHTML = '> [WARN] Bot detection triggered. Retrying (1/3)... <span class="blink">_</span>';
+        else if (retryPhase === 2) step2.innerHTML = '> [WARN] Solving Cloudflare challenge. Retrying (2/3)... <span class="blink">_</span>';
+        else if (retryPhase === 3) step2.innerHTML = '> [WARN] Forcing extraction. Final attempt (3/3)... <span class="blink">_</span>';
+    }, 16000);
+
+    try {
+        const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        clearInterval(progressInterval);
+
+        if (res.ok) {
+            const data = await res.json();
+            crawledNotesData = data.notes;
+            crawledImageUrl = data.imageUrl;
+
+            if (!data.notes || Object.keys(data.notes).length === 0) {
+                terminal.classList.add('error');
+                step2.innerHTML = '> [BLOCKED] Anti-bot system prevented crawling.';
+                regStatus.innerText = "Please enter manually.";
+            } else {
+                step2.innerHTML = '> [SUCCESS] Notes extracted perfectly.';
+                regStatus.innerText = "[SUCCESS] Data auto-filled.";
+                previewBox.innerHTML = renderNotesHtml(data.notes);
+                previewContainer.style.display = 'block';
+            }
+        } else {
+            terminal.classList.add('error');
+            step2.innerHTML = '> [ERROR] Backend scraping failed.';
+            regStatus.innerText = "Please check URL and try again.";
+        }
+    } catch (e) {
+        terminal.classList.add('error');
+        step2.innerHTML = (e.name === 'AbortError')
+            ? '> [TIMEOUT] Scraping took too long. (Max retries exceeded)'
+            : '> [ERROR] Network connection lost.';
+        regStatus.innerText = "Please try again or enter manually.";
+    } finally {
+        clearInterval(progressInterval);
+        clearTimeout(timeoutId);
+        crawlBtn.style.pointerEvents = 'auto';
+        crawlBtn.style.opacity = '1';
+    }
+}
+
+function openRegisterView(isSample = false) {
+    currentIsSample = isSample;
+    switchView('register', null);
+
+    const titleEl = document.querySelector('#view-register h2');
+    const uidInput = document.getElementById('reg-uid');
+    const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
+
+    if (isSample) {
+        if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
+        if (uidGroup) uidGroup.style.display = 'none';
+        if (uidInput) uidInput.value = '';
+    } else {
+        if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
+        if (uidGroup) uidGroup.style.display = 'block';
+    }
+}
+
+function cancelRegistration() {
+    document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
+    document.getElementById('notes-preview-container').style.display = 'none';
+    document.getElementById('crawl-terminal').style.display = 'none';
+    document.getElementById('reg-status').innerText = '';
+    crawledNotesData = null;
+    crawledImageUrl = "";
+
+    if (currentIsSample) {
+        switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+        switchWardrobeTab('sample');
+    } else {
+        switchView('main', document.querySelector('.nav-item.main-tab'));
+    }
+}
+
+document.getElementById('reg-auto-log').addEventListener('change', (e) => {
+    document.getElementById('register-submit-btn').innerText = e.target.checked ? "Register & Log" : "Register Only";
+});
+
+document.getElementById('register-submit-btn').addEventListener('click', async () => {
+    let uid = document.getElementById('reg-uid').value;
+    const name = document.getElementById('reg-name').value.trim();
+    const brand = document.getElementById('reg-brand').value.trim();
+    const url = document.getElementById('reg-url').value.trim();
+    const autoLog = document.getElementById('reg-auto-log').checked;
+    const regStatus = document.getElementById('reg-status');
+    const submitBtn = document.getElementById('register-submit-btn');
+
+    if (currentIsSample) {
+        uid = `SAMPLE-${new Date().getTime()}`;
+    } else if (!uid) {
+        regStatus.innerText = "[ERROR] NFC UID is required.";
+        return;
+    }
+
+    if (!name) {
+        regStatus.innerText = "[ERROR] Name is required.";
+        return;
+    }
+
+    submitBtn.innerText = "Processing...";
+    regStatus.innerText = "Syncing with Master DB...";
+
+    try {
+        const res = await fetchWithAuth("/api/v1/perfumes/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                uid, name, brand, url,
+                imageUrl: crawledImageUrl,
+                notes: crawledNotesData,
+                lat: currentLat, lon: currentLon,
+                isSample: currentIsSample,
+                skipLog: !autoLog
+            })
+        });
+
+        const resultText = await res.text();
+
+        if (res.ok) {
+            submitBtn.classList.add('success');
+            submitBtn.innerText = "SUCCESS";
+            regStatus.innerText = `[SUCCESS] ${currentIsSample ? 'Sample' : 'Perfume'} added to Wardrobe.`;
+
+            setTimeout(() => {
+                document.querySelectorAll('#view-register input:not(#reg-uid):not([type="checkbox"])').forEach(el => el.value = '');
+                document.getElementById('notes-preview-container').style.display = 'none';
+                document.getElementById('reg-auto-log').checked = true;
+
+                const terminal = document.getElementById('crawl-terminal');
+                if (terminal) terminal.style.display = 'none';
+
+                crawledNotesData = null;
+                crawledImageUrl = "";
+                submitBtn.classList.remove('success');
+                submitBtn.innerText = "Register & Log";
+                regStatus.innerText = "";
+
+                switchView('wardrobe', document.querySelector('.nav-item.wardrobe-tab') || null);
+                switchWardrobeTab(currentIsSample ? 'sample' : 'bottle');
+                fetchWardrobe();
+                fetchRecentLogs();
+            }, 2000);
+        } else {
+            regStatus.innerText = `[ERROR] ${resultText}`;
+            submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
+        }
+    } catch (e) {
+        regStatus.innerText = "[ERROR] Network failure.";
+        submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
+    }
+});
+
+// ==========================================
+// 7. 통계(Summary) 모듈
+// ==========================================
+async function fetchSummary() {
+    try {
+        const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
+        if (!res.ok) return;
+        const logs = await res.json();
+        globalRecentLogs = logs;
+        updateRecommendation();
+
+        // 1. Top 3 명예의 전당
+        const counts = logs.reduce((acc, log) => {
+            const name = log.perfumeName || 'Unknown';
+            acc[name] = (acc[name] || 0) + 1;
+            return acc;
+        }, {});
+        const sortedTop = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+        const chartColors = ['#f43f5e', '#a855f7', '#6366f1'];
+
+        const ctx = document.getElementById('topPerfumeChart').getContext('2d');
+        if (summaryChartInstance) summaryChartInstance.destroy();
+        summaryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: sortedTop.map(x => x[0]),
+                datasets: [{
+                    data: sortedTop.map(x => x[1]),
+                    backgroundColor: chartColors,
+                    borderWidth: 0,
+                    cutout: '75%'
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        displayColors: false,
+                        padding: 8,
+                        callbacks: {
+                            title: () => '',
+                            label: (context) => `${context.label} : ${context.parsed}회`
+                        }
+                    }
+                }
+            }
+        });
+
+        const legendBox = document.getElementById('top-legend-container');
+        const trophies = ['🏆', '🥈', '🥉'];
+        legendBox.innerHTML = sortedTop.map((item, index) => `
+            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <span style="font-size: 15px;">${trophies[index]}</span>
+                <span style="font-weight: bold; color: ${chartColors[index]}; margin: 0 6px;">${item[1]}회</span>
+                ${item[0]}
+            </div>
+        `).join('');
+
+        // 2. 잔디 심기
+        const heatmapBox = document.getElementById('heatmap-container');
+        const logDates = new Set(logs.map(l => l.date ? l.date.split('T')[0] : ''));
+        let heatmapHtml = '';
+        const today = new Date();
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(today.getDate() - i);
+            const dateStr = d.toISOString().split('T')[0];
+            const isActive = logDates.has(dateStr) ? 'active' : '';
+            heatmapHtml += `<div class="heatmap-cell ${isActive}" title="${dateStr}"></div>`;
+        }
+        heatmapBox.innerHTML = heatmapHtml;
+
+        // 3. 날씨 픽
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        const recentLogs = logs.filter(l => l.date && new Date(l.date.split('T')[0]) >= thirtyDaysAgo);
+
+        const weatherCount = (conditionList) => {
+            const filtered = recentLogs.filter(l => l.weather && conditionList.some(c => l.weather.includes(c)));
+            if (filtered.length === 0) return '기록 부족';
+            const fCounts = filtered.reduce((acc, log) => {
+                acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1;
+                return acc;
+            }, {});
+            return Object.entries(fCounts).sort((a, b) => b[1] - a[1])[0][0];
+        };
+
+        document.getElementById('weather-insight-container').innerHTML = `
+            <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
+                <b>☀️ 맑은 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Clear', 'Sunny'])}</span>
+            </div>
+            <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
+                <b>☁️ 흐린 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Cloud'])}</span>
+            </div>
+            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
+                <b>🌧️ 비/눈</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Rain', 'Snow', 'Drizzle'])}</span>
+            </div>
+        `;
+    } catch (e) {
+        console.error("통계 로딩 실패:", e);
+    }
+}
+
+// ==========================================
+// 8. 위시리스트(Wishlist) 모듈
+// ==========================================
+function toggleWishForm() {
+    isWishFormOpen = !isWishFormOpen;
+    document.getElementById('wish-form-container').style.display = isWishFormOpen ? 'block' : 'none';
+    if (isWishFormOpen) {
+        document.getElementById('wish-name').value = '';
+        document.getElementById('wish-brand').value = '';
+        document.getElementById('wish-url').value = '';
+        document.getElementById('wish-img').value = '';
+        document.getElementById('wish-notes-preview-container').style.display = 'none';
+        document.getElementById('wish-crawl-terminal').style.display = 'none';
+        wishCrawledNotesData = null;
+        wishCrawledImageUrl = "";
+    }
+}
+
+async function crawlWishUrl() {
+    const urlInput = document.getElementById('wish-url').value.trim();
+    const terminal = document.getElementById('wish-crawl-terminal');
+    const step = document.getElementById('wish-crawl-step');
+    if (!urlInput) {
+        alert("URL을 먼저 입력해주세요.");
+        return;
+    }
+
+    terminal.style.display = 'flex';
+    terminal.classList.remove('error');
+    step.innerHTML = '> Fetching Notes... <span class="blink">_</span>';
+    wishCrawledNotesData = null;
+    wishCrawledImageUrl = "";
+
+    try {
+        const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
+        if (res.ok) {
+            const data = await res.json();
+            wishCrawledNotesData = data.notes;
+            wishCrawledImageUrl = data.imageUrl;
+            document.getElementById('wish-img').value = data.imageUrl;
+            step.innerHTML = '> [SUCCESS] Notes extracted.';
+            document.getElementById('wish-notes-preview-box').innerHTML = renderNotesHtml(data.notes);
+            document.getElementById('wish-notes-preview-container').style.display = 'block';
+        } else {
+            terminal.classList.add('error');
+            step.innerHTML = '> [ERROR] Scraping failed.';
+        }
+    } catch (e) {
+        terminal.classList.add('error');
+        step.innerHTML = '> [ERROR] Network issue.';
+    }
+}
+
+async function submitWish() {
+    const name = document.getElementById('wish-name').value.trim();
+    const brand = document.getElementById('wish-brand').value.trim();
+    if (!name) {
+        alert('향수 이름을 입력해주세요.');
+        return;
+    }
+
+    const todayDate = new Date().toISOString().split('T')[0];
+    const payload = {
+        name: name, brand: brand,
+        imageUrl: wishCrawledImageUrl,
+        url: document.getElementById('wish-url').value.trim(),
+        date: todayDate,
+        notes: wishCrawledNotesData
+    };
+
+    try {
+        const res = await fetchWithAuth("/api/v1/wishlist", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            toggleWishForm();
+            fetchWishlist();
+        } else {
+            alert('추가 실패!');
+        }
+    } catch (e) {
+        alert('네트워크 오류');
+    }
+}
+
+async function fetchWishlist() {
+    const container = document.getElementById('wish-container');
+    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+    try {
+        const res = await fetchWithAuth("/api/v1/wishlist");
+        if (res.ok) {
+            globalWishlistData = await res.json();
+            document.getElementById('wish-title').innerText = `Wishlist (${globalWishlistData.length})`;
+
+            if (globalWishlistData.length === 0) {
+                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
+                return;
+            }
+            container.innerHTML = globalWishlistData.map(w => {
+                const imgTag = w.imageUrl
+                    ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
+                    : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
+                const shortDate = w.date ? w.date.split('T')[0] : '';
+                return `
+                    <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                            <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
+                            ${imgTag}
+                            <div>
+                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
+                                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
+    }
+}
+
+function openWishDetail(wishId) {
+    const w = globalWishlistData.find(x => x.id === wishId);
+    if (!w) return;
+    currentWishPromotionId = wishId;
+
+    document.getElementById('wish-detail-brand').innerText = w.brand || 'UNKNOWN BRAND';
+    document.getElementById('wish-detail-name').innerText = w.name;
+    document.getElementById('wish-detail-date').innerText = w.date ? `Added: ${w.date.split('T')[0]}` : 'Added: N/A';
+    document.getElementById('wish-detail-delete-btn').setAttribute('onclick', `deleteWish('${w.id}')`);
+    document.getElementById('wish-detail-edit-btn').setAttribute('onclick', `openEditInfo('wish', '${w.id}', '${w.name.replace(/'/g, "\\'")}', '${(w.brand || '').replace(/'/g, "\\'")}')`);
+
+    const imgEl = document.getElementById('wish-detail-image');
+    const boxEl = document.getElementById('wish-detail-image-box');
+    if (w.imageUrl) {
+        imgEl.src = w.imageUrl;
+        imgEl.style.display = 'block';
+        boxEl.style.display = 'none';
+    } else {
+        imgEl.style.display = 'none';
+        boxEl.style.display = 'flex';
+    }
+
+    document.getElementById('wish-detail-notes-container').innerHTML = renderNotesHtml(w.notes);
+    const btn = document.getElementById('wish-promote-btn');
+    btn.classList.remove('scanning', 'success');
+    btn.innerText = "Purchase & Register (NFC)";
+    document.getElementById('wish-promote-status').innerText = "";
+
+    switchView('wish-detail', null);
+}
+
+async function startWishPromoteScan() {
+    const wish = globalWishlistData.find(w => w.id === currentWishPromotionId);
+    if (!wish) return;
+
+    const btn = document.getElementById('wish-promote-btn');
+    const statusDiv = document.getElementById('wish-promote-status');
+
+    if (!("NDEFReader" in window)) {
+        statusDiv.innerText = "[ERROR] NFC not supported.";
+        return;
+    }
+    if (btn.classList.contains('scanning')) {
+        if (wishPromoteAbort) wishPromoteAbort.abort();
+        btn.classList.remove('scanning');
+        btn.innerText = "Purchase & Register (NFC)";
+        statusDiv.innerText = "";
+        return;
+    }
+
+    try {
+        wishPromoteAbort = new AbortController();
+        const ndef = new NDEFReader();
+        await ndef.scan({ signal: wishPromoteAbort.signal });
+
+        btn.classList.add('scanning');
+        btn.innerText = "Scanning Tag... (Tap to cancel)";
+        statusDiv.innerText = "NFC 태그를 스마트폰에 접촉하세요.";
+
+        ndef.onreading = async (event) => {
+            wishPromoteAbort.abort();
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            const uid = event.serialNumber;
+
+            btn.classList.remove('scanning');
+            btn.classList.add('success');
+            btn.innerText = "TAG DETECTED";
+            statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
+
+            const todayDate = new Date().toISOString().split('T')[0];
+
+            try {
+                const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
+                    method: "POST", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
+                        imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate,
+                        lat: currentLat, lon: currentLon,
+                        skipLog: true
+                    })
+                });
+
+                if (regRes.ok) {
+                    await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, { method: "DELETE" });
+                    statusDiv.innerHTML = "<span style='color:#10b981; font-weight:bold;'>🎉 새 향수를 들이셨군요! 옷장에 예쁘게 넣어뒀습니다.</span>";
+                    setTimeout(() => {
+                        fetchWardrobe();
+                        fetchWishlist();
+                        switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+                    }, 2000);
+                } else {
+                    statusDiv.innerText = `[ERROR] Registration failed.`;
+                    btn.innerText = "Purchase & Register (NFC)";
+                }
+            } catch (e) {
+                statusDiv.innerText = "[ERROR] Network failure.";
+                btn.innerText = "Purchase & Register (NFC)";
+            }
+        };
+    } catch (error) {
+        if (error.name !== 'AbortError') {
+            statusDiv.innerText = `[ERROR] ${error}`;
+            btn.classList.remove('scanning');
+            btn.innerText = "Purchase & Register (NFC)";
+        }
+    }
+}
+
+async function deleteWish(pageId) {
+    if (!confirm('위시리스트에서 삭제할까요?')) return;
+    try {
+        const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, { method: "DELETE" });
+        if (res.ok) {
+            fetchWishlist();
+            switchView('wish', document.querySelectorAll('.nav-item')[3]);
+        } else {
+            alert('삭제 실패!');
+        }
+    } catch (e) {
+        alert('네트워크 오류');
+    }
+}
+
+function toggleWishReorderMode() {
+    isWishReorderMode = !isWishReorderMode;
+    document.getElementById('wish-default-actions').style.display = isWishReorderMode ? 'none' : 'block';
+    document.getElementById('wish-reorder-actions').style.display = isWishReorderMode ? 'flex' : 'none';
+
+    if (isWishReorderMode) {
+        isWishFormOpen = false;
+        document.getElementById('wish-form-container').style.display = 'none';
+    }
+
+    const handles = document.querySelectorAll('.wish-drag-handle');
+    const container = document.getElementById('wish-container');
+
+    if (isWishReorderMode) {
+        handles.forEach(h => h.style.display = 'block');
+        wishSortableInstance = new Sortable(container, {
+            animation: 150,
+            handle: '.wish-drag-handle',
+            ghostClass: 'sortable-ghost'
+        });
+    } else {
+        handles.forEach(h => h.style.display = 'none');
+        if (wishSortableInstance) wishSortableInstance.destroy();
+        fetchWishlist();
+    }
+}
+
+async function saveWishOrder() {
+    if (!wishSortableInstance) return;
+    const orderedIds = Array.from(document.querySelectorAll('.wish-card')).map(card => card.getAttribute('data-id'));
+
+    if (orderedIds.length === 0) {
+        toggleWishReorderMode();
+        return;
+    }
+
+    const saveBtn = document.getElementById('btn-save-wish-order');
+    const originalText = saveBtn.innerText;
+    saveBtn.innerText = "[ saving... ]";
+    saveBtn.style.color = "#f59e0b";
+    saveBtn.style.pointerEvents = "none";
+
+    try {
+        const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(orderedIds)
+        });
+
+        if (res.ok) {
+            toggleWishReorderMode();
+            fetchWishlist();
+        } else {
+            alert("순서 저장 실패!");
+        }
+    } catch (e) {
+        alert("네트워크 오류!");
+    } finally {
+        if (saveBtn) {
+            saveBtn.innerText = originalText;
+            saveBtn.style.color = "#10b981";
+            saveBtn.style.pointerEvents = "auto";
+        }
+    }
+}
+
+// ==========================================
+// 9. 공통 정보 수정 & 설정
+// ==========================================
+function openEditInfo(type, id, name, brand) {
+    document.getElementById('edit-info-type').value = type;
+    document.getElementById('edit-info-id').value = id;
+    document.getElementById('edit-info-name').value = name;
+    document.getElementById('edit-info-brand').value = brand;
+    document.getElementById('edit-info-status').innerText = "";
+    switchView('edit-info', null);
+}
+
+function cancelEditInfo() {
+    const type = document.getElementById('edit-info-type').value;
+    switchView(type === 'wardrobe' ? 'perfume-detail' : 'wish-detail', null);
+}
+
+async function submitEditInfo() {
+    const type = document.getElementById('edit-info-type').value;
+    const pageId = document.getElementById('edit-info-id').value;
+    const name = document.getElementById('edit-info-name').value.trim();
+    const brand = document.getElementById('edit-info-brand').value.trim();
+    const btn = document.getElementById('edit-info-submit-btn');
+    const statusMsg = document.getElementById('edit-info-status');
+
+    if (!name) {
+        statusMsg.innerText = "[ERROR] Name is required.";
+        return;
+    }
+
+    btn.innerText = "Updating...";
+    statusMsg.innerText = "Saving to Notion DB...";
+    const endpoint = type === 'wardrobe' ? `/api/v1/perfumes/${pageId}` : `/api/v1/wishlist/${pageId}`;
+
+    try {
+        const res = await fetchWithAuth(endpoint, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name, brand: brand })
+        });
+
+        if (res.ok) {
+            btn.classList.add('success');
+            btn.innerText = "UPDATED";
+            statusMsg.innerText = "[SUCCESS] Details updated.";
+            setTimeout(() => {
+                btn.classList.remove('success');
+                btn.innerText = "Update Data";
+                if (type === 'wardrobe') {
+                    fetchWardrobe().then(() => openPerfumeDetail(pageId));
+                } else {
+                    fetchWishlist().then(() => openWishDetail(pageId));
+                }
+            }, 1000);
+        } else {
+            statusMsg.innerText = "[ERROR] Update failed.";
+            btn.innerText = "Update Data";
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+        btn.innerText = "Update Data";
+    }
+}
+
+async function openSettingsView() {
+    switchView('settings', null);
+    document.getElementById('setting-status').innerText = "Loading user info...";
+    document.getElementById('setting-pw').value = '';
+
+    try {
+        const res = await fetchWithAuth("/api/v1/users/me");
+        if (res.ok) {
+            const user = await res.json();
+            document.getElementById('setting-id').value = user.userId || '';
+            document.getElementById('setting-name').value = user.name || '';
+            document.getElementById('setting-loc').value = user.defaultLocation || '';
+            document.getElementById('setting-noti').checked = user.notiEnabled === true;
+            document.getElementById('setting-status').innerText = "";
+        } else {
+            document.getElementById('setting-status').innerText = "[ERROR] Failed to load.";
+        }
+    } catch (e) {
+        document.getElementById('setting-status').innerText = "[ERROR] Network failure.";
+    }
+}
+
+async function submitSettings() {
+    const name = document.getElementById('setting-name').value.trim();
+    const loc = document.getElementById('setting-loc').value.trim();
+    const pw = document.getElementById('setting-pw').value;
+    const noti = document.getElementById('setting-noti').checked;
+    const statusMsg = document.getElementById('setting-status');
+    const btn = document.getElementById('setting-submit-btn');
+
+    statusMsg.innerText = "Updating profile...";
+    btn.innerText = "Saving...";
+
+    const payload = { name: name, defaultLocation: loc, notiEnabled: noti };
+    if (pw) payload.password = pw;
+
+    try {
+        const res = await fetchWithAuth("/api/v1/users/me", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            btn.classList.add('success');
+            btn.innerText = "UPDATED";
+            statusMsg.innerText = "[SUCCESS] Profile updated.";
+            if (pw) {
+                alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
+                logout();
+                return;
+            }
+            setTimeout(() => {
+                btn.classList.remove('success');
+                btn.innerText = "Save Changes";
+                switchView('main', document.querySelector('.nav-item.main-tab'));
+                fetchRealWeather();
+            }, 1500);
+        } else {
+            statusMsg.innerText = "[ERROR] Update failed.";
+            btn.innerText = "Save Changes";
+        }
+    } catch (e) {
+        statusMsg.innerText = "[ERROR] Network failure.";
+        btn.innerText = "Save Changes";
+    }
+}
+
+// 별점 평가 모듈
+const starContainer = document.getElementById('star-rating-container');
+const starFill = document.getElementById('star-rating-fill');
+const rateInput = document.getElementById('edit-rate');
+const rateDisplay = document.getElementById('edit-rate-display');
+
+function handleStarInteraction(e) {
+    const rect = starContainer.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const x = clientX - rect.left;
+    const percent = x / rect.width;
+    let score = Math.ceil(percent * 10) / 2;
+    if (score < 0.5) score = 0.5;
+    if (score > 5) score = 5;
+    updateStarUI(score);
+}
+
+if (starContainer) {
+    starContainer.addEventListener('mousedown', handleStarInteraction);
+    starContainer.addEventListener('touchstart', handleStarInteraction, { passive: true });
+    starContainer.addEventListener('touchmove', handleStarInteraction, { passive: true });
+}
+
+function updateStarUI(score) {
+    const num = parseFloat(score);
+    if (isNaN(num) || num <= 0) {
+        starFill.style.width = '0%';
+        rateInput.value = '';
+        rateDisplay.innerText = '평가 안함';
+        rateDisplay.style.color = 'var(--accent-color)';
+        return;
+    }
+    starFill.style.width = `${(num / 5) * 100}%`;
+    rateInput.value = num;
+    rateDisplay.innerText = `${num.toFixed(1)} / 5.0`;
+    rateDisplay.style.color = '#f59e0b';
+}
+
+// ==========================================
+// 10. 앱 부트스트랩 및 라이프사이클
+// ==========================================
+function initializeAppData() {
+    fetchRealWeather();
+    fetchBrands();
+    fetchRecentLogs();
+    fetchPerfumeList();
+    fetchWardrobe();
+    fetchSummary();
+    fetchWishlist();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
+
+    checkAuth();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const scannedUid = urlParams.get('uid') || urlParams.get('id');
+    if (scannedUid) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        setTimeout(() => handleIosNfcScan(scannedUid), 500);
+    }
+});
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker 등록 완료:', reg.scope))
+            .catch(err => console.log('Service Worker 등록 실패:', err));
+    });
+}

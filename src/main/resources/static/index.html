@@ -15,239 +15,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-    <style>
-        :root { --bg-color: #f4f4f0; --text-color: #1a1a1a; --accent-color: #8c8c8c; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Courier Prime', 'Apple SD Gothic Neo', sans-serif; background-color: var(--bg-color); color: var(--text-color); font-size: 13px; letter-spacing: -0.3px; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; }
 
-        .view-section { flex: 1; padding: 40px 24px; display: none; opacity: 0; transition: opacity 0.4s ease-in-out; overflow-y: auto; }
-        .view-section.active { display: flex; flex-direction: column; opacity: 1; }
-
-        /* --- WEATHER & WIDGETS --- */
-        .weather-widget { margin-bottom: 25px; border-bottom: 1px dashed var(--text-color); padding-bottom: 15px; }
-        .weather-widget h2 { font-size: 11px; font-weight: normal; color: var(--accent-color); margin-bottom: 8px; text-transform: uppercase; }
-        .weather-widget p { font-size: 14px; line-height: 1.6; }
-
-        .loc-btn { font-size: 10px; cursor: pointer; font-weight:bold; text-decoration: underline; margin-left: 8px; color: var(--text-color); user-select: none; -webkit-user-select: none; }
-
-        /* --- BUTTONS & ANIMATIONS --- */
-        .scan-container { display: flex; align-items: center; flex-direction: column; margin-top: 20px; }
-        .scan-btn {
-            background: transparent; color: var(--text-color); border: 1px solid var(--text-color);
-            padding: 18px 40px; font-family: inherit; font-size: 14px; cursor: pointer; border-radius: 2px; text-transform: uppercase;
-            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .scan-btn:active { transform: scale(0.95); }
-        .scan-btn.scanning { background: var(--text-color); color: var(--bg-color); animation: pulse 1.5s infinite; }
-        .scan-btn.success { background: var(--text-color); color: var(--bg-color); animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-
-        /* 💡 빈티지 삭제 버튼 스타일 */
-        .delete-btn { color: #d9534f; border-color: #d9534f; }
-        .delete-btn:active { background: #d9534f; color: var(--bg-color); }
-
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); } }
-        @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
-        @keyframes badge-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); }
-            70% { box-shadow: 0 0 0 5px rgba(244, 63, 94, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
-        }
-        .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
-
-
-        .manual-trigger-container {
-            margin-top: 25px; /* 스캔 버튼과의 간격을 시원하게 벌림 */
-            text-align: center;
-            border-top: 1px dashed #d0d0c8;
-            padding-top: 15px;
-            width: 100%;
-            max-width: 280px;
-        }
-        .manual-trigger-btn {
-            background: transparent; border: none; font-family: inherit;
-            font-size: 11px; color: var(--text-color); cursor: pointer;
-            font-weight: bold;
-            text-decoration: underline;
-            text-transform: uppercase; letter-spacing: 0.5px;
-            transition: color 0.2s ease;
-        }
-        .manual-trigger-btn:hover { color: var(--text-color); text-decoration: underline; }
-
-        /* --- 대시보드 컨테이너 및 헤더 --- */
-        .future-dashboard {
-            flex: 1; margin-top: 25px; border: 1px dashed var(--text-color);
-            border-radius: 2px; display: flex; flex-direction: column;
-            padding: 16px; overflow-y: auto;
-        }
-        .dashboard-header {
-            font-size: 11px; color: var(--accent-color); text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px; /* 하단 첫 번째 카드와의 간격 균일화 */
-            border-bottom: 1px solid var(--text-color);
-            padding-bottom: 8px;
-        }
-
-        /* --- 개별 로그 카드 (그림자 & 클릭 피드백) --- */
-        .log-item {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px 14px;
-            margin-bottom: 12px; /* 카드 간 간격을 12px로 통일 */
-            border: 1px solid #e0e0dc;
-            border-radius: 4px;
-            background-color: #ffffff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-        }
-        .log-item:last-child {
-            margin-bottom: 0; /* 마지막 카드는 하단 여백 제거 */
-        }
-        .log-item:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-            border-color: var(--text-color);
-        }
-        .log-item:active {
-            transform: translateY(1px);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-            background-color: #fafaf8;
-        }
-
-        /* --- 카드 내부 텍스트 및 썸네일 --- */
-        .log-left { display: flex; align-items: center; flex: 1; overflow: hidden; }
-        .log-thumb {
-            width: 34px; height: 44px; object-fit: cover; border-radius: 2px;
-            background-color: transparent; border: 1px solid #e0e0dc;
-            margin-right: 12px; flex-shrink: 0;
-        }
-        .log-details { display: flex; flex-direction: column; overflow: hidden; }
-        .log-perfume { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-color); }
-        .log-date { font-size: 10px; color: var(--accent-color); margin-top: 3px; }
-
-        .log-weather {
-            font-size: 10px; color: var(--accent-color); text-align: right;
-            margin-left: 10px; white-space: nowrap; line-height: 1.4;
-        }
-
-        /* 💡 크롤링 진행 상황 터미널 박스 */
-        .crawl-terminal {
-            margin-top: 15px; padding: 12px 15px;
-            background: #1e1e1e; color: #4af626; /* 해커톤 그린 */
-            font-family: 'Courier New', Courier, monospace; font-size: 11px;
-            border-radius: 4px; text-align: left;
-            display: none; flex-direction: column; gap: 6px;
-            border: 1px solid #333;
-        }
-        .crawl-terminal.error { color: #d9534f; border-color: #d9534f; }
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
-
-        /* 💡 빈티지 입력 폼 (Register View) 스타일 */
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-size: 10px; color: var(--accent-color); margin-bottom: 5px; text-transform: uppercase; }
-        .form-group input {
-            width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color);
-            padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;
-        }
-        .form-group input:focus { border-bottom: 2px solid var(--text-color); }
-        .form-group input::placeholder { color: #ccc; }
-        .form-group input[readonly] { color: var(--accent-color); border-bottom-style: dashed; }
-
-        /* 💡 에러 발생 시 입력칸 하단 및 배경을 붉게 물들임 */
-        .form-group input.error-border {
-            border-bottom: 2px solid #d9534f !important;
-            background-color: rgba(217, 83, 79, 0.05);
-            transition: all 0.3s ease;
-        }
-        .form-group input.error-border::placeholder { color: #d9534f; opacity: 0.8; }
-
-        /* 💡 노트 뱃지(Chip) 및 로딩 텍스트 스타일 */
-        .note-chip {
-            display: inline-block; border: 1px solid var(--accent-color);
-            padding: 3px 8px; margin: 3px 5px 3px 0; border-radius: 2px;
-            background: transparent; color: var(--text-color); font-size: 11px;
-        }
-        .note-category { margin-top: 10px; margin-bottom: 4px; font-weight: bold; color: var(--text-color); font-size: 10px; text-transform: uppercase; }
-        .note-category:first-child { margin-top: 0; }
-        .progress-text { font-size: 11px; color: var(--accent-color); margin-top: 5px; font-style: italic; }
-
-        /* --- BOTTOM NAV --- */
-        .bottom-nav { display: flex; justify-content: space-between; padding: 20px 30px 30px 30px; border-top: 1px solid #ddd; background-color: var(--bg-color); }
-        .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
-        .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
-
-        /* --- 옷장(Wardrobe) 스타일 --- */
-        .wardrobe-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
-        .wardrobe-card {
-            display: flex; padding: 12px; border: 1px solid #e0e0dc; border-radius: 4px;
-            background-color: #ffffff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-            transition: transform 0.2s ease;
-        }
-        .wardrobe-card:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08); }
-        .wardrobe-thumb {
-            width: 55px; height: 75px; object-fit: cover; border-radius: 2px;
-            border: 1px solid #e0e0dc; margin-right: 15px; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--accent-color); background: #fafaf8;
-        }
-        .wardrobe-info { display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
-        .wardrobe-brand { font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px; }
-        .wardrobe-name { font-weight: bold; font-size: 14px; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
-        .wardrobe-notes {
-            font-size: 11px;
-            color: var(--accent-color);
-            line-height: 1.4; /* 가독성을 위한 줄간격 */
-            margin-top: 4px;
-
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* --- 통계 잔디(Heatmap) 스타일 --- */
-        .heatmap-grid {
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px;
-        }
-        .heatmap-cell {
-            aspect-ratio: 1; border-radius: 2px; background-color: #f5f5f5; border: 1px solid #e0e0dc;
-            transition: all 0.2s ease; cursor: pointer;
-        }
-        .heatmap-cell:hover { transform: scale(1.15); border-color: var(--text-color); }
-        .heatmap-cell.active {
-            background-color: #10b981;
-            border-color: #059669;
-            box-shadow: 0 0 5px rgba(16, 185, 129, 0.4);
-        }
-
-        h2, .loc-btn, .dashboard-header {
-            -webkit-user-select: none;
-            user-select: none;
-        }
-
-        /* 💡 드래그되어 빠져나간 '빈 자리(그림자)' 스타일 */
-        .sortable-ghost {
-            opacity: 0.3 !important;
-            background-color: rgba(244, 63, 94, 0.05); /* accent-color의 아주 연한 핑크 배경 */
-            border: 2px dashed var(--accent-color);
-            border-radius: 8px;
-        }
-
-        /* 💡 손가락/마우스를 따라다니며 허공에 뜬 '진짜 아이템' 스타일 */
-        .sortable-drag {
-            background-color: var(--bg-color) !important;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4) !important;
-            opacity: 1 !important;
-            border-radius: 8px;
-            cursor: grabbing !important;
-            z-index: 9999 !important;
-            transition: none !important;
-        }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-<!-- 💡 0. AUTH VIEW (로그인 및 회원가입 화면) -->
+<!-- 0. AUTH VIEW -->
 <section id="view-auth" class="view-section active" style="justify-content: center; padding-bottom: 20vh;">
     <div class="weather-widget" style="text-align: center; border-bottom: none;">
         <h2 style="font-size: 16px; margin-bottom: 5px; color: var(--text-color);">PERFUME STALKER</h2>
@@ -255,18 +28,15 @@
     </div>
 
     <div class="form-container">
-        <!-- 공통 필드 -->
         <div class="form-group">
             <label>User ID</label>
             <input type="text" id="auth-id" placeholder="Enter your ID" autocomplete="off">
         </div>
         <div class="form-group">
             <label>Password</label>
-            <!-- 💡 비밀번호 마스킹 처리 -->
             <input type="password" id="auth-pw" placeholder="Enter password">
         </div>
 
-        <!-- 회원가입 전용 확장 필드 (초기엔 숨김) -->
         <div id="signup-fields" style="display: none;">
             <div class="form-group">
                 <label>Name</label>
@@ -286,17 +56,13 @@
         <div id="auth-status" class="status-msg"></div>
 
         <div class="manual-trigger-container" style="margin: 20px auto 0 auto;">
-            <button id="auth-toggle-btn" class="manual-trigger-btn" onclick="toggleAuthMode()">
-                [ Switch to Sign Up ]
-            </button>
+            <button id="auth-toggle-btn" class="manual-trigger-btn" onclick="toggleAuthMode()">[ Switch to Sign Up ]</button>
         </div>
     </div>
 </section>
 
 <!-- 1. MAIN VIEW -->
-<section id="view-main" class="view-section active" style="padding-bottom: 10px;">
-
-    <!-- 💡 1. 날씨 위젯 (좌우 2줄 압축) -->
+<section id="view-main" class="view-section" style="padding-bottom: 10px;">
     <div class="weather-widget" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--text-color); flex-shrink: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">DATE: <span id="current-date" style="color: var(--text-color);"></span></h2>
@@ -307,41 +73,28 @@
         </div>
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">LOC: <span id="current-loc" style="color: var(--text-color);">loading...</span></h2>
-            <div id="weather-info" style="font-size: 12px; font-weight: bold; color: var(--text-color); text-align: right;">
-                <!-- JS 렌더링 -->
-            </div>
+            <div id="weather-info" style="font-size: 12px; font-weight: bold; color: var(--text-color); text-align: right;"></div>
         </div>
     </div>
 
-    <!-- 💡 2. 스캔 버튼 & 수동 기록 (위아래 여백 대폭 축소) -->
     <div class="scan-container" style="margin-top: 0; flex-shrink: 0;">
         <button id="scan-btn" class="scan-btn" style="padding: 10px 40px; font-size: 13px;">TAP TO SCAN</button>
         <div id="status" class="status-msg" style="margin-top: 6px; height: auto;">waiting for interaction...</div>
-
         <div class="manual-trigger-container" style="margin-top: 10px; padding-top: 10px;">
-            <button class="manual-trigger-btn" onclick="switchView('manual-log', null)">
-                [ + MANUAL ENTRY (수동 기록) ]
-            </button>
+            <button class="manual-trigger-btn" onclick="switchView('manual-log', null)">[ + MANUAL ENTRY (수동 기록) ]</button>
         </div>
     </div>
 
-    <!-- 💡 3. 추천 위젯 (내용물만큼만 높이 차지하도록 flex 강제 해제) -->
     <div id="recommendation-widget" style="margin-top: 15px; padding: 12px; border: 1px dashed #10b981; border-radius: 2px; display: none; flex-shrink: 0;">
-        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #10b981; padding-bottom: 6px; margin-bottom: 8px; font-weight: bold;">
-            ✨ Today's Weather Pick
-        </div>
-        <div id="recommendation-content" style="display: flex; align-items: center; gap: 12px;">
-            <!-- JS 렌더링 -->
-        </div>
+        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #10b981; padding-bottom: 6px; margin-bottom: 8px; font-weight: bold;">✨ Today's Weather Pick</div>
+        <div id="recommendation-content" style="display: flex; align-items: center; gap: 12px;"></div>
     </div>
 
-    <!-- 💡 4. 최근 로그 (남은 하단 공간을 100% 꽉 채우고 내부에서만 스크롤) -->
     <div style="margin-top: 15px; border: 1px dashed var(--text-color); border-radius: 2px; display: flex; flex-direction: column; flex: 1; min-height: 0;">
         <div style="padding: 12px 12px 10px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0dc;">
             <div style="font-size: 11px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px;">Recent Logs</div>
             <span style="font-size: 11px; font-weight:bold; color: var(--text-color); text-decoration: underline; cursor: pointer;" onclick="openAllLogsView()">[ + view all ]</span>
         </div>
-        <!-- 실제 리스트가 렌더링되고 스크롤되는 영역 -->
         <div id="recent-logs-container" style="flex: 1; overflow-y: auto; padding: 12px;">
             <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching logs...</div>
         </div>
@@ -353,13 +106,11 @@
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 0 0; margin-top: -40px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
             <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Wardrobe</h2>
-
             <div id="wardrobe-default-actions" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
                 <span id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">[ + sample ]</span>
                 <span class="loc-btn" onclick="toggleWardrobeReorderMode()">[ reorder ]</span>
                 <span class="loc-btn" onclick="fetchWardrobe()">[ refresh ]</span>
             </div>
-
             <div id="wardrobe-reorder-actions" style="display: none; gap: 10px; justify-content: flex-end;">
                 <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
                 <span id="btn-save-w-order" class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
@@ -371,47 +122,35 @@
             <div id="tab-sample" onclick="switchWardrobeTab('sample')" style="flex: 1; text-align: center; padding-bottom: 8px; cursor: pointer; font-size: 14px; color: #a1a1aa; border-bottom: 2px solid transparent;">Samples</div>
         </div>
     </div>
-
     <div id="wardrobe-container" class="wardrobe-grid" style="margin-top: 15px;">
         <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>
     </div>
 </section>
 
-<!-- 💡 3. SUMMARY VIEW (통계 화면) -->
+<!-- 3. SUMMARY VIEW -->
 <section id="view-summary" class="view-section">
     <div class="weather-widget">
         <h2>My Summary <span class="loc-btn" onclick="fetchSummary()" style="float: right;">[ refresh ]</span></h2>
         <p>Your wearing statistics.</p>
     </div>
-
-    <!-- 1. 명예의 전당 -->
     <div class="future-dashboard">
         <div class="dashboard-header">Top 3 Hall of Fame</div>
         <div style="display: flex; align-items: center; justify-content: flex-start; height: 100px; gap: 20px;">
-            <!-- 💡 차트 크기를 75px로 줄여서 훨씬 세련되게! -->
-            <div style="width: 75px; height: 75px; flex-shrink: 0;">
-                <canvas id="topPerfumeChart"></canvas>
-            </div>
-            <div id="top-legend-container" style="flex: 1; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-color); overflow: hidden;">
-            </div>
+            <div style="width: 75px; height: 75px; flex-shrink: 0;"><canvas id="topPerfumeChart"></canvas></div>
+            <div id="top-legend-container" style="flex: 1; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-color); overflow: hidden;"></div>
         </div>
     </div>
-
-    <!-- 2. 잔디 심기 (최근 30일 Heatmap) -->
     <div class="future-dashboard" style="margin-top: 15px;">
         <div class="dashboard-header">Last 30 Days Activity</div>
         <div id="heatmap-container" class="heatmap-grid"></div>
     </div>
-
-    <!-- 3. 날씨별 최애 픽 (Insights) -->
     <div class="future-dashboard" style="margin-top: 15px;">
         <div class="dashboard-header">Weather Pick (Last 30 Days)</div>
-        <div id="weather-insight-container" style="font-size: 12px; color: var(--text-color); line-height: 1.4;">
-        </div>
+        <div id="weather-insight-container" style="font-size: 12px; color: var(--text-color); line-height: 1.4;"></div>
     </div>
 </section>
 
-<!-- 💡 4. WISH VIEW (위시리스트 화면) -->
+<!-- 4. WISH VIEW -->
 <section id="view-wish" class="view-section">
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -427,19 +166,15 @@
         </div>
     </div>
 
-    <!-- 크롤링을 지원하는 폼으로 -->
     <div id="wish-form-container" class="form-container" style="display: none; margin-top: 15px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 2px;">
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
-
         <div class="form-group">
             <label>Fragrantica URL <span class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">[ auto fill ]</span></label>
             <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
-            <!-- 프로그레스 터미널 -->
             <div id="wish-crawl-terminal" class="crawl-terminal">
                 <span id="wish-crawl-step">> Fetching Notes... <span class="blink">_</span></span>
             </div>
         </div>
-
         <div class="form-group">
             <label>Name *</label>
             <input type="text" id="wish-name" placeholder="e.g. Santal 33" required autocomplete="off">
@@ -449,49 +184,123 @@
             <input type="text" id="wish-brand" placeholder="e.g. Le Labo" required autocomplete="off">
             <input type="hidden" id="wish-img">
         </div>
-
         <div class="form-group" id="wish-notes-preview-container" style="display: none;">
             <label>Extracted Notes</label>
             <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
         </div>
-
         <div style="display: flex; gap: 10px; margin-top: 15px;">
             <button class="scan-btn" style="flex: 2;" onclick="submitWish()">Save Wish</button>
             <button class="scan-btn delete-btn" style="flex: 1; padding: 10px;" onclick="toggleWishForm()">Cancel</button>
         </div>
     </div>
-
     <div id="wish-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
 </section>
 
-<!-- 💡 7. MANUAL LOG VIEW (수동 기록 화면) -->
+<!-- 5. REGISTER VIEW -->
+<section id="view-register" class="view-section">
+    <div class="weather-widget">
+        <h2>New Discovery <span class="loc-btn" onclick="cancelRegistration()">[ cancel ]</span></h2>
+        <p>Unregistered tag detected.<br>Type details to log it.</p>
+    </div>
+    <div class="form-container">
+        <div class="form-group">
+            <label>Tag UID</label>
+            <input type="text" id="reg-uid" readonly>
+        </div>
+        <div class="form-group">
+            <label>Fragrantica URL <span class="loc-btn" id="crawl-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
+            <input type="url" id="reg-url" placeholder="Paste URL here...">
+            <div id="crawl-terminal" class="crawl-terminal">
+                <span id="crawl-step-1">> Initializing Scraping Engine... [OK]</span>
+                <span id="crawl-step-2">> Fetching Fragrantica Notes... <span class="blink">_</span></span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Name *</label>
+            <input type="text" id="reg-name" placeholder="e.g. Santal 33" required autocomplete="off">
+        </div>
+        <div class="form-group">
+            <label>Brand</label>
+            <input type="text" id="reg-brand" list="brand-list" placeholder="Select or type a brand" autocomplete="off">
+            <datalist id="brand-list"></datalist>
+        </div>
+        <div class="form-group" id="notes-preview-container" style="display: none;">
+            <label>Extracted Notes</label>
+            <div id="notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; margin-bottom: 20px;">
+            <input type="checkbox" id="reg-auto-log" checked style="width: auto;">
+            <label for="reg-auto-log" style="margin: 0; font-size: 13px; color: var(--text-color);">등록과 동시에 오늘 착향 기록 남기기</label>
+        </div>
+        <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
+        <div id="reg-status" class="status-msg"></div>
+    </div>
+</section>
+
+<!-- 6. EDIT LOG VIEW -->
+<section id="view-edit-log" class="view-section">
+    <div class="weather-widget">
+        <h2>Edit Log <span class="loc-btn" onclick="cancelEditLog()">[ cancel ]</span></h2>
+        <p id="edit-perfume-name" style="font-weight: bold; margin-bottom: 5px;">Perfume Name</p>
+        <p id="edit-date" style="font-size: 10px; color: var(--accent-color);">[2026-08-27]</p>
+    </div>
+    <div class="form-container">
+        <input type="hidden" id="edit-page-id">
+        <div class="form-group">
+            <label>Weather</label>
+            <select id="edit-weather">
+                <option value="Clear">Clear ☀️</option>
+                <option value="Clouds">Clouds ☁️</option>
+                <option value="Rain">Rain 🌧️</option>
+                <option value="Snow">Snow ❄️</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <div class="form-group" style="flex: 1;"><label>Temp (°C)</label><input type="number" id="edit-temp"></div>
+            <div class="form-group" style="flex: 1;"><label>Humidity (%)</label><input type="number" id="edit-humidity"></div>
+        </div>
+        <div class="form-group" style="margin-top: 20px; text-align: center;">
+            <label style="margin-bottom: 10px;">Rating (터치해서 평가)</label>
+            <div id="star-rating-container" style="font-size: 40px; color: #e0e0dc; cursor: pointer; position: relative; display: inline-block; user-select: none; letter-spacing: 5px;">
+                ★★★★★
+                <div id="star-rating-fill" style="color: #f59e0b; position: absolute; top: 0; left: 0; white-space: nowrap; overflow: hidden; width: 0%; pointer-events: none;">★★★★★</div>
+            </div>
+            <input type="hidden" id="edit-rate">
+            <div id="edit-rate-display" style="font-size: 14px; font-weight: bold; color: var(--accent-color); margin-top: 5px;">평가 안함</div>
+        </div>
+        <div class="form-group">
+            <label>Comment</label>
+            <textarea id="edit-comment" placeholder="오늘의 착향 느낌, 주변의 반응은 어땠나요?" style="height: 80px; resize: none;"></textarea>
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button id="edit-submit-btn" class="scan-btn" style="flex: 2;" onclick="submitEditLog()">Update</button>
+            <button id="edit-delete-btn" class="scan-btn delete-btn" style="flex: 1;" onclick="deleteLog()">Delete</button>
+        </div>
+        <div id="edit-status" class="status-msg"></div>
+    </div>
+</section>
+
+<!-- 7. MANUAL LOG VIEW -->
 <section id="view-manual-log" class="view-section">
     <div class="weather-widget">
         <h2>Manual Log <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ cancel ]</span></h2>
         <p>Log a perfume without NFC tag.</p>
     </div>
-
     <div class="form-container">
         <div class="form-group">
             <label>Select Perfume *</label>
-            <select id="manual-perfume-select" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
-                <option value="">Loading perfumes...</option>
-                <!-- 백엔드에서 받아와서 채움 -->
-            </select>
+            <select id="manual-perfume-select"><option value="">Loading perfumes...</option></select>
         </div>
-
         <div class="form-group">
             <label>Date (Optional)</label>
-            <!-- 💡 날짜 선택기! 비워두면 백엔드가 오늘 날짜로 처리함 -->
             <input type="date" id="manual-date">
         </div>
-
         <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
         <div id="manual-status" class="status-msg"></div>
     </div>
 </section>
 
-<!-- 💡 8. PERFUME DETAIL VIEW (옷장 상세 화면) -->
+<!-- 8. PERFUME DETAIL VIEW -->
 <section id="view-perfume-detail" class="view-section">
     <div class="weather-widget">
         <h2>Perfume Details
@@ -503,32 +312,37 @@
         <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
         <p id="detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
-
-    <!-- 1. 이미지 & 노트 뱃지 영역 -->
     <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 10px;">
-
-        <!-- 썸네일 고정 영역 (flex-shrink: 0 으로 찌그러짐 방지) -->
         <div style="flex-shrink: 0;">
             <div id="detail-image-box" class="wardrobe-thumb" style="width: 85px; height: 115px; margin: 0;">No Img</div>
             <img id="detail-image" src="" style="width: 85px; height: 115px; object-fit: cover; border: 1px solid #e0e0dc; border-radius: 2px; display: none;">
         </div>
-
-        <!-- 노트 컨테이너: 세로 제한(max-height) 삭제, 높이 자동 조절 -->
-        <div id="detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;">
-            <!-- JS에서 노트 뱃지가 렌더링됨 -->
-        </div>
+        <div id="detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;"></div>
     </div>
-
-    <!-- 2. 이 향수의 착향 로그만 모아보는 미니 대시보드 -->
     <div class="future-dashboard" style="margin-top: 15px;">
         <div class="dashboard-header">Wearing History</div>
-        <div id="detail-history-container">
-            <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>
-        </div>
+        <div id="detail-history-container"><div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div></div>
     </div>
 </section>
 
-<!-- 💡 10. WISH DETAIL VIEW (위시리스트 상세 및 NFC 승격 화면) -->
+<!-- 9. ALL LOGS VIEW -->
+<section id="view-all-logs" class="view-section">
+    <div style="padding: 0 0 10px 0; border-bottom: 1px solid #e0e0dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="margin: 0; font-size: 16px;">All History</h2>
+            <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ back ]</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <input type="date" id="search-start-date" class="form-input" style="flex: 1; padding: 6px; border:1px solid #e0e0dc;" onchange="renderAllLogs()">
+            <span style="color: var(--accent-color); font-weight: bold;">~</span>
+            <input type="date" id="search-end-date" class="form-input" style="flex: 1; padding: 6px; border:1px solid #e0e0dc;" onchange="renderAllLogs()">
+            <button class="scan-btn" style="width: auto; padding: 6px 10px;" onclick="clearSearchDates()">Clear</button>
+        </div>
+    </div>
+    <div id="all-logs-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
+</section>
+
+<!-- 10. WISH DETAIL VIEW -->
 <section id="view-wish-detail" class="view-section">
     <div class="weather-widget">
         <h2>Wish Details
@@ -540,178 +354,36 @@
         <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
         <p id="wish-detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
-
-    <!-- 이미지 & 노트 영역 (옷장 상세 뷰 재활용) -->
     <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 25px;">
         <div style="flex-shrink: 0;">
             <div id="wish-detail-image-box" class="wardrobe-thumb" style="width: 85px; height: 115px; margin: 0;">No Img</div>
             <img id="wish-detail-image" src="" style="width: 85px; height: 115px; object-fit: cover; border: 1px solid #e0e0dc; border-radius: 2px; display: none;">
         </div>
-        <div id="wish-detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;">
-        </div>
+        <div id="wish-detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;"></div>
     </div>
-
-    <!-- 💡 NFC 태그로 옷장(마스터 DB)에 즉시 꽂아넣는 승격 버튼 -->
     <button id="wish-promote-btn" class="scan-btn" style="width: 100%;" onclick="startWishPromoteScan()">Purchase & Register (NFC)</button>
     <div id="wish-promote-status" class="status-msg"></div>
 </section>
 
-<!-- 💡 11. EDIT INFO VIEW (옷장/위시 공통 텍스트 수정 화면) -->
+<!-- 11. EDIT INFO VIEW -->
 <section id="view-edit-info" class="view-section">
     <div class="weather-widget">
         <h2>Edit Details <span class="loc-btn" onclick="cancelEditInfo()">[ cancel ]</span></h2>
         <p>Update name and brand.</p>
     </div>
     <div class="form-container">
-        <input type="hidden" id="edit-info-type"> <!-- wardrobe or wish -->
+        <input type="hidden" id="edit-info-type">
         <input type="hidden" id="edit-info-id">
         <div class="form-group">
             <label>Name *</label>
-            <input type="text" id="edit-info-name" required autocomplete="off" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
+            <input type="text" id="edit-info-name" required autocomplete="off">
         </div>
         <div class="form-group">
             <label>Brand</label>
-            <input type="text" id="edit-info-brand" autocomplete="off" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
+            <input type="text" id="edit-info-brand" autocomplete="off">
         </div>
         <button id="edit-info-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitEditInfo()">Update Data</button>
         <div id="edit-info-status" class="status-msg"></div>
-    </div>
-</section>
-
-<!-- 💡 5. REGISTER VIEW -->
-<section id="view-register" class="view-section">
-    <div class="weather-widget">
-        <h2>New Discovery <span class="loc-btn" onclick="cancelRegistration()">[ cancel ]</span></h2>
-        <p>Unregistered tag detected.<br>Type details to log it.</p>
-    </div>
-
-    <div class="form-container">
-        <div class="form-group">
-            <label>Tag UID</label>
-            <input type="text" id="reg-uid" readonly>
-        </div>
-
-        <div class="form-group">
-            <label>Fragrantica URL <span class="loc-btn" id="crawl-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
-            <input type="url" id="reg-url" placeholder="Paste URL here...">
-            <!-- 1. 페이크 프로그레스 텍스트 영역 -->
-            <div id="crawl-terminal" class="crawl-terminal">
-                <span id="crawl-step-1">> Initializing Scraping Engine... [OK]</span>
-                <span id="crawl-step-2">> Fetching Fragrantica Notes... <span class="blink">_</span></span>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Name *</label>
-            <input type="text" id="reg-name" placeholder="e.g. Santal 33" required autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>Brand</label>
-            <input type="text" id="reg-brand" list="brand-list" placeholder="Select or type a brand" autocomplete="off">
-            <datalist id="brand-list"></datalist>
-        </div>
-
-        <!-- 2. 크롤링 완료 후 나타나는 빈티지 노트 뱃지 영역 -->
-        <div class="form-group" id="notes-preview-container" style="display: none;">
-            <label>Extracted Notes</label>
-            <div id="notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;">
-                <!-- JS에서 뱃지가 렌더링됨 -->
-            </div>
-        </div>
-
-        <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 15px; margin-bottom: 20px;">
-            <input type="checkbox" id="reg-auto-log" style="width: auto;">
-            <label for="reg-auto-log" style="margin: 0; font-size: 13px; color: var(--text-color);">등록과 동시에 오늘 착향 기록 남기기</label>
-        </div>
-
-        <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
-        <div id="reg-status" class="status-msg"></div>
-    </div>
-</section>
-
-<!-- 💡 6. EDIT LOG VIEW (재활용 가능한 수정 화면) -->
-<section id="view-edit-log" class="view-section">
-    <div class="weather-widget">
-        <h2>Edit Log <span class="loc-btn" onclick="cancelEditLog()">[ cancel ]</span></h2>
-        <p id="edit-perfume-name" style="font-weight: bold; margin-bottom: 5px;">Perfume Name</p>
-        <p id="edit-date" style="font-size: 10px; color: var(--accent-color);">[2026-08-27]</p>
-    </div>
-
-    <div class="form-container">
-        <!-- 수정할 때 쓸 고유 식별자(숨김) -->
-        <input type="hidden" id="edit-page-id">
-
-        <div class="form-group">
-            <label>Weather</label>
-            <select id="edit-weather" style="width: 100%; background: transparent; border: none; border-bottom: 1px solid var(--text-color); padding: 8px 0; font-family: inherit; font-size: 14px; color: var(--text-color); outline: none; border-radius: 0;">
-                <option value="Clear">Clear ☀️</option>
-                <option value="Clouds">Clouds ☁️</option>
-                <option value="Rain">Rain 🌧️</option>
-                <option value="Snow">Snow ❄️</option>
-            </select>
-        </div>
-
-        <div style="display: flex; gap: 10px;">
-            <div class="form-group" style="flex: 1;">
-                <label>Temp (°C)</label>
-                <input type="number" id="edit-temp" placeholder="e.g. 28">
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Humidity (%)</label>
-                <input type="number" id="edit-humidity" placeholder="e.g. 60">
-            </div>
-        </div>
-
-        <!-- 💡 터치형 0.5단위 별점 UI -->
-        <div class="form-group" style="margin-top: 20px; text-align: center;">
-            <label style="margin-bottom: 10px;">Rating (터치해서 평가)</label>
-            <div id="star-rating-container" style="font-size: 40px; color: #e0e0dc; cursor: pointer; position: relative; display: inline-block; user-select: none; letter-spacing: 5px;">
-                ★★★★★
-                <div id="star-rating-fill" style="color: #f59e0b; position: absolute; top: 0; left: 0; white-space: nowrap; overflow: hidden; width: 0%; pointer-events: none;">★★★★★</div>
-            </div>
-            <input type="hidden" id="edit-rate">
-            <div id="edit-rate-display" style="font-size: 14px; font-weight: bold; color: var(--accent-color); margin-top: 5px;">평가 안함</div>
-        </div>
-
-        <!-- 💡 코멘트 입력창 -->
-        <div class="form-group">
-            <label>Comment</label>
-            <textarea id="edit-comment" placeholder="오늘의 착향 느낌, 주변의 반응은 어땠나요?" style="width: 100%; height: 80px; background: transparent; border: 1px solid var(--text-color); border-radius: 4px; padding: 10px; font-family: inherit; font-size: 13px; color: var(--text-color); outline: none; resize: none;"></textarea>
-        </div>
-
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button id="edit-submit-btn" class="scan-btn" style="flex: 2;" onclick="submitEditLog()">Update</button>
-            <button id="edit-delete-btn" class="scan-btn delete-btn" style="flex: 1;" onclick="deleteLog()">Delete</button>
-        </div>
-        <div id="edit-status" class="status-msg"></div>
-    </div>
-</section>
-
-<nav class="bottom-nav">
-    <!-- class="nav-item main-tab" 처럼 요소를 특정하기 쉽게 식별자 추가 -->
-    <div class="nav-item active main-tab" onclick="switchView('main', this)">Main</div>
-    <div class="nav-item" onclick="switchView('wardrobe', this)">Wardrobe</div>
-    <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
-    <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
-</nav>
-
-<!-- 💡 9. ALL LOGS VIEW (전체 로그 및 날짜 범위 검색) -->
-<section id="view-all-logs" class="view-section">
-    <div style="padding: 0 0 10px 0; border-bottom: 1px solid #e0e0dc;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 style="margin: 0; font-size: 16px;">All History</h2>
-            <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ back ]</span>
-        </div>
-
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="date" id="search-start-date" class="form-input" style="flex: 1; padding: 6px;" onchange="renderAllLogs()">
-            <span style="color: var(--accent-color); font-weight: bold;">~</span>
-            <input type="date" id="search-end-date" class="form-input" style="flex: 1; padding: 6px;" onchange="renderAllLogs()">
-            <button class="form-btn" style="width: auto; padding: 0 10px;" onclick="clearSearchDates()">Clear</button>
-        </div>
-    </div>
-
-    <div id="all-logs-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
     </div>
 </section>
 
@@ -720,2080 +392,29 @@
         <h2>My Settings <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ back ]</span></h2>
         <p>Update your profile information.</p>
     </div>
-
     <div class="form-container">
-        <div class="form-group">
-            <label>User ID (Read Only)</label>
-            <input type="text" id="setting-id" readonly>
-        </div>
-        <div class="form-group">
-            <label>Name</label>
-            <input type="text" id="setting-name" autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>Default Location (City)</label>
-            <input type="text" id="setting-loc" autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label>New Password (비워두면 유지)</label>
-            <input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password">
-        </div>
+        <div class="form-group"><label>User ID (Read Only)</label><input type="text" id="setting-id" readonly></div>
+        <div class="form-group"><label>Name</label><input type="text" id="setting-name" autocomplete="off"></div>
+        <div class="form-group"><label>Default Location (City)</label><input type="text" id="setting-loc" autocomplete="off"></div>
+        <div class="form-group"><label>New Password (비워두면 유지)</label><input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password"></div>
         <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
             <input type="checkbox" id="setting-noti" style="width: auto;">
             <label style="margin: 0;">Enable Notifications</label>
         </div>
-
         <button id="setting-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitSettings()">Save Changes</button>
         <div id="setting-status" class="status-msg"></div>
     </div>
 </section>
 
-<script>
-    let recWeatherData = null;
-    let globalRecentLogs = [];
-
-    let isLoginMode = true;
-
-    // 앱 시작 시 토큰 체크 로직 (DOM 로드 이벤트 맨 위에 추가!)
-    function checkAuth() {
-        const token = localStorage.getItem('jwt_token');
-        if (token) {
-            switchView('main', document.querySelector('.nav-item.main-tab'));
-            initializeAppData(); // 토큰이 있을 때만 데이터 불러옴
-        } else {
-            document.querySelector('.bottom-nav').style.display = 'none';
-            switchView('auth', null);
-        }
-    }
-
-    // 로그인 <-> 회원가입 폼 전환
-    function toggleAuthMode() {
-        isLoginMode = !isLoginMode;
-        document.getElementById('signup-fields').style.display = isLoginMode ? 'none' : 'block';
-        document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'LOGIN' : 'SIGN UP';
-        document.getElementById('auth-toggle-btn').innerText = isLoginMode ? '[ Switch to Sign Up ]' : '[ Back to Login ]';
-        document.getElementById('auth-status').innerText = '';
-    }
-
-    // 인증 폼 전송 로직 (완벽한 Validation 추가)
-    async function submitAuth() {
-        const fields = {
-            'auth-id': document.getElementById('auth-id'),
-            'auth-pw': document.getElementById('auth-pw'),
-            'auth-name': document.getElementById('auth-name'),
-            'auth-loc': document.getElementById('auth-loc')
-        };
-        const noti = document.getElementById('auth-noti').checked;
-        const statusMsg = document.getElementById('auth-status');
-
-        // 1. 기존 에러 스타일 싹 지우기
-        Object.values(fields).forEach(el => el.classList.remove('error-border'));
-
-        // 2. 현재 모드에 따른 필수 체크 리스트
-        const requiredKeys = isLoginMode ? ['auth-id', 'auth-pw'] : ['auth-id', 'auth-pw', 'auth-name', 'auth-loc'];
-        let hasError = false;
-
-        // 3. 빈 값 찾아내서 빨간 줄 긋고 포커스 주기
-        for (const key of requiredKeys) {
-            if (!fields[key].value.trim()) {
-                fields[key].classList.add('error-border');
-                if (!hasError) fields[key].focus(); // 첫 번째 빈칸으로 화면 이동
-                hasError = true;
-            }
-        }
-
-        if (hasError) {
-            statusMsg.innerText = "[ERROR] Required fields are missing.";
-            return;
-        }
-
-        statusMsg.innerText = isLoginMode ? "Authenticating..." : "Creating account...";
-        const endpoint = isLoginMode ? '/api/v1/auth/login' : '/api/v1/auth/signup';
-        const payload = isLoginMode
-            ? {userId: fields['auth-id'].value.trim(), rawPassword: fields['auth-pw'].value}
-            : {
-                userId: fields['auth-id'].value.trim(),
-                rawPassword: fields['auth-pw'].value,
-                name: fields['auth-name'].value.trim(),
-                defaultLocation: fields['auth-loc'].value.trim(),
-                notiEnabled: noti
-            };
-
-        try {
-            const res = await fetchWithAuth(endpoint, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                if (isLoginMode) {
-                    const data = await res.json();
-                    localStorage.setItem('jwt_token', data.token);
-                    statusMsg.innerText = "[SUCCESS] Access granted.";
-                    setTimeout(() => {
-                        document.querySelector('.bottom-nav').style.display = 'flex';
-                        switchView('main', document.querySelector('.nav-item.main-tab'));
-                        initializeAppData();
-                    }, 1000);
-                } else {
-                    statusMsg.innerText = "[SUCCESS] Account created. Please login.";
-                    setTimeout(() => toggleAuthMode(), 1500);
-                }
-            } else {
-                const errorData = await res.json();
-                statusMsg.innerText = `[ERROR] ${errorData.error || 'Request failed'}`;
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-        }
-    }
-
-    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
-
-    let currentLat = null;
-    let currentLon = null;
-
-    // --- 날씨 모듈 ---
-    async function fetchRealWeather(lat = null, lon = null) {
-        const locText = document.getElementById('current-loc');
-        const weatherInfo = document.getElementById('weather-info');
-        weatherInfo.innerText = "fetching real-time data...";
-        try {
-            let url = "/api/v1/weather";
-            if (lat !== null && lon !== null) url += `?lat=${lat}&lon=${lon}`;
-            const response = await fetchWithAuth(url);
-            if (response.ok) {
-                const data = await response.json();
-
-                recWeatherData = {weather: data.weather, temp: parseFloat(data.temp)};
-                updateRecommendation();
-
-                let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()" style="font-size: 9px; margin-left: 5px;">[ update ]</span>`;
-                if (lat !== null) buttonsHtml += `<span class="loc-btn" onclick="resetLocation()" style="font-size: 9px; margin-left: 5px;">[ default ]</span>`;
-
-                const weatherIcon = getWeatherIcon(data.weather);
-
-                locText.innerHTML = `${data.location} ${buttonsHtml}`;
-                weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${data.temp}°C / ${data.humidity}%</span>`;
-            } else {
-                weatherInfo.innerText = "[ERROR] Failed to load weather data.";
-            }
-        } catch (error) {
-            weatherInfo.innerText = "[ERROR] Network failure.";
-        }
-    }
-
-    function updateLocation() {
-        document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
-        if ("geolocation" in navigator) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    currentLat = position.coords.latitude;
-                    currentLon = position.coords.longitude;
-                    fetchRealWeather(currentLat, currentLon);
-                },
-                (error) => {
-                    alert("GPS access denied.");
-                    fetchRealWeather();
-                },
-                {enableHighAccuracy: true, maximumAge: 0}
-            );
-        }
-    }
-
-    function resetLocation() {
-        document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
-        currentLat = null;
-        currentLon = null;
-        fetchRealWeather();
-    }
-
-    // --- 뷰 전환 모듈 ---
-    function switchView(viewId, element) {
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-        document.getElementById('view-' + viewId).classList.add('active');
-        // element가 null이 아닐 때만 active 클래스 추가 (수동 전환 시 에러 방지)
-        if (element) {
-            element.classList.add('active');
-        }
-    }
-
-    // 등록 취소하고 메인으로 돌아가기
-    function cancelRegistration() {
-        // 입력칸 싹 비우기 (UID 제외)
-        document.querySelectorAll('#view-register input:not(#reg-uid)').forEach(el => el.value = '');
-
-        // 터미널 및 뱃지 UI 숨기기
-        document.getElementById('notes-preview-container').style.display = 'none';
-        document.getElementById('crawl-terminal').style.display = 'none';
-        document.getElementById('reg-status').innerText = '';
-
-        // 내부 데이터 초기화
-        crawledNotesData = null;
-        crawledImageUrl = "";
-
-        // 💡 샘플 등록 중이었다면 메인이 아니라 옷장 'Samples' 탭으로 귀환
-        if (currentIsSample) {
-            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]); // 하단 네비게이션 옷장 탭 활성화
-            switchWardrobeTab('sample'); // 샘플 탭으로 전환
-        } else {
-            // 본품 등록 중이었다면 기존대로 메인으로 복귀
-            switchView('main', document.querySelector('.nav-item.main-tab'));
-        }
-    }
-
-    // --- NFC 스캔 모듈 ---
-    const scanBtn = document.getElementById('scan-btn');
-    const statusDiv = document.getElementById('status');
-    let isScanning = false;
-    let abortController = null;
-
-    function resetScanUI() {
-        isScanning = false;
-        scanBtn.classList.remove('scanning', 'success');
-        scanBtn.innerText = "Tap to Scan";
-        statusDiv.innerText = "waiting for interaction...";
-        if (abortController) abortController.abort();
-    }
-
-    scanBtn.addEventListener('click', async () => {
-        if (!("NDEFReader" in window)) {
-            statusDiv.innerText = "[ERROR] NFC not supported.";
-            return;
-        }
-        if (isScanning) {
-            resetScanUI();
-            statusDiv.innerText = "[CANCELLED] Scan aborted.";
-            return;
-        }
-
-        try {
-            abortController = new AbortController();
-            const ndef = new NDEFReader();
-            await ndef.scan({signal: abortController.signal});
-
-            isScanning = true;
-            scanBtn.classList.add('scanning');
-            scanBtn.innerText = "Scanning... (Tap to cancel)";
-            statusDiv.innerText = "Please approach the tag.";
-
-            ndef.onreading = async (event) => {
-                abortController.abort();
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                const uid = event.serialNumber;
-
-                scanBtn.classList.remove('scanning');
-                scanBtn.classList.add('success');
-                scanBtn.innerText = "STAMPED";
-                statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
-
-                try {
-                    const response = await fetchWithAuth("/api/v1/logs/scan", {
-                        method: "POST", headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({uid: uid, lat: currentLat, lon: currentLon})
-                    });
-                    const resultText = await response.text();
-
-                    if (response.ok) {
-                        statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
-                        setTimeout(() => {
-                            fetchRecentLogs(); // 최근 로그 갱신
-                            fetchSummary();    // 통계 잔디 및 차트 갱신
-                            resetScanUI();     // 버튼 및 상태 메시지 초기화
-                        }, 1500);
-                    }
-                    // 💡 미등록 태그 감지 시 'Register View'로 화면 자동 전환!
-                    else if (response.status === 400 && resultText.includes("Unregistered")) {
-                        statusDiv.innerText = `[UNKNOWN] Redirecting to form...`;
-                        setTimeout(() => {
-                            document.getElementById('reg-uid').value = uid; // 폼에 UID 자동 채우기
-                            switchView('register', null); // 네비게이션 선택 해제 상태로 폼 이동
-                            resetScanUI();
-                            fetchRecentLogs();
-                        }, 1200);
-                    } else {
-                        statusDiv.innerText = `[ERROR] ${resultText}`;
-                        setTimeout(resetScanUI, 2500);
-                    }
-                } catch (apiError) {
-                    statusDiv.innerText = "[ERROR] Network failure.";
-                    setTimeout(resetScanUI, 2500);
-                }
-            };
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                statusDiv.innerText = `[ERROR] ${error}`;
-                resetScanUI();
-            }
-        }
-    });
-
-    // --- 1. 브랜드 목록 불러오기 (초기 로딩 시) ---
-    async function fetchBrands() {
-        try {
-            const res = await fetchWithAuth("/api/v1/perfumes/brands");
-            if (res.ok) {
-                const brands = await res.json();
-                const datalist = document.getElementById('brand-list');
-                datalist.innerHTML = brands.map(b => `<option value="${b}">`).join('');
-            }
-        } catch (e) {
-            console.error("Brand load failed");
-        }
-    }
-
-    // 전역 변수로 크롤링한 데이터 보관 (보이지 않는 입력창 역할)
-    let crawledNotesData = null;
-    let crawledImageUrl = "";
-
-    // --- 2. URL 크롤링 (Auto Fill) 로직 (터미널 + 타임아웃 + 실시간 재시도 애니메이션 통합) ---
-    async function crawlUrl() {
-        const urlInput = document.getElementById('reg-url').value.trim();
-        const crawlBtn = document.getElementById('crawl-btn');
-        const terminal = document.getElementById('crawl-terminal');
-        const step2 = document.getElementById('crawl-step-2');
-        const regStatus = document.getElementById('reg-status');
-        const previewContainer = document.getElementById('notes-preview-container');
-        const previewBox = document.getElementById('notes-preview-box');
-
-        if (!urlInput) {
-            regStatus.innerText = "Please paste a URL first.";
-            return;
-        }
-
-        // 1. 초기화
-        crawledNotesData = null;
-        crawledImageUrl = "";
-        previewContainer.style.display = 'none';
-        previewBox.innerHTML = '';
-        regStatus.innerText = "";
-
-        // 2. UI 상태 변경
-        crawlBtn.style.pointerEvents = 'none';
-        crawlBtn.style.opacity = '0.5';
-        terminal.style.display = 'flex';
-        terminal.classList.remove('error');
-        step2.innerHTML = '> Fetching Fragrantica Notes... <span class="blink">_</span>';
-
-        // 3. 70초 강제 종료 타이머
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 70000);
-
-        // 💡 4. 백엔드 재시도 주기에 맞춘 실시간 터미널 텍스트 교체
-        let retryPhase = 0;
-        const progressInterval = setInterval(() => {
-            retryPhase++;
-            if (retryPhase === 1) {
-                step2.innerHTML = '> [WARN] Bot detection triggered. Retrying (1/3)... <span class="blink">_</span>';
-            } else if (retryPhase === 2) {
-                step2.innerHTML = '> [WARN] Solving Cloudflare challenge. Retrying (2/3)... <span class="blink">_</span>';
-            } else if (retryPhase === 3) {
-                step2.innerHTML = '> [WARN] Forcing extraction. Final attempt (3/3)... <span class="blink">_</span>';
-            }
-        }, 16000); // 백엔드 타임아웃(15초) + 여유(1초) = 16초마다 텍스트 갱신
-
-        try {
-            const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`, {
-                signal: controller.signal
-            });
-
-            // 💡 통신이 끝나면 무조건 타이머들 박살 내기!
-            clearTimeout(timeoutId);
-            clearInterval(progressInterval);
-
-            if (res.ok) {
-                const data = await res.json();
-                crawledNotesData = data.notes;
-                crawledImageUrl = data.imageUrl;
-
-                if (!data.notes || Object.keys(data.notes).length === 0) {
-                    terminal.classList.add('error');
-                    step2.innerHTML = '> [BLOCKED] Anti-bot system prevented crawling.';
-                    regStatus.innerText = "Please enter manually.";
-                } else {
-                    step2.innerHTML = '> [SUCCESS] Notes extracted perfectly.';
-                    regStatus.innerText = "[SUCCESS] Data auto-filled.";
-                    renderNotesPreview(data.notes);
-                }
-            } else {
-                terminal.classList.add('error');
-                step2.innerHTML = '> [ERROR] Backend scraping failed.';
-                regStatus.innerText = "Please check URL and try again.";
-            }
-        } catch (e) {
-            terminal.classList.add('error');
-            if (e.name === 'AbortError') {
-                step2.innerHTML = '> [TIMEOUT] Scraping took too long. (Max retries exceeded)';
-                regStatus.innerText = "Please try again or enter manually.";
-            } else {
-                step2.innerHTML = '> [ERROR] Network connection lost.';
-                regStatus.innerText = "Please check your connection.";
-            }
-        } finally {
-            // 에러가 났을 때도 타이머들 확실히 박살 내기
-            clearInterval(progressInterval);
-            clearTimeout(timeoutId);
-            crawlBtn.style.pointerEvents = 'auto';
-            crawlBtn.style.opacity = '1';
-        }
-    }
-
-    // --- 💡 4등분 된 노트를 빈티지 뱃지로 화면에 그리는 함수 ---
-    function renderNotesPreview(notes) {
-        const previewContainer = document.getElementById('notes-preview-container');
-        const previewBox = document.getElementById('notes-preview-box');
-        let html = '';
-
-        if (notes.top && notes.top.length > 0) {
-            html += `<div class="note-category">TOP</div>`;
-            html += notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
-        }
-        if (notes.middle && notes.middle.length > 0) {
-            html += `<div class="note-category">MIDDLE</div>`;
-            html += notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
-        }
-        if (notes.base && notes.base.length > 0) {
-            html += `<div class="note-category">BASE</div>`;
-            html += notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
-        }
-        if (notes.general && notes.general.length > 0) {
-            html += `<div class="note-category">NOTES (LINEAR)</div>`;
-            html += notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
-        }
-
-        previewBox.innerHTML = html;
-        previewContainer.style.display = 'block';
-    }
-
-    // --- 💡 신규 향수 등록 (Submit) 모듈 ---
-    document.getElementById('register-submit-btn').addEventListener('click', async () => {
-        let uid = document.getElementById('reg-uid').value;
-        const name = document.getElementById('reg-name').value.trim();
-        const brand = document.getElementById('reg-brand').value.trim();
-        const url = document.getElementById('reg-url').value.trim();
-        const autoLog = document.getElementById('reg-auto-log').checked; // 체크박스 값 읽기
-        const regStatus = document.getElementById('reg-status');
-        const submitBtn = document.getElementById('register-submit-btn');
-
-        if (currentIsSample) {
-            uid = `SAMPLE-${new Date().getTime()}`;
-        } else if (!uid) {
-            regStatus.innerText = "[ERROR] NFC UID is required.";
-            return;
-        }
-
-        if (!name) {
-            regStatus.innerText = "[ERROR] Name is required.";
-            return;
-        }
-
-        submitBtn.innerText = "Processing...";
-        regStatus.innerText = "Syncing with Master DB...";
-
-        try {
-            const res = await fetchWithAuth("/api/v1/perfumes/register", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    uid, name, brand, url,
-                    imageUrl: crawledImageUrl,
-                    notes: crawledNotesData,
-                    lat: currentLat, lon: currentLon,
-                    isSample: currentIsSample,
-                    skipLog: !autoLog // 💡 체크를 해제했다면 로그 생성을 스킵(true)
-                })
-            });
-
-            const resultText = await res.text();
-
-            if (res.ok) {
-                submitBtn.classList.add('success');
-                submitBtn.innerText = "SUCCESS";
-                regStatus.innerText = `[SUCCESS] ${currentIsSample ? 'Sample' : 'Perfume'} added to Wardrobe.`;
-
-                setTimeout(() => {
-                    document.querySelectorAll('#view-register input:not(#reg-uid):not([type="checkbox"])').forEach(el => el.value = '');
-                    document.getElementById('notes-preview-container').style.display = 'none';
-
-                    // 체크박스 기본값(checked)으로 원복
-                    document.getElementById('reg-auto-log').checked = true;
-
-                    const terminal = document.getElementById('crawl-terminal');
-                    if (terminal) terminal.style.display = 'none';
-
-                    crawledNotesData = null;
-                    crawledImageUrl = "";
-                    submitBtn.classList.remove('success');
-                    submitBtn.innerText = "Register & Log";
-                    regStatus.innerText = "";
-
-                    // 옷장 화면으로 이동하고, 방금 등록한 탭 열어주기
-                    switchView('wardrobe', document.querySelector('.nav-item.wardrobe-tab') || null);
-                    switchWardrobeTab(currentIsSample ? 'sample' : 'bottle');
-                    fetchWardrobe();
-                    fetchRecentLogs();
-                }, 2000);
-            } else {
-                regStatus.innerText = `[ERROR] ${resultText}`;
-                submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
-            }
-        } catch (e) {
-            regStatus.innerText = "[ERROR] Network failure.";
-            submitBtn.innerText = autoLog ? "Register & Log" : "Register Only";
-        }
-    });
-
-    // 날씨 텍스트를 분석해서 이모지로 바꿔주는 매퍼 함수
-    function getWeatherIcon(weatherText) {
-        if (!weatherText) return '❓';
-        const w = weatherText.toLowerCase();
-        if (w.includes('clear')) return '☀️';
-        if (w.includes('cloud')) return '☁️';
-        if (w.includes('rain') || w.includes('drizzle')) return '🌧️';
-        if (w.includes('thunder') || w.includes('storm')) return '⛈️';
-        if (w.includes('snow')) return '❄️';
-        if (w.includes('mist') || w.includes('fog') || w.includes('haze')) return '🌫️';
-        return '🌤️'; // 기본값
-    }
-
-    // --- 대시보드 최근 로그 불러오기 ---
-    async function fetchRecentLogs() {
-        const container = document.getElementById('recent-logs-container');
-        try {
-            const response = await fetchWithAuth("/api/v1/logs/recent?limit=5&t=");
-            if (response.ok) {
-                const logs = await response.json();
-
-                // 1. 진짜 로그가 없을 때는 'No records found'만 띄우고 종료
-                if (logs.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No records found.</div>`;
-                    return;
-                }
-
-                // 2. 로그가 있을 때는 우리가 짠 기가 막힌 썸네일 레이아웃으로 렌더링
-                container.innerHTML = logs.map(log => {
-                    // 이미지 처리
-                    const imgTag = log.imageUrl
-                        ? `<img src="${log.imageUrl}" class="log-thumb" alt="thumb">`
-                        : `<div class="log-thumb" style="display:flex; align-items:center; justify-content:center; font-size:8px;">No Img</div>`;
-
-                    // 날짜 처리
-                    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
-
-                    // 온습도 포맷팅
-                    const tempStr = log.temp ? `${log.temp}°C` : '';
-                    const humStr = log.humidity ? `${log.humidity}%` : '';
-                    const tempHum = [tempStr, humStr].filter(Boolean).join(' / ');
-
-                    const weatherIcon = getWeatherIcon(log.weather);
-
-                    // 💡 평가 유도 뱃지 로직
-                    let rateHtml = '';
-                    // \` 기호 이스케이프 주의 (백틱)
-                    if (log.rate && log.rate !== 'null' && log.rate > 0) {
-                        rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
-                    } else {
-                        rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
-                    }
-
-                    return `
-                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
-                            <div class="log-left">
-                                ${imgTag}
-                                <div class="log-details">
-                                    <div class="log-perfume">${log.perfumeName}</div>
-                                    <div class="log-date">[${shortDate}]</div>
-                                    ${rateHtml}
-                                </div>
-                            </div>
-                            <div class="log-weather">
-                                <!-- 아이콘을 살짝 크게(14px) 키워서 텍스트와 분리 -->
-                                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>
-                                ${tempHum}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } else {
-                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load.</div>`;
-            }
-        } catch (error) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
-        }
-    }
-
-    // 수정 뷰 열기 (어디서든 재활용 가능!)
-    function openEditLog(pageId, name, date, weather, temp, humidity, rate, comment) {
-
-        console.log("1. 클릭된 향수:", name);
-        console.log("2. 백엔드에서 받은 rate 원본 값:", rate, "타입:", typeof rate);
-        console.log("3. parseFloat 변환 결과:", parseFloat(rate));
-
-        document.getElementById('edit-page-id').value = pageId;
-        document.getElementById('edit-perfume-name').innerText = name;
-        document.getElementById('edit-date').innerText = `[${date}]`;
-
-        document.getElementById('edit-weather').value = weather || 'Clear';
-        document.getElementById('edit-temp').value = temp || '';
-        document.getElementById('edit-humidity').value = humidity || '';
-        document.getElementById('edit-rate').value = rate && rate !== 'null' && rate !== 'undefined' ? rate : ''; // 별점 세팅
-        document.getElementById('edit-comment').value = comment && comment !== 'null' ? comment : '';
-
-        document.getElementById('edit-status').innerText = "";
-
-        // 별점 UI 동기화
-        updateStarUI(rate);
-        document.getElementById('edit-status').innerText = "";
-
-        // 하단 네비게이션 선택은 해제한 상태로 수정 화면 띄우기
-        switchView('edit-log', null);
-    }
-
-    function cancelEditLog() {
-        // 취소하면 다시 메인으로 귀환
-        switchView('main', document.querySelector('.nav-item.main-tab'));
-    }
-
-    // 수정 사항 백엔드로 전송
-    async function submitEditLog() {
-        const pageId = document.getElementById('edit-page-id').value;
-        const weather = document.getElementById('edit-weather').value;
-        const temp = document.getElementById('edit-temp').value;
-        const humidity = document.getElementById('edit-humidity').value;
-        const statusMsg = document.getElementById('edit-status');
-        const submitBtn = document.getElementById('edit-submit-btn');
-        const rate = document.getElementById('edit-rate').value;
-        const comment = document.getElementById('edit-comment').value.trim();
-
-        statusMsg.innerText = "Updating Notion DB...";
-        submitBtn.innerText = "Updating...";
-
-        try {
-            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    weather: weather,
-                    temp: temp ? parseFloat(temp) : null,
-                    humidity: humidity ? parseFloat(humidity) : null,
-                    rate: rate ? parseFloat(rate) : null,
-                    comment: comment || null
-                })
-            });
-
-            if (res.ok) {
-                submitBtn.classList.add('success');
-                submitBtn.innerText = "UPDATED";
-                statusMsg.innerText = "[SUCCESS] Log modified.";
-
-                setTimeout(() => {
-                    submitBtn.classList.remove('success');
-                    submitBtn.innerText = "Update Log";
-                    // 메인으로 돌아가서 대시보드 리프레시!
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
-                    fetchRecentLogs();
-                }, 1500);
-            } else {
-                statusMsg.innerText = "[ERROR] Update failed.";
-                submitBtn.innerText = "Update Log";
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-            submitBtn.innerText = "Update Log";
-        }
-    }
-
-    // 로그 삭제 통신 로직
-    async function deleteLog() {
-        // 실수로 누르는 걸 방지하기 위한 네이티브 컨펌 창
-        if (!confirm("진짜로 이 착향 기록을 삭제하시겠습니까?")) return;
-
-        const pageId = document.getElementById('edit-page-id').value;
-        const statusMsg = document.getElementById('edit-status');
-        const delBtn = document.getElementById('edit-delete-btn');
-        const updateBtn = document.getElementById('edit-submit-btn');
-
-        statusMsg.innerText = "Deleting from Notion...";
-        delBtn.innerText = "Wait...";
-        updateBtn.disabled = true;
-
-        try {
-            const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {method: "DELETE"});
-
-            if (res.ok) {
-                delBtn.classList.add('success');
-                delBtn.innerText = "DELETED";
-                statusMsg.innerText = "[SUCCESS] Log deleted.";
-
-                setTimeout(() => {
-                    delBtn.classList.remove('success');
-                    delBtn.innerText = "Delete";
-                    updateBtn.disabled = false;
-
-                    // 메인으로 돌아가서 대시보드 리프레시!
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
-                    fetchRecentLogs();
-                }, 1500);
-            } else {
-                statusMsg.innerText = "[ERROR] Delete failed.";
-                delBtn.innerText = "Delete";
-                updateBtn.disabled = false;
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-            delBtn.innerText = "Delete";
-            updateBtn.disabled = false;
-        }
-    }
-
-    // 향수 목록 불러와서 셀렉트 박스 채우기 (초기 로딩 시 호출)
-    async function fetchPerfumeList() {
-        try {
-            const res = await fetchWithAuth("/api/v1/perfumes/list");
-            if (res.ok) {
-                const perfumes = await res.json();
-                const selectBox = document.getElementById('manual-perfume-select');
-                selectBox.innerHTML = '<option value="">-- Choose a perfume --</option>' +
-                    perfumes.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-            }
-        } catch (e) {
-            console.error("Perfume list load failed");
-        }
-    }
-
-    // 수동 로그 전송 로직
-    async function submitManualLog() {
-        const perfumeId = document.getElementById('manual-perfume-select').value;
-        const manualDate = document.getElementById('manual-date').value;
-        const statusMsg = document.getElementById('manual-status');
-        const submitBtn = document.getElementById('manual-submit-btn');
-
-        if (!perfumeId) {
-            statusMsg.innerText = "[ERROR] Please select a perfume.";
-            return;
-        }
-
-        statusMsg.innerText = "Saving log to Notion...";
-        submitBtn.innerText = "Saving...";
-
-        try {
-            const res = await fetchWithAuth("/api/v1/logs/manual", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    perfumeId: perfumeId,
-                    date: manualDate || null, // 빈 값이면 null 전송
-                    lat: currentLat,
-                    lon: currentLon
-                })
-            });
-
-            if (res.ok) {
-                submitBtn.classList.add('success');
-                submitBtn.innerText = "LOGGED";
-                statusMsg.innerText = "[SUCCESS] Manual log saved.";
-
-                setTimeout(() => {
-                    submitBtn.classList.remove('success');
-                    submitBtn.innerText = "Save Log";
-                    statusMsg.innerText = "";
-                    document.getElementById('manual-date').value = '';
-
-                    // 메인 복귀 및 대시보드 리프레시!
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
-                    fetchRecentLogs();
-                }, 1500);
-            } else {
-                statusMsg.innerText = "[ERROR] Failed to save log.";
-                submitBtn.innerText = "Save Log";
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-            submitBtn.innerText = "Save Log";
-        }
-    }
-
-    // 로그아웃 처리
-    function logout() {
-        if (!confirm("로그아웃 하시겠습니까?")) return;
-
-        // 토큰 날려버리기
-        localStorage.removeItem('jwt_token');
-
-        // 폼 초기화
-        window.location.reload();
-    }
-
-    // 알람 폭격 방지용 플래그
-    let isSessionExpired = false;
-
-    async function fetchWithAuth(url, options = {}) {
-        const token = localStorage.getItem('jwt_token');
-        const headers = {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`,
-            'ngrok-skip-browser-warning': 'true'
-        };
-
-        const response = await fetch(url, {...options, headers});
-
-        if (response.status === 401) {
-            if (!isSessionExpired) {
-                isSessionExpired = true;
-                alert("세션이 만료되었습니다. 다시 로그인해주세요.");
-
-                // 토큰 삭제 후 즉시 강제 새로고침
-                localStorage.removeItem('jwt_token');
-                window.location.reload();
-            }
-            throw new Error("Unauthorized");
-        }
-        return response;
-    }
-
-    // 💡 1. 향수 상세 뷰에 넘겨줄 옷장 데이터 전용 보관함 (전역 변수)
-    let globalWardrobeData = [];
-    let isWardrobeReorderMode = false;
-    let wardrobeSortableInstance = null;
-    let wardrobeSortable = null;
-
-    // 💡 2. 옷장(Wardrobe) 데이터 불러오기
-    async function fetchWardrobe() {
-        const container = document.getElementById('wardrobe-container');
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
-        try {
-            // 형님의 올바른 엔드포인트 유지!
-            const res = await fetchWithAuth("/api/v1/perfumes/list");
-            if (res.ok) {
-                globalWardrobeData = await res.json();
-                // 데이터 로드 성공 시 렌더링 함수로 토스
-                renderWardrobeGrid();
-            }
-        } catch (e) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
-        }
-    }
-
-    function toggleWardrobeReorderMode() {
-        isWardrobeReorderMode = !isWardrobeReorderMode;
-        const defaultActions = document.getElementById('wardrobe-default-actions');
-        const reorderActions = document.getElementById('wardrobe-reorder-actions');
-        const dragHandles = document.querySelectorAll('.wardrobe-drag-handle');
-
-        if (isWardrobeReorderMode) {
-            defaultActions.style.display = 'none';
-            reorderActions.style.display = 'flex';
-            dragHandles.forEach(el => el.style.display = 'block');
-            initWardrobeSortable();
-        } else {
-            defaultActions.style.display = 'flex';
-            reorderActions.style.display = 'none';
-            dragHandles.forEach(el => el.style.display = 'none');
-            if (wardrobeSortable) {
-                wardrobeSortable.destroy();
-                wardrobeSortable = null;
-            }
-        }
-    }
-
-    // 💡 옷장 드래그 앤 드롭 활성화 함수
-    function initWardrobeSortable() {
-        const container = document.getElementById('wardrobe-container');
-        if (container) {
-            wardrobeSortable = new Sortable(container, {
-                animation: 200, // 💡 애니메이션 속도를 150 -> 200으로 늘려 더 부드럽게
-                handle: '.wardrobe-drag-handle',
-                ghostClass: 'sortable-ghost', // 빈 자리 클래스
-                dragClass: 'sortable-drag',   // 허공에 뜬 아이템 클래스
-                forceFallback: true,
-                fallbackClass: 'sortable-drag'
-            });
-        }
-    }
-
-    // 💡 3. 정렬(Reorder) 저장 시 인터랙션 추가
-    async function saveWardrobeOrder() {
-        const cards = document.querySelectorAll('#wardrobe-container .wardrobe-card');
-        const orderedIds = Array.from(cards).map(card => card.getAttribute('data-id'));
-
-        if (orderedIds.length === 0) {
-            toggleWardrobeReorderMode();
-            return;
-        }
-
-        // 💡 저장 중 UI 피드백 추가
-        const saveBtn = document.getElementById('btn-save-w-order');
-        const originalText = saveBtn.innerText;
-        saveBtn.innerText = "[ saving... ]";
-        saveBtn.style.color = "#f59e0b"; // 주황색으로 변경
-        saveBtn.style.pointerEvents = "none"; // 더블 클릭 방지
-
-        try {
-            const res = await fetchWithAuth("/api/v1/perfumes/reorder", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(orderedIds)
-            });
-
-            if (res.ok) {
-                toggleWardrobeReorderMode();
-                fetchWardrobe(); // 저장 후 목록 새로고침
-            } else {
-                alert("순서 저장에 실패했습니다.");
-            }
-        } catch (e) {
-            alert("네트워크 오류가 발생했습니다.");
-        } finally {
-            // 💡 통신 끝나면 원래 버튼 상태로 복구
-            saveBtn.innerText = originalText;
-            saveBtn.style.color = "#10b981";
-            saveBtn.style.pointerEvents = "auto";
-        }
-    }
-
-    // 💡 1. 향수 상세 화면 열기
-    function openPerfumeDetail(perfumeId) {
-        const p = globalWardrobeData.find(x => x.id === perfumeId);
-        if (!p) return;
-
-        document.getElementById('detail-brand').innerText = p.brand || 'UNKNOWN BRAND';
-        document.getElementById('detail-name').innerText = p.name;
-        document.getElementById('detail-date').innerText = p.date ? `Added: ${p.date.split('T')[0]}` : 'Added: N/A';
-        document.getElementById('detail-delete-btn').setAttribute('onclick', `deleteWardrobe('${p.id}')`);
-        document.getElementById('detail-edit-btn').setAttribute('onclick', `openEditInfo('wardrobe', '${p.id}', '${p.name.replace(/'/g, "\\'")}', '${(p.brand || '').replace(/'/g, "\\'")}')`);
-
-        const imgEl = document.getElementById('detail-image');
-        const boxEl = document.getElementById('detail-image-box');
-        if (p.imageUrl) {
-            imgEl.src = p.imageUrl;
-            imgEl.style.display = 'block';
-            boxEl.style.display = 'none';
-        } else {
-            imgEl.style.display = 'none';
-            boxEl.style.display = 'flex';
-        }
-
-        const notesBox = document.getElementById('detail-notes-container');
-        let html = '';
-        if (p.notes && Object.keys(p.notes).length > 0) {
-            const n = p.notes;
-            if (n.top && n.top.length > 0) html += `<div class="note-category">TOP</div>` + n.top.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.middle && n.middle.length > 0) html += `<div class="note-category">MIDDLE</div>` + n.middle.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.base && n.base.length > 0) html += `<div class="note-category">BASE</div>` + n.base.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.general && n.general.length > 0) html += `<div class="note-category">NOTES</div>` + n.general.map(x => `<span class="note-chip">${x}</span>`).join('');
-        }
-        notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
-
-        switchView('perfume-detail', null);
-        fetchPerfumeHistory(perfumeId);
-    }
-
-    // 💡 2. 특정 향수의 착향 이력(로그)만 백엔드에서 긁어오기
-    async function fetchPerfumeHistory(perfumeId) {
-        const container = document.getElementById('detail-history-container');
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>`;
-
-        try {
-            const response = await fetchWithAuth(`/api/v1/logs/perfume/${perfumeId}`);
-            if (response.ok) {
-                const logs = await response.json();
-
-                if (logs.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No wearing history found.</div>`;
-                    return;
-                }
-
-                // 메인 대시보드 리스트 스타일 그대로 재활용! (썸네일은 이미 위에 있으니 제외)
-                container.innerHTML = logs.map(log => {
-                    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
-                    const weatherIcon = getWeatherIcon(log.weather);
-                    const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
-
-                    // 💡 평가 유도 뱃지 로직
-                    let rateHtml = '';
-                    // \` 기호 이스케이프 주의 (백틱)
-                    if (log.rate && log.rate !== 'null' && log.rate > 0) {
-                        rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
-                    } else {
-                        rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite;  border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
-                    }
-
-                    return `
-                        <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
-                            <div class="log-left">
-                                <div class="log-details">
-                                    <div class="log-date" style="font-size: 12px; color: var(--text-color); font-weight: bold;">${shortDate}</div>
-                                    ${rateHtml}
-                                </div>
-                            </div>
-                            <div class="log-weather">
-                                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        } catch (e) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
-        }
-    }
-
-    // 💡 차트 인스턴스 전역 보관 (초기화용)
-    let summaryChartInstance = null;
-
-    async function fetchSummary() {
-        try {
-            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
-            if (!res.ok) return;
-            const logs = await res.json();
-
-            globalRecentLogs = logs;
-            updateRecommendation();
-
-            // --- 1. Top 3 명예의 전당 ---
-            const counts = logs.reduce((acc, log) => {
-                const name = log.perfumeName || 'Unknown';
-                acc[name] = (acc[name] || 0) + 1;
-                return acc;
-            }, {});
-            const sortedTop = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-
-            // 확 튀는 통계 전용 컬러 (로즈, 퍼플, 인디고)
-            const chartColors = ['#f43f5e', '#a855f7', '#6366f1'];
-
-            const ctx = document.getElementById('topPerfumeChart').getContext('2d');
-            if (summaryChartInstance) summaryChartInstance.destroy();
-            summaryChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: sortedTop.map(x => x[0]),
-                    datasets: [{
-                        data: sortedTop.map(x => x[1]),
-                        backgroundColor: chartColors,
-                        borderWidth: 0,
-                        cutout: '75%'
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: {display: false},
-                        // 클릭 시 이름이 뜨는 트렌디한 블랙 툴팁(Tooltip)
-                        tooltip: {
-                            enabled: true,
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleFont: {size: 10},
-                            bodyFont: {size: 12, weight: 'bold'},
-                            displayColors: false,
-                            padding: 8,
-                            callbacks: {
-                                title: function () {
-                                    return '';
-                                }, // 쓸데없는 기본 타이틀 제거
-                                label: function (context) {
-                                    return `${context.label} : ${context.parsed}회`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            // 💡 텍스트 짤림을 막기 위한 HTML 수제 트로피 리스트
-            const legendBox = document.getElementById('top-legend-container');
-            const trophies = ['🏆', '🥈', '🥉'];
-            legendBox.innerHTML = sortedTop.map((item, index) => `
-                <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    <span style="font-size: 15px;">${trophies[index]}</span>
-                    <span style="font-weight: bold; color: ${chartColors[index]}; margin: 0 6px;">${item[1]}회</span>
-                    ${item[0]}
-                </div>
-            `).join('');
-
-            // --- 2. 깃허브 잔디 심기 (최근 30일) ---
-            const heatmapBox = document.getElementById('heatmap-container');
-            const logDates = new Set(logs.map(l => l.date ? l.date.split('T')[0] : ''));
-            let heatmapHtml = '';
-
-            const today = new Date();
-            for (let i = 29; i >= 0; i--) {
-                const d = new Date();
-                d.setDate(today.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
-                const isActive = logDates.has(dateStr) ? 'active' : '';
-                heatmapHtml += `<div class="heatmap-cell ${isActive}" title="${dateStr}"></div>`;
-            }
-            heatmapBox.innerHTML = heatmapHtml;
-
-            // --- 3. 날씨 픽 (최근 30일 필터링 적용) ---
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(today.getDate() - 30);
-
-            // 최근 30일 치 로그만 걸러냄
-            const recentLogs = logs.filter(l => l.date && new Date(l.date.split('T')[0]) >= thirtyDaysAgo);
-
-            // 키워드 배열을 받아서 가장 많이 쓴 향수 리턴
-            const weatherCount = (conditionList) => {
-                const filtered = recentLogs.filter(l => l.weather && conditionList.some(c => l.weather.includes(c)));
-                if (filtered.length === 0) return '기록 부족';
-                const fCounts = filtered.reduce((acc, log) => {
-                    acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1;
-                    return acc;
-                }, {});
-                return Object.entries(fCounts).sort((a, b) => b[1] - a[1])[0][0];
-            };
-
-            // 점선 보더라인과 패딩으로 3칸 공간을 예쁘게 분할
-            document.getElementById('weather-insight-container').innerHTML = `
-                <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
-                    <b>☀️ 맑은 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Clear', 'Sunny'])}</span>
-                </div>
-                <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
-                    <b>☁️ 흐린 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Cloud'])}</span>
-                </div>
-                <div style="padding: 8px 0; display: flex; justify-content: space-between;">
-                    <b>🌧️ 비/눈</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Rain', 'Snow', 'Drizzle'])}</span>
-                </div>
-            `;
-
-        } catch (e) {
-            console.error("통계 로딩 실패:", e);
-        }
-    }
-
-    // 💡 전체 로그 보관용 전역 변수
-    let globalAllLogsData = [];
-
-    // 💡 1. 뷰 전환 시 달력 2개 모두 싹 비워주기
-    async function openAllLogsView() {
-        switchView('all-logs', null);
-        const container = document.getElementById('all-logs-container');
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
-        clearSearchDates(); // 검색창 초기화
-
-        try {
-            const res = await fetchWithAuth("/api/v1/logs/recent?limit=100&t=");
-            if (res.ok) {
-                globalAllLogsData = await res.json();
-                renderAllLogs();
-            } else {
-                container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Failed to load logs.</div>`;
-            }
-        } catch (e) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
-        }
-    }
-
-    // 초기화 유틸
-    function clearSearchDates() {
-        document.getElementById('search-start-date').value = '';
-        document.getElementById('search-end-date').value = '';
-        renderAllLogs();
-    }
-
-    // 💡 2. 날짜 범위(Range) 필터링 및 리스트 렌더링
-    function renderAllLogs() {
-        const container = document.getElementById('all-logs-container');
-        const startDate = document.getElementById('search-start-date').value;
-        const endDate = document.getElementById('search-end-date').value;
-
-        let filteredLogs = globalAllLogsData;
-        if (startDate || endDate) {
-            filteredLogs = globalAllLogsData.filter(log => {
-                if (!log.date) return false;
-                const logDate = log.date.split('T')[0];
-
-                if (startDate && endDate) return logDate >= startDate && logDate <= endDate;
-                if (startDate) return logDate >= startDate;
-                if (endDate) return logDate <= endDate;
-                return true;
-            });
-        }
-
-        if (filteredLogs.length === 0) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 로그가 없습니다.</div>`;
-            return;
-        }
-
-        container.innerHTML = filteredLogs.map(log => {
-            const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
-            const weatherIcon = getWeatherIcon(log.weather);
-            const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
-
-            // 💡 리스트 좌측에 들어갈 앙증맞은 35x50 썸네일 셋업 (이미지가 없으면 빈 박스)
-            const imgTag = log.imageUrl
-                ? `<img src="${log.imageUrl}" style="width: 35px; height: 50px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
-                : `<div style="width: 35px; height: 50px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
-
-            // 💡 평가 유도 뱃지 로직
-            let rateHtml = '';
-            // \` 기호 이스케이프 주의 (백틱)
-            if (log.rate && log.rate !== 'null' && log.rate > 0) {
-                rateHtml = `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`;
-            } else {
-                rateHtml = `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite;  border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
-            }
-
-            return `
-                    <div class="log-item clickable" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
-                    <!-- 이미지가 텍스트 옆에 자연스럽게 배치되도록 flex + gap 적용 -->
-                    <div class="log-left" style="display: flex; align-items: center; gap: 12px;">
-                        ${imgTag}
-                        <div class="log-details">
-                            <div class="log-perfume" style="font-weight: bold; color: var(--text-color);">${log.perfumeName || 'Unknown Perfume'}</div>
-                            <div class="log-date" style="font-size: 11px; margin-top: 3px;">${shortDate}</div>
-                            ${rateHtml}
-                        </div>
-                    </div>
-                    <div class="log-weather">
-                        <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-
-    // --- 💡 WISH LIST 전역 변수 ---
-    let isWishFormOpen = false;
-    let globalWishlistData = [];
-    let wishCrawledNotesData = null;
-    let wishCrawledImageUrl = "";
-
-    // 💡 1. 폼 토글
-    function toggleWishForm() {
-        isWishFormOpen = !isWishFormOpen;
-        document.getElementById('wish-form-container').style.display = isWishFormOpen ? 'block' : 'none';
-        if (isWishFormOpen) {
-            document.getElementById('wish-name').value = '';
-            document.getElementById('wish-brand').value = '';
-            document.getElementById('wish-url').value = '';
-            document.getElementById('wish-img').value = '';
-            document.getElementById('wish-notes-preview-container').style.display = 'none';
-            document.getElementById('wish-crawl-terminal').style.display = 'none';
-            wishCrawledNotesData = null;
-            wishCrawledImageUrl = "";
-        }
-    }
-
-    // 💡 2. URL 크롤링 (위시리스트용)
-    async function crawlWishUrl() {
-        const urlInput = document.getElementById('wish-url').value.trim();
-        const terminal = document.getElementById('wish-crawl-terminal');
-        const step = document.getElementById('wish-crawl-step');
-        if (!urlInput) {
-            alert("URL을 먼저 입력해주세요.");
-            return;
-        }
-
-        terminal.style.display = 'flex';
-        terminal.classList.remove('error');
-        step.innerHTML = '> Fetching Notes... <span class="blink">_</span>';
-        wishCrawledNotesData = null;
-        wishCrawledImageUrl = "";
-
-        try {
-            const res = await fetchWithAuth(`/api/v1/perfumes/crawl?url=${encodeURIComponent(urlInput)}`);
-            if (res.ok) {
-                const data = await res.json();
-                wishCrawledNotesData = data.notes;
-                wishCrawledImageUrl = data.imageUrl;
-                document.getElementById('wish-img').value = data.imageUrl; // 숨겨진 인풋에 이미지 저장
-
-                step.innerHTML = '> [SUCCESS] Notes extracted.';
-                // 재활용 중인 renderNotesPreview 함수를 호출해서 뱃지 렌더링
-                const box = document.getElementById('wish-notes-preview-box');
-                const container = document.getElementById('wish-notes-preview-container');
-                let html = '';
-                if (data.notes.top) html += `<div class="note-category">TOP</div>` + data.notes.top.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if (data.notes.middle) html += `<div class="note-category">MIDDLE</div>` + data.notes.middle.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if (data.notes.base) html += `<div class="note-category">BASE</div>` + data.notes.base.map(n => `<span class="note-chip">${n}</span>`).join('');
-                if (data.notes.general) html += `<div class="note-category">NOTES</div>` + data.notes.general.map(n => `<span class="note-chip">${n}</span>`).join('');
-                box.innerHTML = html;
-                container.style.display = 'block';
-            } else {
-                terminal.classList.add('error');
-                step.innerHTML = '> [ERROR] Scraping failed.';
-            }
-        } catch (e) {
-            terminal.classList.add('error');
-            step.innerHTML = '> [ERROR] Network issue.';
-        }
-    }
-
-    // 💡 3. 위시리스트 등록 (날짜 & 노트 포함)
-    async function submitWish() {
-        const name = document.getElementById('wish-name').value.trim();
-        const brand = document.getElementById('wish-brand').value.trim();
-        if (!name) {
-            alert('향수 이름을 입력해주세요.');
-            return;
-        }
-
-        // 오늘 날짜 세팅
-        const todayDate = new Date().toLocaleDateString('ko-KR', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).replace(/\. /g, '-').replace('.', '');
-
-        const payload = {
-            name: name, brand: brand,
-            imageUrl: wishCrawledImageUrl,
-            url: document.getElementById('wish-url').value.trim(),
-            date: todayDate,
-            notes: wishCrawledNotesData
-        };
-
-        try {
-            const res = await fetchWithAuth("/api/v1/wishlist", {
-                method: "POST", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                toggleWishForm();
-                fetchWishlist();
-            } else {
-                alert('추가 실패!');
-            }
-        } catch (e) {
-            alert('네트워크 오류');
-        }
-    }
-
-    // 💡 4. 리스트 렌더링 (날짜 표시 & info 버튼 튜닝)
-    async function fetchWishlist() {
-        const container = document.getElementById('wish-container');
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
-        try {
-            const res = await fetchWithAuth("/api/v1/wishlist");
-            if (res.ok) {
-                globalWishlistData = await res.json();
-
-                // 💡 데이터 로드 후 개수 찍어주기
-                document.getElementById('wish-title').innerText = `Wishlist (${globalWishlistData.length})`;
-
-                if (globalWishlistData.length === 0) {
-                    container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
-                    return;
-                }
-                container.innerHTML = globalWishlistData.map(w => {
-                    const imgTag = w.imageUrl ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">` : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
-                    const shortDate = w.date ? w.date.split('T')[0] : '';
-                    return `
-                        <div class="log-item wish-card" data-id="${w.id}" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; background: #fff; padding: 10px;" onclick="openWishDetail('${w.id}')">
-                            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                                <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
-                                ${imgTag}
-                                <div>
-                                    <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
-                                    <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        } catch (e) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
-        }
-    }
-
-    let currentWishPromotionId = null;
-
-    // 💡 5. 위시리스트 상세 뷰 열기
-    function openWishDetail(wishId) {
-        const w = globalWishlistData.find(x => x.id === wishId);
-        if (!w) return;
-        currentWishPromotionId = wishId;
-
-        document.getElementById('wish-detail-brand').innerText = w.brand || 'UNKNOWN BRAND';
-        document.getElementById('wish-detail-name').innerText = w.name;
-        // 💡 위시 날짜 바인딩
-        document.getElementById('wish-detail-date').innerText = w.date ? `Added: ${w.date.split('T')[0]}` : 'Added: N/A';
-        // 💡 삭제 버튼 액션 바인딩
-        document.getElementById('wish-detail-delete-btn').setAttribute('onclick', `deleteWish('${w.id}')`);
-        document.getElementById('wish-detail-edit-btn').setAttribute('onclick', `openEditInfo('wish', '${w.id}', '${w.name.replace(/'/g, "\\'")}', '${(w.brand || '').replace(/'/g, "\\'")}')`);
-
-        const imgEl = document.getElementById('wish-detail-image');
-        const boxEl = document.getElementById('wish-detail-image-box');
-        if (w.imageUrl) {
-            imgEl.src = w.imageUrl;
-            imgEl.style.display = 'block';
-            boxEl.style.display = 'none';
-        } else {
-            imgEl.style.display = 'none';
-            boxEl.style.display = 'flex';
-        }
-
-        const notesBox = document.getElementById('wish-detail-notes-container');
-        let html = '';
-        if (w.notes && Object.keys(w.notes).length > 0) {
-            const n = w.notes;
-            if (n.top && n.top.length > 0) html += `<div class="note-category">TOP</div>` + n.top.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.middle && n.middle.length > 0) html += `<div class="note-category">MIDDLE</div>` + n.middle.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.base && n.base.length > 0) html += `<div class="note-category">BASE</div>` + n.base.map(x => `<span class="note-chip">${x}</span>`).join('');
-            if (n.general && n.general.length > 0) html += `<div class="note-category">NOTES</div>` + n.general.map(x => `<span class="note-chip">${x}</span>`).join('');
-        }
-        notesBox.innerHTML = html || '<div style="font-size:10px; color:var(--accent-color);">No notes recorded.</div>';
-
-        const btn = document.getElementById('wish-promote-btn');
-        btn.classList.remove('scanning', 'success');
-        btn.innerText = "Purchase & Register (NFC)";
-        document.getElementById('wish-promote-status').innerText = "";
-
-        switchView('wish-detail', null);
-    }
-
-    // 💡 6. NFC 태깅으로 마스터 DB 승격 및 위시리스트 삭제 로직
-    let wishPromoteAbort = null;
-
-    async function startWishPromoteScan() {
-        const wish = globalWishlistData.find(w => w.id === currentWishPromotionId);
-        if (!wish) return;
-
-        const btn = document.getElementById('wish-promote-btn');
-        const statusDiv = document.getElementById('wish-promote-status');
-
-        if (!("NDEFReader" in window)) {
-            statusDiv.innerText = "[ERROR] NFC not supported.";
-            return;
-        }
-        if (btn.classList.contains('scanning')) {
-            if (wishPromoteAbort) wishPromoteAbort.abort();
-            btn.classList.remove('scanning');
-            btn.innerText = "Purchase & Register (NFC)";
-            statusDiv.innerText = "";
-            return;
-        }
-
-        try {
-            wishPromoteAbort = new AbortController();
-            const ndef = new NDEFReader();
-            await ndef.scan({signal: wishPromoteAbort.signal});
-
-            btn.classList.add('scanning');
-            btn.innerText = "Scanning Tag... (Tap to cancel)";
-            statusDiv.innerText = "NFC 태그를 스마트폰에 접촉하세요.";
-
-            ndef.onreading = async (event) => {
-                wishPromoteAbort.abort();
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                const uid = event.serialNumber;
-
-                btn.classList.remove('scanning');
-                btn.classList.add('success');
-                btn.innerText = "TAG DETECTED";
-                statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
-
-                // 💡 승격된 '오늘 날짜'로 덮어쓰기!
-                const todayDate = new Date().toLocaleDateString('ko-KR', {
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit'
-                }).replace(/\. /g, '-').replace('.', '');
-
-                try {
-                    const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
-                        method: "POST", headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({
-                            uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
-                            imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate, // 승격 날짜 업데이트!
-                            lat: currentLat, lon: currentLon,
-                            skipLog: true
-                        })
-                    });
-
-                    if (regRes.ok) {
-                        await fetchWithAuth(`/api/v1/wishlist/${wish.id}`, {method: "DELETE"});
-
-                        // 💡 감성 터지는 성공 멘트!
-                        statusDiv.innerHTML = "<span style='color:#10b981; font-weight:bold;'>🎉 새 향수를 들이셨군요! 옷장에 예쁘게 넣어뒀습니다.</span>";
-                        setTimeout(() => {
-                            fetchWardrobe();
-                            fetchWishlist();
-                            switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
-                        }, 2000);
-                    } else {
-                        statusDiv.innerText = `[ERROR] Registration failed.`;
-                        btn.innerText = "Purchase & Register (NFC)";
-                    }
-                } catch (e) {
-                    statusDiv.innerText = "[ERROR] Network failure.";
-                    btn.innerText = "Purchase & Register (NFC)";
-                }
-            };
-        } catch (error) {
-            if (error.name !== 'AbortError') {
-                statusDiv.innerText = `[ERROR] ${error}`;
-                btn.classList.remove('scanning');
-                btn.innerText = "Purchase & Register (NFC)";
-            }
-        }
-    }
-
-    // 💡 4. 위시리스트 삭제 API 찌르기
-    async function deleteWish(pageId) {
-        if (!confirm('위시리스트에서 삭제할까요?')) return;
-        try {
-            const res = await fetchWithAuth(`/api/v1/wishlist/${pageId}`, {method: "DELETE"});
-            if (res.ok) {
-                fetchWishlist();
-                // 💡 삭제 성공 시 위시리스트로 강제 이동
-                switchView('wish', document.querySelectorAll('.nav-item')[3]);
-            } else {
-                alert('삭제 실패!');
-            }
-        } catch (e) {
-            alert('네트워크 오류');
-        }
-    }
-
-    let isWishReorderMode = false;
-    let wishSortableInstance = null;
-
-    // 💡 1. 정렬 모드 토글
-    function toggleWishReorderMode() {
-        isWishReorderMode = !isWishReorderMode;
-
-        document.getElementById('wish-default-actions').style.display = isWishReorderMode ? 'none' : 'block';
-        document.getElementById('wish-reorder-actions').style.display = isWishReorderMode ? 'flex' : 'none';
-
-        // 폼 열려있으면 닫기
-        if (isWishReorderMode) {
-            isWishFormOpen = false;
-            document.getElementById('wish-form-container').style.display = 'none';
-        }
-
-        const handles = document.querySelectorAll('.wish-drag-handle');
-        const delBtns = document.querySelectorAll('.wish-del-btn');
-        const container = document.getElementById('wish-container');
-
-        if (isWishReorderMode) {
-            // 모드 ON: 손잡이 보이고, 삭제 버튼 숨기고, Sortable 활성화
-            handles.forEach(h => h.style.display = 'block');
-            delBtns.forEach(b => b.style.display = 'flex');
-
-            wishSortableInstance = new Sortable(container, {
-                animation: 150,
-                handle: '.wish-drag-handle', // ≡ 버튼 잡았을 때만 드래그 가능
-                ghostClass: 'sortable-ghost' // 드래그 중인 아이템의 CSS 클래스
-            });
-        } else {
-            // 모드 OFF: 복구 및 Sortable 파괴
-            handles.forEach(h => h.style.display = 'none');
-            delBtns.forEach(b => b.style.display = 'flex');
-            if (wishSortableInstance) wishSortableInstance.destroy();
-            fetchWishlist(); // 순서 섞어놓고 취소했으니 원본 다시 불러오기
-        }
-    }
-
-    // 💡 2. 바뀐 순서 백엔드로 쏘기!
-    async function saveWishOrder() {
-        if (!wishSortableInstance) return;
-
-        const orderedIds = Array.from(document.querySelectorAll('.wish-card')).map(card => card.getAttribute('data-id'));
-
-        if (orderedIds.length === 0) {
-            toggleWishReorderMode();
-            return;
-        }
-
-        // 💡 HTML 통째로 덮어쓰지 않고, 저장 버튼만 콕 집어서 상태 변경
-        const saveBtn = document.getElementById('btn-save-wish-order');
-        const originalText = saveBtn.innerText;
-        saveBtn.innerText = "[ saving... ]";
-        saveBtn.style.color = "#f59e0b"; // 오렌지색 피드백
-        saveBtn.style.pointerEvents = "none";
-
-        try {
-            const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
-                method: "PUT", // 형님이 쓰던 PUT 방식 유지
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(orderedIds)
-            });
-
-            if (res.ok) {
-                toggleWishReorderMode();
-                fetchWishlist();
-            } else {
-                alert("순서 저장 실패!");
-            }
-        } catch (e) {
-            alert("네트워크 오류!");
-        } finally {
-            // 💡 성공하든 실패하든 통신이 끝나면 버튼 상태 원래대로 원복
-            if (saveBtn) {
-                saveBtn.innerText = originalText;
-                saveBtn.style.color = "#10b981"; // 기존 초록색
-                saveBtn.style.pointerEvents = "auto";
-            }
-        }
-    }
-
-    // 💡 옷장 Soft Delete 함수
-    async function deleteWardrobe(pageId) {
-        if (!confirm('진짜 옷장에서 빼시겠습니까? (과거 착향 로그는 보존됩니다)')) return;
-        try {
-            const res = await fetchWithAuth(`/api/v1/perfumes/${pageId}`, {method: "DELETE"});
-            if (res.ok) {
-                fetchWardrobe();
-                // 💡 삭제 성공 시 옷장 리스트로 강제 이동
-                switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
-            } else {
-                alert('삭제 실패!');
-            }
-        } catch (e) {
-            alert('네트워크 오류');
-        }
-    }
-
-    // 💡 수정 뷰 열기 및 닫기 통신 로직
-    function openEditInfo(type, id, name, brand) {
-        document.getElementById('edit-info-type').value = type;
-        document.getElementById('edit-info-id').value = id;
-        document.getElementById('edit-info-name').value = name;
-        document.getElementById('edit-info-brand').value = brand;
-        document.getElementById('edit-info-status').innerText = "";
-
-        switchView('edit-info', null);
-    }
-
-    function cancelEditInfo() {
-        const type = document.getElementById('edit-info-type').value;
-        switchView(type === 'wardrobe' ? 'perfume-detail' : 'wish-detail', null);
-    }
-
-    async function submitEditInfo() {
-        const type = document.getElementById('edit-info-type').value;
-        const pageId = document.getElementById('edit-info-id').value;
-        const name = document.getElementById('edit-info-name').value.trim();
-        const brand = document.getElementById('edit-info-brand').value.trim();
-
-        const btn = document.getElementById('edit-info-submit-btn');
-        const statusMsg = document.getElementById('edit-info-status');
-
-        if (!name) {
-            statusMsg.innerText = "[ERROR] Name is required.";
-            return;
-        }
-
-        btn.innerText = "Updating...";
-        statusMsg.innerText = "Saving to Notion DB...";
-
-        const endpoint = type === 'wardrobe' ? `/api/v1/perfumes/${pageId}` : `/api/v1/wishlist/${pageId}`;
-
-        try {
-            const res = await fetchWithAuth(endpoint, {
-                method: "PATCH", headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({name: name, brand: brand})
-            });
-
-            if (res.ok) {
-                btn.classList.add('success');
-                btn.innerText = "UPDATED";
-                statusMsg.innerText = "[SUCCESS] Details updated.";
-                setTimeout(() => {
-                    btn.classList.remove('success');
-                    btn.innerText = "Update Data";
-                    if (type === 'wardrobe') {
-                        fetchWardrobe().then(() => openPerfumeDetail(pageId));
-                    } else {
-                        fetchWishlist().then(() => openWishDetail(pageId));
-                    }
-                }, 1000);
-            } else {
-                statusMsg.innerText = "[ERROR] Update failed.";
-                btn.innerText = "Update Data";
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-            btn.innerText = "Update Data";
-        }
-    }
-
-    // 💡 날씨 + 온도 기반 실시간 추천 엔진
-    function updateRecommendation() {
-        // 날씨와 최근 로그 100개가 모두 로딩되어야만 작동
-        if (!recWeatherData || globalRecentLogs.length === 0) return;
-
-        const currentW = (recWeatherData.weather || '').toLowerCase();
-        const currentT = recWeatherData.temp;
-
-        // 1. 현재 날씨 카테고리화
-        const isClear = currentW.includes('clear') || currentW.includes('sun');
-        const isCloud = currentW.includes('cloud') || currentW.includes('haze') || currentW.includes('fog');
-        const isRainSnow = currentW.includes('rain') || currentW.includes('snow') || currentW.includes('drizzle') || currentW.includes('storm');
-
-        // 필터링 유틸 함수
-        const matchWeather = (logW) => {
-            if (!logW) return false;
-            const w = logW.toLowerCase();
-            if (isClear && (w.includes('clear') || w.includes('sun'))) return true;
-            if (isCloud && (w.includes('cloud'))) return true;
-            if (isRainSnow && (w.includes('rain') || w.includes('snow'))) return true;
-            return false;
-        };
-
-        // 💡 1순위: 날씨 일치 & 온도차이 ±5도 이내 완벽 매칭
-        let candidates = globalRecentLogs.filter(l => matchWeather(l.weather) && l.temp !== null && Math.abs(parseFloat(l.temp) - currentT) <= 5);
-        let reason = "🌡️ 현재 날씨와 온도에 가장 완벽한 픽";
-
-        // 💡 2순위: 온도 데이터가 부족하면 '오늘 같은 날씨'에 자주 찾은 향수
-        if (candidates.length === 0) {
-            candidates = globalRecentLogs.filter(l => matchWeather(l.weather));
-            reason = "☁️ 오늘 같은 날씨에 유독 자주 찾은 향수";
-        }
-
-        // 💡 3순위: 아예 매칭되는 데이터가 없는 새로운 날씨면, 최근 가장 많이 입은 픽
-        if (candidates.length === 0) {
-            candidates = globalRecentLogs;
-            reason = "👑 날씨 무관, 요즘 가장 손이 많이 가는 향수";
-        }
-
-        // 필터링된 후보군 중 최다 빈도수(가장 많이 뿌린 향수) 추출
-        const counts = {};
-        candidates.forEach(l => {
-            if (l.perfumeName) counts[l.perfumeName] = (counts[l.perfumeName] || 0) + 1;
-        });
-
-        // 횟수가 가장 높은 향수 이름 찾기
-        const bestName = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
-        if (!bestName) return;
-
-        // 원본 로그에서 이미지와 브랜드 정보 빼오기
-        const bestLog = candidates.find(l => l.perfumeName === bestName);
-
-        // UI 렌더링
-        const imgTag = bestLog.imageUrl
-            ? `<img src="${bestLog.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc;">`
-            : `<div style="width: 50px; height: 70px; background: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--accent-color);">No Img</div>`;
-
-        document.getElementById('recommendation-content').innerHTML = `
-            ${imgTag}
-            <div style="flex: 1; overflow: hidden;">
-                <div style="font-size: 10px; color: #10b981; text-transform: uppercase; font-weight: bold;">RECOMMENDED</div>
-                <div style="font-weight: bold; font-size: 15px; color: var(--text-color); margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${bestLog.perfumeName}</div>
-                <div style="font-size: 11px; color: var(--accent-color);">${reason}</div>
-            </div>
-        `;
-        document.getElementById('recommendation-widget').style.display = 'block';
-    }
-
-    // 아이폰 전용 NFC 스캔 처리 함수
-    async function handleIosNfcScan(uid) {
-        const statusDiv = document.getElementById('status');
-        statusDiv.innerText = `[iOS NFC] 태그(${uid}) 확인 중...`;
-
-        try {
-            const response = await fetchWithAuth("/api/v1/logs/scan", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
-            });
-
-            const resultText = await response.text();
-
-            if (response.ok) {
-                // ✅ 기존 등록된 향수: 1초 만에 기록 완료
-                statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
-                setTimeout(() => {
-                    fetchRecentLogs();
-                    fetchSummary();
-                }, 1500);
-            } else if (response.status === 400 && resultText.includes("Unregistered")) {
-                // ❌ 미등록 향수: 신규 등록 화면으로 납치 후 UID 자동 완성
-                alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
-                document.getElementById('reg-uid').value = uid; // 폼에 UID 박아주기
-                switchView('register', null);
-                statusDiv.innerText = "waiting for interaction...";
-            } else {
-                statusDiv.innerText = `[ERROR] ${resultText}`;
-            }
-        } catch (e) {
-            statusDiv.innerText = "[ERROR] 서버 통신 실패";
-        }
-    }
-
-    // 설정 화면 열기 (기존 정보 불러오기)
-    async function openSettingsView() {
-        switchView('settings', null);
-        document.getElementById('setting-status').innerText = "Loading user info...";
-        // 진입 시 비밀번호 칸 무조건 비우기
-        document.getElementById('setting-pw').value = '';
-
-        try {
-            const res = await fetchWithAuth("/api/v1/users/me");
-            if (res.ok) {
-                const user = await res.json();
-                document.getElementById('setting-id').value = user.userId || '';
-                document.getElementById('setting-name').value = user.name || '';
-                document.getElementById('setting-loc').value = user.defaultLocation || '';
-                // 알림 설정 체크박스 연동
-                document.getElementById('setting-noti').checked = user.notiEnabled === true;
-                document.getElementById('setting-status').innerText = "";
-            } else {
-                document.getElementById('setting-status').innerText = "[ERROR] Failed to load.";
-            }
-        } catch (e) {
-            document.getElementById('setting-status').innerText = "[ERROR] Network failure.";
-        }
-    }
-
-    async function submitSettings() {
-        const name = document.getElementById('setting-name').value.trim();
-        const loc = document.getElementById('setting-loc').value.trim();
-        const pw = document.getElementById('setting-pw').value;
-        const noti = document.getElementById('setting-noti').checked;
-
-        const statusMsg = document.getElementById('setting-status');
-        const btn = document.getElementById('setting-submit-btn');
-
-        statusMsg.innerText = "Updating profile...";
-        btn.innerText = "Saving...";
-
-        // 전송할 페이로드 (비밀번호는 값이 있을 때만 추가)
-        const payload = { name: name, defaultLocation: loc, notiEnabled: noti };
-        if (pw) {
-            payload.password = pw;
-        }
-
-        try {
-            const res = await fetchWithAuth("/api/v1/users/me", {
-                method: "PATCH",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                btn.classList.add('success');
-                btn.innerText = "UPDATED";
-                statusMsg.innerText = "[SUCCESS] Profile updated.";
-
-                // 비밀번호를 바꿨다면 다시 로그인하게 유도
-                if (pw) {
-                    alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
-                    logout();
-                    return;
-                }
-
-                setTimeout(() => {
-                    btn.classList.remove('success');
-                    btn.innerText = "Save Changes";
-                    switchView('main', document.querySelector('.nav-item.main-tab'));
-                    fetchRealWeather();
-                }, 1500);
-            } else {
-                statusMsg.innerText = "[ERROR] Update failed.";
-                btn.innerText = "Save Changes";
-            }
-        } catch (e) {
-            statusMsg.innerText = "[ERROR] Network failure.";
-            btn.innerText = "Save Changes";
-        }
-    }
-
-    // 💡 배민 스타일 0.5단위 별점 터치/드래그 로직
-    const starContainer = document.getElementById('star-rating-container');
-    const starFill = document.getElementById('star-rating-fill');
-    const rateInput = document.getElementById('edit-rate');
-    const rateDisplay = document.getElementById('edit-rate-display');
-
-    function handleStarInteraction(e) {
-        const rect = starContainer.getBoundingClientRect();
-        const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-        const x = clientX - rect.left;
-        const percent = x / rect.width;
-
-        let score = Math.ceil(percent * 10) / 2; // 0.5 단위 반올림
-        if (score < 0.5) score = 0.5;
-        if (score > 5) score = 5;
-
-        updateStarUI(score);
-    }
-
-    starContainer.addEventListener('mousedown', handleStarInteraction);
-    starContainer.addEventListener('touchstart', handleStarInteraction, {passive: true});
-    starContainer.addEventListener('touchmove', handleStarInteraction, {passive: true});
-
-    function updateStarUI(score) {
-        const num = parseFloat(score);
-
-        if (isNaN(num) || num <= 0) {
-            starFill.style.width = '0%';
-            rateInput.value = '';
-            rateDisplay.innerText = '평가 안함';
-            rateDisplay.style.color = 'var(--accent-color)';
-            return;
-        }
-
-        starFill.style.width = `${(num / 5) * 100}%`;
-        rateInput.value = num;
-        rateDisplay.innerText = `${num.toFixed(1)} / 5.0`;
-        rateDisplay.style.color = '#f59e0b';
-    }
-
-    // 💡 1. 탭 상태 관리 변수 및 전환 함수 추가
-    let currentWardrobeTab = 'bottle';
-
-    function switchWardrobeTab(tab) {
-        if (isWardrobeReorderMode) {
-            toggleWardrobeReorderMode();
-        }
-
-        currentWardrobeTab = tab;
-
-        const btnBottle = document.getElementById('tab-bottle');
-        const btnSample = document.getElementById('tab-sample');
-        const btnAddSample = document.getElementById('btn-add-sample');
-
-        if (tab === 'bottle') {
-            btnBottle.style.color = 'var(--accent-color)';
-            btnBottle.style.fontWeight = 'bold';
-            btnBottle.style.borderBottom = '2px solid var(--accent-color)';
-
-            btnSample.style.color = '#a1a1aa';
-            btnSample.style.fontWeight = 'normal';
-            btnSample.style.borderBottom = '2px solid transparent';
-
-            btnAddSample.style.display = 'none';
-        } else {
-            btnSample.style.color = 'var(--accent-color)';
-            btnSample.style.fontWeight = 'bold';
-            btnSample.style.borderBottom = '2px solid var(--accent-color)';
-
-            btnBottle.style.color = '#a1a1aa';
-            btnBottle.style.fontWeight = 'normal';
-            btnBottle.style.borderBottom = '2px solid transparent';
-
-            btnAddSample.style.display = 'inline-block';
-        }
-        renderWardrobeGrid();
-    }
-
-    function renderWardrobeGrid() {
-        const container = document.getElementById('wardrobe-container');
-
-        // 현재 탭 상태에 따라 본품/샘플 필터링
-        const filteredData = globalWardrobeData.filter(p =>
-            currentWardrobeTab === 'sample' ? p.isSample === true : p.isSample !== true
-        );
-
-        document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
-
-        if (filteredData.length === 0) {
-            container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">${currentWardrobeTab === 'sample' ? '샘플이' : '옷장이'} 비어있습니다.</div>`;
-            return;
-        }
-
-        // 형님의 완벽한 map.join 렌더링 로직 100% 복붙
-        container.innerHTML = filteredData.map(p => {
-            const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
-            const shortDate = p.date ? p.date.split('T')[0] : '';
-            let notesPreview = "No notes recorded.";
-            if (p.notes) {
-                try {
-                    const parsed = typeof p.notes === 'string' ? JSON.parse(p.notes) : p.notes;
-                    const allNotes = [];
-                    if (parsed.top) allNotes.push(...parsed.top);
-                    if (parsed.middle) allNotes.push(...parsed.middle);
-                    if (parsed.base) allNotes.push(...parsed.base);
-                    if (parsed.general) allNotes.push(...parsed.general);
-                    if (allNotes.length > 0) notesPreview = allNotes.join(', ');
-                } catch (e) {
-                }
-            }
-            return `
-            <div class="wardrobe-card" data-id="${p.id}" style="cursor: pointer; display: flex; align-items: center;" onclick="openPerfumeDetail('${p.id}')">
-                <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
-                ${imgTag}
-                <div class="wardrobe-info" style="flex: 1;">
-                    <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px;">
-                        ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
-                    </div>
-                    <div class="wardrobe-name">${p.name}</div>
-                    <div class="wardrobe-notes">${notesPreview}</div>
-                </div>
-            </div>
-        `;
-        }).join('');
-    }
-
-    // 💡 2. 샘플 등록 창 열기 (NFC 입력창 자동 숨김)
-    let currentIsSample = false;
-
-    function openRegisterView(isSample = false) {
-        currentIsSample = isSample;
-        switchView('register', null);
-
-        // 등록 폼 UI 분기 처리
-        const titleEl = document.querySelector('#view-register h2');
-        const uidInput = document.getElementById('reg-uid');
-        const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
-
-        if (isSample) {
-            if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
-            if (uidGroup) uidGroup.style.display = 'none'; // 샘플일 땐 NFC UID 칸 숨김
-            if (uidInput) uidInput.value = '';
-        } else {
-            if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
-            if (uidGroup) uidGroup.style.display = 'block'; // 본품일 땐 노출
-        }
-    }
-
-    document.getElementById('reg-auto-log').addEventListener('change', (e) => {
-        const btn = document.getElementById('register-submit-btn');
-        if (e.target.checked) {
-            btn.innerText = "Register & Log";
-        } else {
-            btn.innerText = "Register Only";
-        }
-    });
-
-
-    function initializeAppData() {
-        fetchRealWeather();
-        fetchBrands();
-        fetchRecentLogs();
-        fetchPerfumeList();
-        fetchWardrobe();
-        fetchSummary();
-        fetchWishlist();
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        // 1. 기존 앱 인증 및 초기화 로직
-        checkAuth();
-
-        // 2. iOS(아이폰) 딥링크 NFC 파라미터 가로채기
-        const urlParams = new URLSearchParams(window.location.search);
-        const scannedUid = urlParams.get('uid') || urlParams.get('id');
-
-        if (scannedUid) {
-            // 주소창 파라미터 즉시 삭제 (새로고침 시 무한 스캔 방지)
-            window.history.replaceState({}, document.title, window.location.pathname);
-
-            // checkAuth()로 토큰이 로딩될 시간을 벌어준 뒤 백엔드 찌르기
-            setTimeout(() => {
-                handleIosNfcScan(scannedUid);
-            }, 500);
-        }
-    });
-
-
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('Service Worker 등록 완료:', reg.scope))
-                .catch(err => console.log('Service Worker 등록 실패:', err));
-        });
-    }
-</script>
-</script>
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+    <div class="nav-item active main-tab" onclick="switchView('main', this)">Main</div>
+    <div class="nav-item wardrobe-tab" onclick="switchView('wardrobe', this)">Wardrobe</div>
+    <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
+    <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
+</nav>
+
+<!-- 💡 완벽하게 분리된 JS 연결 -->
+<script src="/app.js"></script>
 </body>
 </html>
