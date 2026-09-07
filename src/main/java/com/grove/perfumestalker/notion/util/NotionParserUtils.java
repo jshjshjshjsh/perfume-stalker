@@ -1,7 +1,10 @@
 package com.grove.perfumestalker.notion.util;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class NotionParserUtils {
 
@@ -156,6 +159,74 @@ public final class NotionParserUtils {
             return multiSelect.stream()
                     .map(m -> (String) m.get("name"))
                     .collect(java.util.stream.Collectors.toList());
-        } catch (Exception e) { return List.of(); }
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    // 배열형 텍스트 롤업 추출 헬퍼
+    public static List<String> parseRollupNotes(Map<String, Object> props, String columnName) {
+        String raw = NotionParserUtils.extractRollupText(props, columnName);
+        if (raw == null || raw.isEmpty()) return List.of();
+        return Arrays.stream(raw.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    public static String extractRollupText(Map<String, Object> properties, String propertyName) {
+        if (properties == null || !properties.containsKey(propertyName)) {
+            return "";
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> prop = (Map<String, Object>) properties.get(propertyName);
+        if (prop == null || !"rollup".equals(prop.get("type"))) {
+            return "";
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> rollup = (Map<String, Object>) prop.get("rollup");
+        if (rollup == null || !"array".equals(rollup.get("type"))) {
+            return "";
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> array = (List<Map<String, Object>>) rollup.get("array");
+        if (array == null || array.isEmpty()) {
+            return "";
+        }
+
+        List<String> extractedValues = new ArrayList<>();
+        for (Map<String, Object> item : array) {
+            String itemType = (String) item.get("type");
+
+            if ("rich_text".equals(itemType) || "title".equals(itemType)) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> textArray = (List<Map<String, Object>>) item.get(itemType);
+                if (textArray != null) {
+                    for (Map<String, Object> textObj : textArray) {
+                        extractedValues.add((String) textObj.get("plain_text"));
+                    }
+                }
+            } else if ("multi_select".equals(itemType)) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> selectArray = (List<Map<String, Object>>) item.get("multi_select");
+                if (selectArray != null) {
+                    for (Map<String, Object> selectObj : selectArray) {
+                        extractedValues.add((String) selectObj.get("name"));
+                    }
+                }
+            } else if ("select".equals(itemType)) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> selectObj = (Map<String, Object>) item.get("select");
+                if (selectObj != null) {
+                    extractedValues.add((String) selectObj.get("name"));
+                }
+            }
+        }
+
+        // 추출된 값들을 쉼표(,)로 이어 붙여서 하나의 문자열로 반환
+        return String.join(", ", extractedValues);
     }
 }

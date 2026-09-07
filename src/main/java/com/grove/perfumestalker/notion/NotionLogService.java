@@ -1,5 +1,6 @@
 package com.grove.perfumestalker.notion;
 
+import com.grove.perfumestalker.dto.LogAnalyticsDto;
 import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.dto.UsageLogCreateCommand;
 import com.grove.perfumestalker.dto.UsageLogResponse;
@@ -17,10 +18,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -223,5 +221,53 @@ public class NotionLogService {
                 .bodyToMono(Void.class)
                 .doOnSuccess(v -> log.info("🗑️ 노션 착향 로그 삭제 완료: {}", pageId))
                 .doOnError(this::handleNotionError);
+    }
+
+    public Mono<List<LogAnalyticsDto>> getAllLogsForAnalytics(String userPageId) {
+        String formattedDbId = notionTokenUtils.formatUuid(usageLogDataSourceId);
+
+        Map<String, Object> queryBody = Map.of(
+                "filter", Map.of(
+                        "and", List.of(
+                                Map.of("property", NotionUsageLog.USER.getColumnName(),
+                                        "relation", Map.of("contains", userPageId)),
+                                // 💡 평점이 매겨진 완료된 로그만 가져옵니다.
+                                Map.of("property", NotionUsageLog.RATE.getColumnName(),
+                                        "number", Map.of("is_not_empty", true))
+                        )
+                )
+        );
+
+        return notionWebClient.post()
+                .uri("/data_sources/{dbId}/query", formattedDbId)
+                .bodyValue(queryBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(response -> {
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+                    if (results == null || results.isEmpty()) return List.<LogAnalyticsDto>of();
+
+                    return results.stream().map(page -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> props = (Map<String, Object>) page.get("properties");
+
+                        double temp = Double.parseDouble(NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.TEMPERATURE.getColumnName()));
+                        double humidity = Double.parseDouble(NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName()).isEmpty() ? "0" : NotionParserUtils.extractNumber(props, NotionUsageLog.HUMIDITY.getColumnName()));
+                        double rate = Double.parseDouble(NotionParserUtils.extractNumber(props, NotionUsageLog.RATE.getColumnName()));
+
+                        // 💡 4계층 노트 롤업 파싱 (쉼표 기준으로 List 변환)
+                        List<String> top = NotionParserUtils.parseRollupNotes(props, "Top Notes Rollup");
+                        List<String> middle = NotionParserUtils.parseRollupNotes(props, "Middle Notes Rollup");
+                        List<String> base = NotionParserUtils.parseRollupNotes(props, "Base Notes Rollup");
+                        List<String> general = NotionParserUtils.parseRollupNotes(props, "General Notes Rollup");
+
+                        return new LogAnalyticsDto(temp, humidity, rate, top, middle, base, general);
+                    }).collect(Collectors.toList());
+                })
+                .onErrorResume(e -> {
+                    log.error("❌ 통계용 로그 조회 에러: ", e);
+                    return Mono.just(List.of());
+                });
     }
 }
