@@ -51,7 +51,7 @@ Content-Type: application/json
 
 {
   "userId": "cj45645",
-  "rawPassword": "whrhkdgus1"
+  "rawPassword": "1234"
 }
 > {%
     // 💡 로그인 성공 시 발급된 토큰을 'auth_token' 변수에 자동 저장!
