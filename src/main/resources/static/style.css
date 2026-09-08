@@ -375,3 +375,193 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 #view-summary > div {
     flex-shrink: 0;
 }
+
+/* 로그 카드 안 '상세로 가는' 영역 */
+.log-thumb-link {
+    display: flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: opacity .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.log-thumb-link:active { opacity: .65; }
+
+.log-name-link {
+    cursor: pointer;
+    border-bottom: 1px dashed color-mix(in srgb, var(--accent-color) 60%, transparent);
+    padding-bottom: 1px;
+    transition: color .15s ease, border-color .15s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.log-name-link:active { opacity: .65; }
+
+@media (hover: hover) {
+    .log-thumb-link:hover {
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-color) 30%, transparent);
+    }
+    .log-name-link:hover {
+        color: var(--accent-color);
+        border-bottom-color: var(--text-color);
+        border-bottom-style: solid;
+    }
+}
+
+#recommendation-widget.is-clickable {
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color .15s ease, box-shadow .15s ease, transform .12s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+#recommendation-widget.is-clickable:active {
+    transform: scale(0.985);
+    background-color: color-mix(in srgb, var(--text-color) 4%, transparent);
+}
+@media (hover: hover) {
+    #recommendation-widget.is-clickable:hover {
+        background-color: color-mix(in srgb, var(--text-color) 3%, transparent);
+        box-shadow: 0 2px 8px color-mix(in srgb, var(--text-color) 8%, transparent);
+    }
+}
+
+/* ── 주요 액션 ── */
+.action-btn--primary {
+    width: 100%;
+    background: color-mix(in srgb, var(--text-color) 78%, var(--bg-color));
+    color: color-mix(in srgb, var(--bg-color) 92%, #ffffff);
+    border: 1px solid transparent;
+    letter-spacing: 0.06em;
+    box-shadow: 0 1px 3px color-mix(in srgb, var(--text-color) 20%, transparent);
+    transition: background-color .15s ease, box-shadow .15s ease, transform .12s ease;
+}
+.action-btn--primary:active {
+    background: var(--text-color);
+    transform: scale(0.99);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.25);
+}
+@media (hover: hover) {
+    .action-btn--primary:hover {
+        background: color-mix(in srgb, var(--text-color) 90%, var(--bg-color));
+        box-shadow: 0 3px 8px color-mix(in srgb, var(--text-color) 22%, transparent);
+    }
+}
+
+/* ── 위험 구역 ── */
+.danger-zone {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed color-mix(in srgb, var(--text-color) 14%, transparent);
+    text-align: center;
+}
+
+.action-btn--ghost-danger {
+    width: auto;
+    display: inline-block;
+    background: transparent;
+    border: 1px solid transparent;
+    color: color-mix(in srgb, var(--accent-color) 85%, transparent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    padding: 7px 14px;
+    border-radius: 4px;
+    box-shadow: none;
+    transition: color .15s ease, background-color .15s ease, border-color .15s ease;
+}
+.action-btn--ghost-danger:active {
+    color: var(--danger-color);
+    background: color-mix(in srgb, var(--danger-color) 10%, transparent);
+}
+@media (hover: hover) {
+    .action-btn--ghost-danger:hover {
+        color: var(--danger-color);
+        background: color-mix(in srgb, var(--danger-color) 7%, transparent);
+        border-color: color-mix(in srgb, var(--danger-color) 25%, transparent);
+    }
+}
+
+/* button 요소로 바뀐 .action-btn 정규화 */
+button.action-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+    display: block;
+    width: 100%;
+    padding: 15px;
+    font-size: 13px;
+    font-weight: bold;
+    line-height: 1.2;
+    border-radius: 4px;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+/* ── 비활성 (deleteLog가 update를 disabled 시킴) ── */
+.action-btn:disabled {
+    opacity: .45;
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+.action-btn.success,
+.action-btn--primary.success,
+.action-btn--ghost-danger.success {
+    background: var(--success-color);
+    color: #ffffff;
+    border-color: var(--success-color);
+    box-shadow: none;
+}
+
+.status-msg:empty {
+    display: none;
+}
+
+/* ── 보조 액션 (auto fill) : --primary의 톤 다운 버전 ── */
+.loc-btn--assist {
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+
+    padding: 6px 14px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+
+    color: color-mix(in srgb, var(--text-color) 88%, transparent);
+    background: color-mix(in srgb, var(--text-color) 9%, var(--bg-color));
+    border: 1px solid color-mix(in srgb, var(--text-color) 18%, transparent);
+    border-radius: 4px;
+
+    cursor: pointer;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 8%, transparent);
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .15s ease, border-color .15s ease,
+    box-shadow .15s ease, transform .12s ease, opacity .15s ease;
+}
+
+.loc-btn--assist:active {
+    background: color-mix(in srgb, var(--text-color) 70%, var(--bg-color));
+    border-color: transparent;
+    color: var(--bg-color);
+    transform: scale(0.97);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.2);
+}
+
+@media (hover: hover) {
+    .loc-btn--assist:hover {
+        background: color-mix(in srgb, var(--text-color) 15%, var(--bg-color));
+        border-color: color-mix(in srgb, var(--text-color) 32%, transparent);
+        box-shadow: 0 2px 5px color-mix(in srgb, var(--text-color) 14%, transparent);
+    }
+}
+
+.loc-btn--assist:disabled {
+    opacity: .4;
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
+    transform: none;
+}

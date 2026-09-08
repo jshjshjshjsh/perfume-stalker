@@ -200,7 +200,7 @@
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn loc-btn--quiet" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
+                <button type="button" class="loc-btn loc-btn--assist" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
             </label>
             <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
             <div id="wish-crawl-terminal" class="crawl-terminal">
@@ -221,8 +221,8 @@
             <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="scan-btn" style="flex: 2;" onclick="submitWish()">Save Wish</button>
             <button class="scan-btn delete-btn" style="flex: 1; padding: 10px;" onclick="toggleWishForm()">Cancel</button>
+            <button class="scan-btn action-btn--primary" style="flex: 2;" onclick="submitWish()">Save Wish</button>
         </div>
     </div>
     <div id="wish-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
@@ -244,7 +244,7 @@
         </div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn loc-btn--quiet" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
+                <button type="button" class="loc-btn loc-btn--assist" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
             </label>
             <input type="url" id="reg-url" placeholder="Paste URL here...">
             <div id="crawl-terminal" class="crawl-terminal">
@@ -280,7 +280,7 @@
                 <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
             </div>
         </div>
-        <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
+        <button id="register-submit-btn" class="scan-btn action-btn--primary" style="width: 100%; margin-top: 10px;">Register & Log</button>
         <div id="reg-status" class="status-msg"></div>
     </div>
 </section>
@@ -323,11 +323,20 @@
             <label>Comment</label>
             <textarea id="edit-comment" placeholder="오늘의 착향 느낌, 주변의 반응은 어땠나요?" style="height: 80px; resize: none;"></textarea>
         </div>
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button id="edit-submit-btn" class="scan-btn" style="flex: 2;" onclick="submitEditLog()">Update</button>
-            <button id="edit-delete-btn" class="scan-btn delete-btn" style="flex: 1;" onclick="deleteLog()">Delete</button>
-        </div>
+
+        <button type="button" id="edit-submit-btn"
+                class="action-btn action-btn--primary"
+                style="margin-top: 8px;" onclick="submitEditLog()">UPDATE</button>
+
         <div id="edit-status" class="status-msg"></div>
+
+        <div class="danger-zone">
+            <button type="button" id="edit-delete-btn"
+                    class="action-btn action-btn--ghost-danger" onclick="deleteLog()">이 기록 삭제</button>
+            <div style="font-size: 10px; color: var(--accent-color); margin-top: 6px; opacity: .75;">
+                삭제된 착향 기록은 복구할 수 없습니다
+            </div>
+        </div>
     </div>
 </section>
 
@@ -376,7 +385,7 @@
                 <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
             </div>
         </div>
-        <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
+        <button id="manual-submit-btn" class="scan-btn action-btn--primary" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
         <div id="manual-status" class="status-msg"></div>
     </div>
 </section>
@@ -389,7 +398,7 @@
             <span class="btn-row">
                 <button type="button" id="detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
                 <button type="button" id="detail-edit-btn" class="loc-btn">edit</button>
-                <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])">back</button>
+                <button type="button" class="loc-btn loc-btn--muted" onclick="closePerfumeDetail()">back</button>
             </span>
         </h2>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
@@ -429,10 +438,13 @@
 <!-- 10. WISH DETAIL VIEW -->
 <section id="view-wish-detail" class="view-section">
     <div class="weather-widget">
-        <h2>Wish Details
-            <span class="loc-btn" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])" style="float: right;">[ back ]</span>
-            <span id="wish-detail-edit-btn" class="loc-btn" style="float: right; margin-right: 15px;">[ edit ]</span>
-            <span id="wish-detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
+        <h2>
+            <span>Wish Details</span>
+            <span class="btn-row">
+                <button type="button" id="wish-detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
+                <button type="button" id="wish-detail-edit-btn" class="loc-btn">edit</button>
+                <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])">back</button>
+            </span>
         </h2>
         <p id="wish-detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
         <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
@@ -491,7 +503,7 @@
             <input type="checkbox" id="setting-noti" style="width: auto;">
             <label style="margin: 0;">Enable Notifications</label>
         </div>
-        <button id="setting-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitSettings()">Save Changes</button>
+        <button type="button" class="action-btn action-btn--primary" onclick="submitSettings()">Save Changes</button>
         <div id="setting-status" class="status-msg"></div>
     </div>
 </section>

@@ -31,6 +31,9 @@ let abortController = null;
 let isScanning = false;
 let wishPromoteAbort = null;
 
+let detailReturnTo = 'wardrobe';
+let currentRecommendationLog = null;
+
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('jwt_token');
     const headers = {
@@ -300,6 +303,7 @@ function updateRecommendation() {
     if (!bestName) return;
 
     const bestLog = candidates.find(l => l.perfumeName === bestName);
+    currentRecommendationLog = bestLog;
     const imgTag = bestLog.imageUrl
         ? `<img src="${bestLog.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc;">`
         : `<div style="width: 50px; height: 70px; background: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; display:flex; align-items:center; justify-content:center; font-size:8px; color:var(--accent-color);">No Img</div>`;
@@ -307,12 +311,16 @@ function updateRecommendation() {
     document.getElementById('recommendation-content').innerHTML = `
         ${imgTag}
         <div style="flex: 1; overflow: hidden;">
-            <div style="font-size: 10px; color: #10b981; text-transform: uppercase; font-weight: bold;">RECOMMENDED</div>
+            <div style="font-size: 10px; color: #10b981; text-transform: uppercase; font-weight: bold;">RECOMMENDED →</div>
             <div style="font-weight: bold; font-size: 15px; color: var(--text-color); margin: 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${bestLog.perfumeName}</div>
             <div style="font-size: 11px; color: var(--accent-color);">${reason}</div>
         </div>
     `;
-    document.getElementById('recommendation-widget').style.display = 'block';
+    const recWidget = document.getElementById('recommendation-widget');
+    recWidget.style.display = 'block';
+    recWidget.classList.add('is-clickable');
+    recWidget.onclick = openDetailFromRecommendation;
+    recWidget.title = '향수 정보 보기';
 }
 
 // ==========================================
@@ -337,7 +345,19 @@ async function fetchRecentLogs() {
     }
 }
 
+function openDetailFromRecommendation() {
+    if (!currentRecommendationLog) return;
+    const pid = resolvePerfumeId(currentRecommendationLog);
+    if (!pid) {
+        alert(`'${currentRecommendationLog.perfumeName}'은(는) 현재 옷장에 없습니다.`);
+        return;
+    }
+    openPerfumeDetail(pid, 'main');
+}
+
 function renderLogItemHtml(log) {
+    registerLog(log);
+
     const imgTag = log.imageUrl
         ? `<img src="${log.imageUrl}" class="log-thumb" alt="thumb">`
         : `<div class="log-thumb">No Img</div>`;
@@ -350,12 +370,18 @@ function renderLogItemHtml(log) {
         ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
         : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
 
+    const toDetail = `onclick="event.stopPropagation(); openDetailFromLog('${log.pageId}')"`;
+
     return `
-        <div class="log-item" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
+        <div class="log-item" onclick="openEditLogById('${log.pageId}')">
             <div class="log-left">
-                ${imgTag}
+                <div class="log-thumb-link" ${toDetail} title="향수 정보 보기">
+                    ${imgTag}
+                </div>
                 <div class="log-details">
-                    <div class="log-perfume">${log.perfumeName}</div>
+                    <div class="log-perfume">
+                        <span class="log-name-link" ${toDetail} title="향수 정보 보기">${log.perfumeName}</span>
+                    </div>
                     <div class="log-date">[${shortDate}]</div>
                     ${rateHtml}
                 </div>
@@ -368,6 +394,15 @@ function renderLogItemHtml(log) {
 }
 
 function openEditLog(pageId, name, date, weather, temp, humidity, rate, comment) {
+    const delBtn = document.getElementById('edit-delete-btn');
+    const subBtn = document.getElementById('edit-submit-btn');
+    delBtn.innerText = "이 기록 삭제";
+    subBtn.innerText = "UPDATE";
+    delBtn.disabled = false;
+    subBtn.disabled = false;
+    delBtn.classList.remove('success');
+    subBtn.classList.remove('success');
+    document.getElementById('edit-status').innerText = "";
     document.getElementById('edit-page-id').value = pageId;
     document.getElementById('edit-perfume-name').innerText = name;
     document.getElementById('edit-date').innerText = `[${date}]`;
@@ -398,6 +433,7 @@ async function submitEditLog() {
 
     statusMsg.innerText = "Updating Notion DB...";
     submitBtn.innerText = "Updating...";
+    submitBtn.disabled = true
 
     try {
         const res = await fetchWithAuth(`/api/v1/logs/${pageId}`, {
@@ -419,16 +455,19 @@ async function submitEditLog() {
             setTimeout(() => {
                 submitBtn.classList.remove('success');
                 submitBtn.innerText = "Update Log";
+                submitBtn.disabled = false
                 switchView('main', document.querySelector('.nav-item.main-tab'));
                 refreshAfterLogChange();
             }, 1500);
         } else {
             statusMsg.innerText = "[ERROR] Update failed.";
             submitBtn.innerText = "Update Log";
+            submitBtn.disabled = false
         }
     } catch (e) {
         statusMsg.innerText = "[ERROR] Network failure.";
         submitBtn.innerText = "Update Log";
+        submitBtn.disabled = false
     }
 }
 
@@ -439,8 +478,11 @@ async function deleteLog() {
     const delBtn = document.getElementById('edit-delete-btn');
     const updateBtn = document.getElementById('edit-submit-btn');
 
+    const DEL_LABEL = "이 기록 삭제";
+
     statusMsg.innerText = "Deleting from Notion...";
     delBtn.innerText = "Wait...";
+    delBtn.disabled = true;
     updateBtn.disabled = true;
 
     try {
@@ -451,19 +493,23 @@ async function deleteLog() {
             statusMsg.innerText = "[SUCCESS] Log deleted.";
             setTimeout(() => {
                 delBtn.classList.remove('success');
-                delBtn.innerText = "Delete";
+                delBtn.innerText = DEL_LABEL;
+                delBtn.disabled = false;
                 updateBtn.disabled = false;
+                statusMsg.innerText = "";
                 switchView('main', document.querySelector('.nav-item.main-tab'));
                 refreshAfterLogChange();
             }, 1500);
         } else {
             statusMsg.innerText = "[ERROR] Delete failed.";
-            delBtn.innerText = "Delete";
+            delBtn.innerText = DEL_LABEL;
+            delBtn.disabled = false;
             updateBtn.disabled = false;
         }
     } catch (e) {
         statusMsg.innerText = "[ERROR] Network failure.";
-        delBtn.innerText = "Delete";
+        delBtn.innerText = DEL_LABEL;
+        delBtn.disabled = false;
         updateBtn.disabled = false;
     }
 }
@@ -743,9 +789,11 @@ async function saveWardrobeOrder() {
     }
 }
 
-function openPerfumeDetail(perfumeId) {
+function openPerfumeDetail(perfumeId, from = 'wardrobe') {
     const p = globalWardrobeData.find(x => x.id === perfumeId);
     if (!p) return;
+
+    detailReturnTo = from;
 
     document.getElementById('detail-brand').innerText = p.brand || 'UNKNOWN BRAND';
     document.getElementById('detail-name').innerText = p.name;
@@ -769,9 +817,21 @@ function openPerfumeDetail(perfumeId) {
     fetchPerfumeHistory(perfumeId);
 }
 
+function closePerfumeDetail() {
+    if (detailReturnTo === 'main') {
+        switchView('main', document.querySelector('.nav-item.main-tab'));
+    } else if (detailReturnTo === 'all-logs') {
+        switchView('all-logs', null);
+    } else {
+        switchView('wardrobe', document.querySelectorAll('.nav-item')[1]);
+    }
+}
+
 async function fetchPerfumeHistory(perfumeId) {
     const container = document.getElementById('detail-history-container');
     container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching history...</div>`;
+
+    const owner = globalWardrobeData.find(p => p.id === perfumeId);
 
     try {
         const response = await fetchWithAuth(`/api/v1/logs/perfume/${perfumeId}`);
@@ -782,6 +842,11 @@ async function fetchPerfumeHistory(perfumeId) {
                 return;
             }
             container.innerHTML = logs.map(log => {
+                registerLog(log, {
+                    perfumeId: perfumeId,
+                    perfumeName: log.perfumeName || (owner ? owner.name : '')
+                });
+
                 const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
                 const weatherIcon = getWeatherIcon(log.weather);
                 const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
@@ -790,7 +855,7 @@ async function fetchPerfumeHistory(perfumeId) {
                     : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
 
                 return `
-                    <div class="log-item" onclick="openEditLog('${log.pageId}', '${log.perfumeName}', '${shortDate}', '${log.weather}', '${log.temp}', '${log.humidity}', '${log.rate}', '${(log.comment || '').replace(/'/g, "\\'")}')">
+                    <div class="log-item" onclick="openEditLogById('${log.pageId}')">
                         <div class="log-left">
                             <div class="log-details">
                                 <div class="log-date" style="font-size: 12px; color: var(--text-color); font-weight: bold;">${shortDate}</div>
@@ -968,6 +1033,7 @@ async function crawlUrl() {
         return;
     }
 
+    crawlBtn.disabled = true;
     crawledNotesData = null;
     crawledImageUrl = "";
     previewContainer.style.display = 'none';
@@ -1030,6 +1096,7 @@ async function crawlUrl() {
         clearTimeout(timeoutId);
         crawlBtn.classList.remove('is-busy');
         crawlBtn.textContent = 'auto fill';
+        crawlBtn.disabled = false;
     }
 }
 
@@ -1274,6 +1341,7 @@ async function crawlWishUrl() {
         return;
     }
 
+    wishBtn.disabled = true;
     wishBtn.classList.add('is-busy');
     wishBtn.textContent = 'crawling...';
     terminal.style.display = 'flex';
@@ -1307,6 +1375,7 @@ async function crawlWishUrl() {
     } finally {
         wishBtn.classList.remove('is-busy');
         wishBtn.textContent = 'auto fill';
+        wishBtn.disabled = false;
     }
 }
 
@@ -1923,6 +1992,54 @@ function openManualLogForm() {
     document.getElementById('manual-hum').value = '';
     fetchPerfumeList();
     switchView('manual-log', null);
+}
+
+// 렌더링된 로그를 pageId로 보관 (인라인 문자열 이스케이프 문제 제거)
+const logRegistry = {};
+
+function registerLog(log, extra = {}) {
+    const prev = logRegistry[log.pageId] || {};
+    // 빈 값이 기존 값을 덮지 않도록 정리
+    const clean = Object.fromEntries(
+        Object.entries(log).filter(([, v]) => v !== null && v !== undefined && v !== '')
+    );
+    logRegistry[log.pageId] = { ...prev, ...clean, ...extra };
+}
+
+// 로그 → 옷장 향수 ID 해석 (클릭 시점에 실행 = 로딩 순서 무관)
+function resolvePerfumeId(log) {
+    if (!log) return null;
+    if (log.perfumeId) return log.perfumeId;          // 백엔드가 주면 우선 사용
+    const key = (log.perfumeName || '').trim().toLowerCase();
+    if (!key) return null;
+    const hit = globalWardrobeData.find(p => (p.name || '').trim().toLowerCase() === key);
+    return hit ? hit.id : null;
+}
+
+// 로그 카드 본문 클릭 → 착향 기록 수정
+function openEditLogById(pageId) {
+    const log = logRegistry[pageId];
+    if (!log) return;
+    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+    openEditLog(log.pageId, log.perfumeName, shortDate,
+        log.weather, log.temp, log.humidity, log.rate, log.comment);
+}
+
+// 사진/향수명 클릭 → 향수 상세
+function openDetailFromLog(pageId) {
+    const log = logRegistry[pageId];
+    if (!log) return;
+
+    const pid = resolvePerfumeId(log);
+    if (!pid) {
+        const nm = (log.perfumeName || '').trim();
+        alert(nm
+            ? `'${nm}'은(는) 현재 옷장에 없어 상세 정보를 볼 수 없습니다.`
+            : `이 기록의 향수 정보를 찾을 수 없습니다.`);
+        return;
+    }
+    const cur = document.querySelector('.view-section.active')?.id.replace('view-', '') || 'main';
+    openPerfumeDetail(pid, cur);
 }
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출
