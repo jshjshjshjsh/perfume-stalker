@@ -97,10 +97,17 @@ public class NotionLogService {
         properties.put(NotionUsageLog.PERFUME.getColumnName(), NotionUsageLog.PERFUME.formatValue(formattedMasterPageId));
         properties.put(NotionUsageLog.DATE.getColumnName(), NotionUsageLog.DATE.formatValue(logDate));
 
-        // 💡 weather 데이터도 command에서 꺼냄
+        // 💡 체크박스(useCurrentTemp)가 true면 현재 온도, false면 최고 온도(디폴트)
+        double selectedTemp = command.useCurrentTemp() ? command.weather().temperature() : command.weather().tempMax();
         properties.put(NotionUsageLog.WEATHER.getColumnName(), NotionUsageLog.WEATHER.formatValue(command.weather().weather()));
-        properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(command.weather().temperature()));
+        properties.put(NotionUsageLog.TEMPERATURE.getColumnName(), NotionUsageLog.TEMPERATURE.formatValue(selectedTemp));
+
+        // 💡 확장성을 위한 일교차 추가 기록
+        properties.put(NotionUsageLog.TEMP_MIN.getColumnName(), NotionUsageLog.TEMP_MIN.formatValue(command.weather().tempMin()));
+        properties.put(NotionUsageLog.TEMP_MAX.getColumnName(), NotionUsageLog.TEMP_MAX.formatValue(command.weather().tempMax()));
         properties.put(NotionUsageLog.HUMIDITY.getColumnName(), NotionUsageLog.HUMIDITY.formatValue(command.weather().humidity()));
+
+
         properties.put(NotionUsageLog.USER.getColumnName(), NotionUsageLog.USER.formatValue(userPageId));
 
         Map<String, Object> body = Map.of(

@@ -30,7 +30,7 @@ public class LogController {
     private final NotionLogService notionLogService;
     private final WeatherService weatherService;
     private final UserService userService;
-    public record ScanRequest(String uid, Double lat, Double lon) {}
+    public record ScanRequest(String uid, Double lat, Double lon, Boolean useCurrentTemp) {}
 
     @GetMapping("/perfume/{perfumeId}")
     public Mono<ResponseEntity<List<UsageLogResponse>>> getLogsByPerfumeId(
@@ -86,7 +86,13 @@ public class LogController {
                     WeatherService.WeatherData weather = tuple.getT2();
 
                     // 3. 묶인 데이터로 착향 로그 Insert
-                    UsageLogCreateCommand command = new UsageLogCreateCommand(perfumePageId, weather, null);
+                    UsageLogCreateCommand command = new UsageLogCreateCommand(
+                            perfumePageId,
+                            weather,
+                            null,
+                            request.useCurrentTemp() != null ? request.useCurrentTemp() : false)
+                            ;
+
                     return notionLogService.createUsageLog(command, userPageId);
                 })
                 .map(v -> ResponseEntity.ok("✅ 날씨 정보와 함께 착향 로그가 기록되었습니다."))
@@ -118,7 +124,8 @@ public class LogController {
             UsageLogCreateCommand command = new UsageLogCreateCommand(
                     request.getPerfumeId(),
                     weather,
-                    request.getDate()
+                    request.getDate(),
+                    request.getUseCurrentTemp() != null ? request.getUseCurrentTemp() : false
             );
 
             return notionLogService.createUsageLog(command, userPageId);

@@ -40,6 +40,18 @@ public enum NotionUsageLog {
             return Map.of(getPropertyType(), value);
         }
     },
+    TEMP_MIN("TEMP_MIN", "number") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), value);
+        }
+    },
+    TEMP_MAX("TEMP_MAX", "number") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), value);
+        }
+    },
     HUMIDITY("HUMIDITY", "number") {
         @Override
         public Map<String, Object> formatValue(Object value) {

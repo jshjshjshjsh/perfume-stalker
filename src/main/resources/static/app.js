@@ -262,7 +262,7 @@ function updateRecommendation() {
     if (!recWeatherData || globalRecentLogs.length === 0) return;
 
     const currentW = (recWeatherData.weather || '').toLowerCase();
-    const currentT = recWeatherData.temp;
+    const currentT = recWeatherData.tempMax !== undefined ? recWeatherData.tempMax : recWeatherData.temp;
 
     const isClear = currentW.includes('clear') || currentW.includes('sun');
     const isCloud = currentW.includes('cloud') || currentW.includes('haze') || currentW.includes('fog');
@@ -503,7 +503,8 @@ async function submitManualLog() {
                 perfumeId: perfumeId,
                 date: manualDate || null,
                 lat: currentLat,
-                lon: currentLon
+                lon: currentLon,
+                useCurrentTemp: document.getElementById('manual-use-current-temp')?.checked || false
             })
         });
 
@@ -861,7 +862,12 @@ scanBtn.addEventListener('click', async () => {
             try {
                 const response = await fetchWithAuth("/api/v1/logs/scan", {
                     method: "POST", headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
+                    body: JSON.stringify({
+                        uid: uid,
+                        lat: currentLat,
+                        lon: currentLon,
+                        useCurrentTemp: document.getElementById('scan-use-current-temp')?.checked || false
+                    })
                 });
                 const resultText = await response.text();
 
@@ -1091,7 +1097,8 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
                 notes: crawledNotesData,
                 lat: currentLat, lon: currentLon,
                 isSample: currentIsSample,
-                skipLog: !autoLog
+                skipLog: !autoLog,
+                useCurrentTemp: document.getElementById('reg-use-current-temp')?.checked || false
             })
         });
 

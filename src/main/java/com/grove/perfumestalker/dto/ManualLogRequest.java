@@ -10,4 +10,5 @@ public class ManualLogRequest {
     public String date; // YYYY-MM-DD
     public Double lat;
     public Double lon;
+    public Boolean useCurrentTemp;
 }

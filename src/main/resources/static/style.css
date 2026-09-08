@@ -145,6 +145,48 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
     opacity: 1 !important; border-radius: 8px; cursor: grabbing !important; z-index: 9999 !important; transition: none !important;
 }
 
+/* --- Temperature Mode Toggle Switch --- */
+.temp-mode-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.temp-mode-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+.slider {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 18px;
+    background-color: var(--accent-color);
+    border-radius: 18px;
+    transition: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 2px;
+    bottom: 2px;
+    background-color: var(--bg-color);
+    border-radius: 50%;
+    transition: 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.temp-mode-switch input:checked + .slider {
+    background-color: var(--text-color);
+}
+.temp-mode-switch input:checked + .slider:before {
+    transform: translateX(18px);
+}
+
 /* --- Animations --- */
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); } }
 @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }

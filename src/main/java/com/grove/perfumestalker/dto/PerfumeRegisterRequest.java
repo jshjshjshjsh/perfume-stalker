@@ -17,4 +17,5 @@ public class PerfumeRegisterRequest {
     private String date;
     private Boolean skipLog;
     private Boolean isSample;
+    private Boolean useCurrentTemp;
 }

@@ -5,5 +5,6 @@ import com.grove.perfumestalker.weather.WeatherService;
 public record UsageLogCreateCommand(
         String masterPageId,
         WeatherService.WeatherData weather,
-        String customDate
+        String customDate,
+        boolean useCurrentTemp
 ) {}

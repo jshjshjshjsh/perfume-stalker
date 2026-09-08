@@ -80,6 +80,14 @@
     <div class="scan-container" style="margin-top: 0; flex-shrink: 0;">
         <button id="scan-btn" class="scan-btn" style="padding: 10px 40px; font-size: 13px;">TAP TO SCAN</button>
         <div id="status" class="status-msg" style="margin-top: 6px; height: auto;">waiting for interaction...</div>
+        <div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
+            <label class="temp-mode-switch">
+                <input type="checkbox" id="scan-use-current-temp">
+                <span class="slider"></span>
+            </label>
+            <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
+        </div>
         <div class="manual-trigger-container" style="margin-top: 10px; padding-top: 10px;">
             <button class="manual-trigger-btn" onclick="switchView('manual-log', null)">[ + MANUAL ENTRY (수동 기록) ]</button>
         </div>
@@ -236,6 +244,17 @@
             <input type="checkbox" id="reg-auto-log" style="width: auto;">
             <label for="reg-auto-log" style="margin: 0; font-size: 13px; color: var(--text-color);">등록과 동시에 오늘 착향 기록 남기기</label>
         </div>
+        <div class="form-group" style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <label style="margin: 0;">온도 기록 기준</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
+                <label class="temp-mode-switch">
+                    <input type="checkbox" id="reg-use-current-temp">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
+            </div>
+        </div>
         <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
         <div id="reg-status" class="status-msg"></div>
     </div>
@@ -298,6 +317,17 @@
         <div class="form-group">
             <label>Date (Optional)</label>
             <input type="date" id="manual-date">
+        </div>
+        <div class="form-group" style="margin-top: -5px; display: flex; align-items: center; justify-content: space-between;">
+            <label style="margin: 0;">온도 기록 기준</label>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
+                <label class="temp-mode-switch">
+                    <input type="checkbox" id="manual-use-current-temp">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
+            </div>
         </div>
         <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
         <div id="manual-status" class="status-msg"></div>

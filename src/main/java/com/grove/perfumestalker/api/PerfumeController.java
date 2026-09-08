@@ -66,7 +66,11 @@ public class PerfumeController {
                     WeatherService.WeatherData weather = tuple.getT2();
 
                     // 4. Zip으로 묶어서 착향 로그 기록
-                    UsageLogCreateCommand command = new UsageLogCreateCommand(newPerfumePageId, weather, null);
+                    UsageLogCreateCommand command = new UsageLogCreateCommand(
+                            newPerfumePageId,
+                            weather,
+                            null,
+                            request.getUseCurrentTemp() != null ? request.getUseCurrentTemp() : false);
                     return notionLogService.createUsageLog(command, userPageId);
                 })
                 .map(v -> ResponseEntity.ok("✅ 향수 등록 및 날씨 정보가 포함된 착향 로그 기록 완료!"))
