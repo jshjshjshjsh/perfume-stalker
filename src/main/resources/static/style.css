@@ -109,6 +109,19 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 .note-category { margin-top: 10px; margin-bottom: 4px; font-weight: bold; color: var(--text-color); font-size: 10px; text-transform: uppercase; }
 .note-category:first-child { margin-top: 0; }
 
+.note-chip.golden {
+    border-color: #f59e0b;
+    color: #d97706;
+    background-color: rgba(245, 158, 11, 0.08);
+    font-weight: bold;
+}
+
+.note-chip.warning {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    background-color: rgba(244, 63, 94, 0.05);
+}
+
 /* --- Status & Terminals --- */
 .status-msg { margin-top: 15px; font-size: 12px; color: var(--accent-color); text-align: center; height: 20px; }
 .crawl-terminal {
@@ -137,3 +150,13 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
 @keyframes badge-pulse { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); } 70% { box-shadow: 0 0 0 5px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
 @keyframes blinker { 50% { opacity: 0; } }
+
+/* Summary 뷰의 Flex 강제 축소 기능을 끄고 자연스러운 세로 스크롤 유도 */
+#view-summary.active {
+    display: block;
+}
+
+/* 추가된 위젯들이 찌그러지지 않도록 여유 공간 확보 */
+#view-summary > div {
+    flex-shrink: 0;
+}

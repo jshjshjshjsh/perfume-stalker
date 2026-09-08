@@ -49,7 +49,7 @@ public class NoteAnalyticsService {
 
                         noteRatingsMap.forEach((noteName, ratings) -> {
                             int count = ratings.size();
-                            if (count >= 3) { // 💡 최소 3회 이상 등장한 노트만 검증
+                            if (count >= 2) { // 💡 최소 3회 이상 등장한 노트만 검증
                                 double avg = ratings.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
                                 double roundedAvg = Math.round(avg * 10) / 10.0;
 

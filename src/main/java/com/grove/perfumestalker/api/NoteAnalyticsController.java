@@ -14,7 +14,7 @@ public class NoteAnalyticsController {
 
     @GetMapping("/notes")
     public Mono<NoteAnalyticsService.NoteAnalyticsResponse> getNoteAnalytics(
-            @RequestParam String userId) {
+            @RequestAttribute("userPageId") String userId) {
 
         // 노션 유저 페이지 ID (또는 DB 관계형 ID)를 파라미터로 받아서 실행
         return noteAnalyticsService.analyzeUserNotes(userId);

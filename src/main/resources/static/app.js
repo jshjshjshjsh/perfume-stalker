@@ -1718,6 +1718,67 @@ function updateStarUI(score) {
     rateDisplay.style.color = '#f59e0b';
 }
 
+async function fetchNoteAnalytics() {
+    const container = document.getElementById('analytics-container');
+    if (!container) return;
+
+    try {
+        const res = await fetchWithAuth("/api/analytics/notes");
+        if (res.ok) {
+            const data = await res.json();
+            renderNoteAnalytics(data.climateAnalytics);
+        } else {
+            container.innerHTML = `[ERROR] 통계 데이터를 불러오지 못했습니다.`;
+        }
+    } catch (e) {
+        container.innerHTML = `[ERROR] 네트워크 오류.`;
+    }
+}
+
+function renderNoteAnalytics(climateAnalytics) {
+    const container = document.getElementById('analytics-container');
+    if (!climateAnalytics || Object.keys(climateAnalytics).length === 0) {
+        container.innerHTML = `착향 데이터가 부족합니다 (최소 3회 기록 필요).`;
+        return;
+    }
+
+    const climateNames = {
+        'COLD': '❄️ COLD (15°C 미만)',
+        'WARM_BREEZY': '🍃 WARM & BREEZY (쾌적한 날씨)',
+        'WARM_HUMID': '💧 WARM & HUMID (습한 날씨)',
+        'HOT': '🔥 HOT (25°C 이상)'
+    };
+
+    let html = '';
+    for (const [climate, stats] of Object.entries(climateAnalytics)) {
+        if (stats.goldenNotes.length === 0 && stats.warningNotes.length === 0) continue;
+
+        html += `<div style="margin-bottom: 18px;">`;
+        html += `<div class="note-category" style="color: var(--text-color); margin-bottom: 8px;">${climateNames[climate] || climate}</div>`;
+
+        if (stats.goldenNotes.length > 0) {
+            html += `<div style="margin-bottom: 6px;">`;
+            // 상위 5개까지만 노출
+            stats.goldenNotes.slice(0, 5).forEach(note => {
+                html += `<span class="note-chip golden">✨ ${note.noteName} (${note.averageRating})</span>`;
+            });
+            html += `</div>`;
+        }
+
+        if (stats.warningNotes.length > 0) {
+            html += `<div>`;
+            // 상위 5개까지만 노출
+            stats.warningNotes.slice(0, 5).forEach(note => {
+                html += `<span class="note-chip warning">⚠️ ${note.noteName} (${note.averageRating})</span>`;
+            });
+            html += `</div>`;
+        }
+        html += `</div>`;
+    }
+
+    container.innerHTML = html || '분석 가능한 데이터가 부족합니다.';
+}
+
 // ==========================================
 // 10. 앱 부트스트랩 및 라이프사이클
 // ==========================================
@@ -1729,6 +1790,7 @@ function initializeAppData() {
     fetchWardrobe();
     fetchSummary();
     fetchWishlist();
+    fetchNoteAnalytics();
 }
 
 window.addEventListener('DOMContentLoaded', () => {
