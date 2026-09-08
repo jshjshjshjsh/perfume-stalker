@@ -28,7 +28,7 @@ public class WeatherService {
     }
 
     // 💡 최저/최고 기온이 추가된 응답 DTO
-    public record WeatherData(String cityName, String weather, double temperature, double humidity, double tempMin, double tempMax) {}
+    public record WeatherData(String cityName, String weather, Double temperature, Double humidity, Double tempMin, Double tempMax) {}
 
     private record OpenWeatherResponse(List<Weather> weather, Main main, String name) {
         private record Weather(String main) {}

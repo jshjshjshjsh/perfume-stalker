@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -114,9 +116,27 @@ public class LogController {
                                                         @RequestAttribute("userPageId") String userPageId) {
         log.info("📝 수동 착향 로그 등록 요청: {}", request.getPerfumeId());
 
-        Mono<WeatherService.WeatherData> weatherMono = (request.getLat() != null && request.getLon() != null)
-                ? weatherService.getWeatherByCoordinates(request.getLat(), request.getLon())
-                : userService.getDefaultLocation("jsh-admin").flatMap(weatherService::getWeatherByCity);
+        LocalDate logDate = LocalDate.parse(request.getDate());
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+
+        Mono<WeatherService.WeatherData> weatherMono;
+
+        if (logDate.equals(today) && request.getTemp() == null) {
+            weatherMono = (request.getLat() != null && request.getLon() != null)
+                    ? weatherService.getWeatherByCoordinates(request.getLat(), request.getLon())
+                    : userService.getDefaultLocation(userPageId).flatMap(weatherService::getWeatherByCity);
+        } else {
+            // 💡 과거 날짜이거나 수동으로 온습도를 입력한 경우 (API 호출 안 함)
+            weatherMono = Mono.just(new WeatherService.WeatherData(
+                    "Unknown",
+                    "Unknown",
+                    request.getTemp(),
+                    request.getHumidity(),
+                    request.getTemp(), // 수동일 땐 Min/Max도 동일하게
+                    request.getTemp()
+            ));
+        }
+
 
         return weatherMono.flatMap(weather -> {
 

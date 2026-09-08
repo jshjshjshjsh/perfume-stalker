@@ -482,13 +482,21 @@ async function fetchPerfumeList() {
 }
 
 async function submitManualLog() {
+
     const perfumeId = document.getElementById('manual-perfume-select').value;
     const manualDate = document.getElementById('manual-date').value;
+    const mTemp = document.getElementById('manual-temp').value;
+    const mHum = document.getElementById('manual-hum').value;
     const statusMsg = document.getElementById('manual-status');
     const submitBtn = document.getElementById('manual-submit-btn');
 
     if (!perfumeId) {
-        statusMsg.innerText = "[ERROR] Please select a perfume.";
+        statusMsg.innerText = "[ERROR] 향수를 선택해주세요.";
+        return;
+    }
+    // 💡 날짜 필수 검증
+    if (!manualDate) {
+        statusMsg.innerText = "[ERROR] 날짜를 지정해주세요.";
         return;
     }
 
@@ -504,7 +512,9 @@ async function submitManualLog() {
                 date: manualDate || null,
                 lat: currentLat,
                 lon: currentLon,
-                useCurrentTemp: document.getElementById('manual-use-current-temp')?.checked || false
+                useCurrentTemp: document.getElementById('manual-use-current-temp')?.checked || false,
+                temp: mTemp ? parseFloat(mTemp) : null,
+                humidity: mHum ? parseFloat(mHum) : null
             })
         });
 
@@ -1870,6 +1880,15 @@ function generateWishlistBadgeHtml(notesObj) {
     html += `</div>`;
 
     return html;
+}
+
+// 💡 수동 기록 모달 열기 (오늘 날짜 세팅)
+function openManualLogForm() {
+    document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('manual-temp').value = '';
+    document.getElementById('manual-hum').value = '';
+    fetchPerfumeList();
+    switchView('manual-log', null);
 }
 
 // ==========================================

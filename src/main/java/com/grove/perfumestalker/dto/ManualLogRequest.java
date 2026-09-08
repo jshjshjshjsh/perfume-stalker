@@ -11,4 +11,6 @@ public class ManualLogRequest {
     public Double lat;
     public Double lon;
     public Boolean useCurrentTemp;
+    private Double temp;
+    private Double humidity;
 }

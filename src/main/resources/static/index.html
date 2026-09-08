@@ -89,7 +89,7 @@
             <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
         </div>
         <div class="manual-trigger-container" style="margin-top: 10px; padding-top: 10px;">
-            <button class="manual-trigger-btn" onclick="switchView('manual-log', null)">[ + MANUAL ENTRY (수동 기록) ]</button>
+            <button class="manual-trigger-btn" onclick="openManualLogForm()">[ + MANUAL ENTRY (수동 기록) ]</button>
         </div>
     </div>
 
@@ -315,9 +315,27 @@
             <select id="manual-perfume-select"><option value="">Loading perfumes...</option></select>
         </div>
         <div class="form-group">
-            <label>Date (Optional)</label>
-            <input type="date" id="manual-date">
+            <label>Date *</label>
+            <input type="date" id="manual-date" required>
         </div>
+
+        <!-- 💡 수동 온습도 입력 (선택) -->
+        <div style="display: flex; gap: 10px; margin-bottom: 4px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Temp (°C) <span style="font-size:9px; color:var(--accent-color);">(Opt)</span></label>
+                <input type="number" id="manual-temp" placeholder="직접 입력">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Humidity (%) <span style="font-size:9px; color:var(--accent-color);">(Opt)</span></label>
+                <input type="number" id="manual-hum" placeholder="직접 입력">
+            </div>
+        </div>
+        <!-- 💡 동작 방식을 알려주는 안내 라벨 -->
+        <div style="font-size: 10px; color: var(--accent-color); margin-bottom: 15px; line-height: 1.4; padding-left: 2px;">
+            * <b>오늘 날짜</b>: 비워두면 GPS 기반 실시간 날씨가 자동 입력됩니다.<br>
+            * <b>과거 날짜</b>: 비워두면 온습도가 '기록 없음'으로 깔끔하게 처리됩니다.
+        </div>
+
         <div class="form-group" style="margin-top: -5px; display: flex; align-items: center; justify-content: space-between;">
             <label style="margin: 0;">온도 기록 기준</label>
             <div style="display: flex; align-items: center; gap: 8px;">
