@@ -40,7 +40,180 @@ body {
 h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; }
 
 /* --- Buttons --- */
-.loc-btn { font-size: 10px; cursor: pointer; font-weight:bold; text-decoration: underline; margin-left: 8px; color: var(--text-color); }
+/* ============================================
+   BUTTONS — .loc-btn
+   ============================================ */
+.loc-btn {
+    /* 모디파이어는 아래 6개 변수만 덮어쓰면 됨 */
+    --ink:          color-mix(in srgb, var(--text-color) 76%, transparent);
+    --ink-on:       var(--text-color);
+    --surface:      color-mix(in srgb, #ffffff 62%, var(--bg-color));
+    --surface-on:   color-mix(in srgb, var(--text-color) 7%,  var(--surface));
+    --surface-down: color-mix(in srgb, var(--text-color) 14%, var(--surface));
+    --line:         color-mix(in srgb, var(--text-color) 16%, transparent);
+    --line-on:      color-mix(in srgb, var(--text-color) 34%, transparent);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    vertical-align: middle;
+
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+    line-height: 1;
+    white-space: nowrap;
+
+    padding: 6px 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 1.5px color-mix(in srgb, var(--text-color) 6%, transparent);
+
+    transition: background-color .15s ease, border-color .15s ease,
+    color .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+/* 터치 기기에서 hover 잔상 방지 */
+@media (hover: hover) {
+    .loc-btn:hover {
+        color: var(--ink-on);
+        background: var(--surface-on);
+        border-color: var(--line-on);
+        box-shadow: 0 2px 5px color-mix(in srgb, var(--text-color) 9%, transparent);
+    }
+}
+
+.loc-btn:active {
+    color: var(--ink-on);
+    background: var(--surface-down);
+    border-color: var(--line-on);
+    box-shadow: inset 0 1px 2px color-mix(in srgb, var(--text-color) 15%, transparent);
+}
+
+.loc-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--text-color) 40%, transparent);
+    outline-offset: 2px;
+}
+
+.loc-btn:disabled,
+.loc-btn.is-busy {
+    opacity: .5;
+    cursor: default;
+    pointer-events: none;
+    box-shadow: none;
+}
+
+/* --- 모디파이어 (반드시 base 아래에) --- */
+
+/* 주요 액션: + manual log, save */
+.loc-btn--primary {
+    --ink:          color-mix(in srgb, var(--bg-color) 92%, #ffffff);
+    --ink-on:       #ffffff;
+    --surface:      color-mix(in srgb, var(--text-color) 78%, var(--bg-color));
+    --surface-on:   color-mix(in srgb, var(--text-color) 90%, var(--bg-color));
+    --surface-down: var(--text-color);
+    --line:         transparent;
+    --line-on:      transparent;
+
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--text-color) 18%, transparent);
+}
+
+/* 위험: logout, delete */
+.loc-btn--danger {
+    --ink: var(--danger-color);
+    --ink-on: #ffffff;
+    --line: color-mix(in srgb, var(--danger-color) 30%, transparent);
+    --line-on: var(--danger-color);
+    --surface: color-mix(in srgb, var(--danger-color) 6%, var(--bg-color));
+    --surface-on: var(--danger-color);
+    --surface-down: color-mix(in srgb, var(--danger-color) 85%, #000000);
+}
+
+/* 확정: save order */
+.loc-btn--success {
+    --ink: var(--success-color);
+    --ink-on: #ffffff;
+    --line: color-mix(in srgb, var(--success-color) 30%, transparent);
+    --line-on: var(--success-color);
+    --surface: color-mix(in srgb, var(--success-color) 7%, var(--bg-color));
+    --surface-on: var(--success-color);
+    --surface-down: color-mix(in srgb, var(--success-color) 85%, #000000);
+}
+
+/* 보조: cancel, back */
+.loc-btn--muted {
+    --ink:          var(--accent-color);
+    --ink-on:       var(--text-color);
+    --surface:      color-mix(in srgb, #ffffff 45%, var(--bg-color));
+    --surface-on:   color-mix(in srgb, var(--text-color) 7%,  var(--bg-color));
+    --surface-down: color-mix(in srgb, var(--text-color) 13%, var(--bg-color));
+    --line:         color-mix(in srgb, var(--accent-color) 34%, transparent);
+    --line-on:      color-mix(in srgb, var(--text-color) 36%, transparent);
+    /* box-shadow: none 삭제 → 다른 버튼과 통일 */
+}
+
+/* 최소: view all, auto fill */
+.loc-btn--quiet {
+    --ink:          var(--accent-color);
+    --ink-on:       var(--text-color);
+    --surface:      color-mix(in srgb, var(--text-color) 5%,  transparent);
+    --surface-on:   color-mix(in srgb, var(--text-color) 10%, transparent);
+    --surface-down: color-mix(in srgb, var(--text-color) 15%, transparent);
+    --line:         color-mix(in srgb, var(--text-color) 13%, transparent);
+    --line-on:      color-mix(in srgb, var(--text-color) 28%, transparent);
+    box-shadow: none;
+    padding: 5px 9px;
+}
+
+/* 작은 사이즈: update, default */
+.loc-btn--sm {
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+/* 화살표 링크형 */
+.loc-btn.is-link::after {
+    content: "→";
+    font-weight: 400;
+    transition: transform .15s ease;
+}
+@media (hover: hover) {
+    .loc-btn.is-link:hover::after { transform: translateX(2px); }
+}
+
+/* --- 버튼이 들어가는 컨테이너 --- */
+.btn-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+#current-loc { display: inline-flex; align-items: center; gap: 6px; }
+
+.weather-widget h2 {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.form-group label.with-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .scan-container { display: flex; align-items: center; flex-direction: column; margin-top: 20px; }
 .scan-btn {
     background: transparent; color: var(--text-color); border: 1px solid var(--text-color);

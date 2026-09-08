@@ -30,8 +30,12 @@ public class NoteAnalyticsService {
 
                     // 💡 로그를 순회하며 4계층 통합 노트를 기후별로 적립
                     for (LogAnalyticsDto logDto : logs) {
+                        if (logDto.rate() == null || logDto.rate() <= 0) continue;
+                        if (logDto.temp() == null) continue;
+
                         SensoryClimate climate = SensoryClimate.from(logDto.temp(), logDto.humidity());
                         Set<String> uniqueNotes = logDto.getAllUniqueNotes(); // 💡 Top, Middle, Base 중복 카운트 방지
+                        if (uniqueNotes.isEmpty()) continue;
 
                         for (String note : uniqueNotes) {
                             rawStats.get(climate)
@@ -49,11 +53,11 @@ public class NoteAnalyticsService {
 
                         noteRatingsMap.forEach((noteName, ratings) -> {
                             int count = ratings.size();
-                            if (count >= 2) { // 💡 최소 3회 이상 등장한 노트만 검증
+                            if (count >= 2) { // 💡 최소 2회 이상 등장한 노트만 검증
                                 double avg = ratings.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
                                 double roundedAvg = Math.round(avg * 10) / 10.0;
 
-                                if (roundedAvg >= 4.0) {
+                                if (roundedAvg >= 3.5) {
                                     golden.add(new NoteScore(noteName, roundedAvg, count));
                                 } else if (roundedAvg <= 2.5) {
                                     warning.add(new NoteScore(noteName, roundedAvg, count));

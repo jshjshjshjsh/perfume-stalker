@@ -5,9 +5,9 @@ import java.util.Set;
 import java.util.HashSet;
 
 public record LogAnalyticsDto(
-        double temp,
-        double humidity,
-        double rate,
+        Double temp,
+        Double humidity,
+        Double rate,
         List<String> top,
         List<String> middle,
         List<String> base,

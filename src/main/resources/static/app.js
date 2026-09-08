@@ -115,7 +115,7 @@ function toggleAuthMode() {
     isLoginMode = !isLoginMode;
     document.getElementById('signup-fields').style.display = isLoginMode ? 'none' : 'block';
     document.getElementById('auth-submit-btn').innerText = isLoginMode ? 'LOGIN' : 'SIGN UP';
-    document.getElementById('auth-toggle-btn').innerText = isLoginMode ? '[ Switch to Sign Up ]' : '[ Back to Login ]';
+    document.getElementById('auth-toggle-btn').innerText = isLoginMode ? 'Switch to Sign Up' : 'Back to Login';
     document.getElementById('auth-status').innerText = '';
 }
 
@@ -219,8 +219,8 @@ async function fetchRealWeather(lat = null, lon = null) {
             recWeatherData = { weather: data.weather, temp: parseFloat(data.temp) };
             updateRecommendation();
 
-            let buttonsHtml = `<span class="loc-btn" onclick="updateLocation()" style="font-size: 9px; margin-left: 5px;">[ update ]</span>`;
-            if (lat !== null) buttonsHtml += `<span class="loc-btn" onclick="resetLocation()" style="font-size: 9px; margin-left: 5px;">[ default ]</span>`;
+            let buttonsHtml = `<button type="button" class="loc-btn loc-btn--sm" onclick="updateLocation()">update</button>`;
+            if (lat !== null) buttonsHtml += `<button type="button" class="loc-btn loc-btn--sm" onclick="resetLocation()">default</button>`;
 
             const weatherIcon = getWeatherIcon(data.weather);
             locText.innerHTML = `${data.location} ${buttonsHtml}`;
@@ -234,7 +234,8 @@ async function fetchRealWeather(lat = null, lon = null) {
 }
 
 function updateLocation() {
-    document.getElementById('current-loc').innerHTML = "locating... <span class='loc-btn'>[ wait ]</span>";
+    document.getElementById('current-loc').innerHTML =
+        `locating... <button type="button" class="loc-btn loc-btn--quiet is-busy" disabled>wait</button>`;
     if ("geolocation" in navigator) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -252,7 +253,8 @@ function updateLocation() {
 }
 
 function resetLocation() {
-    document.getElementById('current-loc').innerHTML = "reverting... <span class='loc-btn'>[ wait ]</span>";
+    document.getElementById('current-loc').innerHTML =
+        `locating... <button type="button" class="loc-btn loc-btn--quiet is-busy" disabled>wait</button>`;
     currentLat = null;
     currentLon = null;
     fetchRealWeather();
@@ -319,7 +321,7 @@ function updateRecommendation() {
 async function fetchRecentLogs() {
     const container = document.getElementById('recent-logs-container');
     try {
-        const response = await fetchWithAuth("/api/v1/logs/recent?limit=5&t=");
+        const response = await fetchWithAuth(`/api/v1/logs/recent?limit=5&t=${Date.now()}`);
         if (response.ok) {
             const logs = await response.json();
             if (logs.length === 0) {
@@ -418,7 +420,7 @@ async function submitEditLog() {
                 submitBtn.classList.remove('success');
                 submitBtn.innerText = "Update Log";
                 switchView('main', document.querySelector('.nav-item.main-tab'));
-                fetchRecentLogs();
+                refreshAfterLogChange();
             }, 1500);
         } else {
             statusMsg.innerText = "[ERROR] Update failed.";
@@ -452,7 +454,7 @@ async function deleteLog() {
                 delBtn.innerText = "Delete";
                 updateBtn.disabled = false;
                 switchView('main', document.querySelector('.nav-item.main-tab'));
-                fetchRecentLogs();
+                refreshAfterLogChange();
             }, 1500);
         } else {
             statusMsg.innerText = "[ERROR] Delete failed.";
@@ -528,7 +530,7 @@ async function submitManualLog() {
                 statusMsg.innerText = "";
                 document.getElementById('manual-date').value = '';
                 switchView('main', document.querySelector('.nav-item.main-tab'));
-                fetchRecentLogs();
+                refreshAfterLogChange();
             }, 1500);
         } else {
             statusMsg.innerText = "[ERROR] Failed to save log.";
@@ -548,7 +550,7 @@ async function openAllLogsView() {
     clearSearchDates();
 
     try {
-        const res = await fetchWithAuth("/api/v1/logs/recent?limit=100&t=");
+        const res = await fetchWithAuth(`/api/v1/logs/recent?limit=100&t=${Date.now()}`);
         if (res.ok) {
             globalAllLogsData = await res.json();
             renderAllLogs();
@@ -665,7 +667,7 @@ function switchWardrobeTab(tab) {
         btnBottle.style.color = '#a1a1aa';
         btnBottle.style.fontWeight = 'normal';
         btnBottle.style.borderBottom = '2px solid transparent';
-        if (btnAddSample) btnAddSample.style.display = 'inline-block';
+        if (btnAddSample) btnAddSample.style.display = 'inline-flex';
     }
     renderWardrobeGrid();
 }
@@ -716,10 +718,9 @@ async function saveWardrobeOrder() {
     }
 
     const saveBtn = document.getElementById('btn-save-w-order');
-    const originalText = saveBtn.innerText;
-    saveBtn.innerText = "[ saving... ]";
-    saveBtn.style.color = "#f59e0b";
-    saveBtn.style.pointerEvents = "none";
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "saving...";
+    saveBtn.classList.add('is-busy');
 
     try {
         const res = await fetchWithAuth("/api/v1/perfumes/reorder", {
@@ -737,9 +738,8 @@ async function saveWardrobeOrder() {
     } catch (e) {
         alert("네트워크 오류가 발생했습니다.");
     } finally {
-        saveBtn.innerText = originalText;
-        saveBtn.style.color = "#10b981";
-        saveBtn.style.pointerEvents = "auto";
+        saveBtn.textContent = originalText;
+        saveBtn.classList.remove('is-busy');
     }
 }
 
@@ -833,7 +833,7 @@ const statusDiv = document.getElementById('status');
 function resetScanUI() {
     isScanning = false;
     scanBtn.classList.remove('scanning', 'success');
-    scanBtn.innerText = "Tap to Scan";
+    scanBtn.innerText = "TAP TO SCAN (NFC)";
     statusDiv.innerText = "waiting for interaction...";
     if (abortController) abortController.abort();
 }
@@ -884,8 +884,7 @@ scanBtn.addEventListener('click', async () => {
                 if (response.ok) {
                     statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
                     setTimeout(() => {
-                        fetchRecentLogs();
-                        fetchSummary();
+                        refreshAfterLogChange();
                         resetScanUI();
                     }, 1500);
                 } else if (response.status === 400 && resultText.includes("Unregistered")) {
@@ -894,7 +893,7 @@ scanBtn.addEventListener('click', async () => {
                         document.getElementById('reg-uid').value = uid;
                         switchView('register', null);
                         resetScanUI();
-                        fetchRecentLogs();
+                        refreshAfterLogChange();
                     }, 1200);
                 } else {
                     statusDiv.innerText = `[ERROR] ${resultText}`;
@@ -928,8 +927,7 @@ async function handleIosNfcScan(uid) {
         if (response.ok) {
             statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
             setTimeout(() => {
-                fetchRecentLogs();
-                fetchSummary();
+                refreshAfterLogChange();
             }, 1500);
         } else if (response.status === 400 && resultText.includes("Unregistered")) {
             alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
@@ -976,8 +974,8 @@ async function crawlUrl() {
     previewBox.innerHTML = '';
     regStatus.innerText = "";
 
-    crawlBtn.style.pointerEvents = 'none';
-    crawlBtn.style.opacity = '0.5';
+    crawlBtn.classList.add('is-busy');
+    crawlBtn.textContent = 'crawling...';
     terminal.style.display = 'flex';
     terminal.classList.remove('error');
     step2.innerHTML = '> Fetching Fragrantica Notes... <span class="blink">_</span>';
@@ -1030,8 +1028,8 @@ async function crawlUrl() {
     } finally {
         clearInterval(progressInterval);
         clearTimeout(timeoutId);
-        crawlBtn.style.pointerEvents = 'auto';
-        crawlBtn.style.opacity = '1';
+        crawlBtn.classList.remove('is-busy');
+        crawlBtn.textContent = 'auto fill';
     }
 }
 
@@ -1043,14 +1041,8 @@ function openRegisterView(isSample = false) {
     const uidInput = document.getElementById('reg-uid');
     const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
 
-    if (isSample) {
-        if (titleEl) titleEl.innerHTML = `Register Sample <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
-        if (uidGroup) uidGroup.style.display = 'none';
-        if (uidInput) uidInput.value = '';
-    } else {
-        if (titleEl) titleEl.innerHTML = `Register Perfume <span class="loc-btn" onclick="cancelRegistration()" style="float: right;">[ cancel ]</span>`;
-        if (uidGroup) uidGroup.style.display = 'block';
-    }
+    const cancelBtn = `<button type="button" class="loc-btn loc-btn--muted" onclick="cancelRegistration()">cancel</button>`;
+    if (titleEl) titleEl.innerHTML = `<span>Register ${isSample ? 'Sample' : 'Perfume'}</span>${cancelBtn}`;
 }
 
 function cancelRegistration() {
@@ -1136,7 +1128,7 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
                 switchView('wardrobe', document.querySelector('.nav-item.wardrobe-tab') || null);
                 switchWardrobeTab(currentIsSample ? 'sample' : 'bottle');
                 fetchWardrobe();
-                fetchRecentLogs();
+                refreshAfterLogChange();
             }, 2000);
         } else {
             regStatus.innerText = `[ERROR] ${resultText}`;
@@ -1153,7 +1145,7 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
 // ==========================================
 async function fetchSummary() {
     try {
-        const res = await fetchWithAuth("/api/v1/logs/recent?limit=100");
+        const res = await fetchWithAuth(`/api/v1/logs/recent?limit=100&t=${Date.now()}`);
         if (!res.ok) return;
         const logs = await res.json();
         globalRecentLogs = logs;
@@ -1217,7 +1209,7 @@ async function fetchSummary() {
         for (let i = 29; i >= 0; i--) {
             const d = new Date();
             d.setDate(today.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = toLocalDateStr(d);
             const isActive = logDates.has(dateStr) ? 'active' : '';
             heatmapHtml += `<div class="heatmap-cell ${isActive}" title="${dateStr}"></div>`;
         }
@@ -1273,6 +1265,7 @@ function toggleWishForm() {
 }
 
 async function crawlWishUrl() {
+    const wishBtn = document.getElementById('wish-crawl-btn');
     const urlInput = document.getElementById('wish-url').value.trim();
     const terminal = document.getElementById('wish-crawl-terminal');
     const step = document.getElementById('wish-crawl-step');
@@ -1281,6 +1274,8 @@ async function crawlWishUrl() {
         return;
     }
 
+    wishBtn.classList.add('is-busy');
+    wishBtn.textContent = 'crawling...';
     terminal.style.display = 'flex';
     terminal.classList.remove('error');
     step.innerHTML = '> Fetching Notes... <span class="blink">_</span>';
@@ -1309,6 +1304,9 @@ async function crawlWishUrl() {
     } catch (e) {
         terminal.classList.add('error');
         step.innerHTML = '> [ERROR] Network issue.';
+    } finally {
+        wishBtn.classList.remove('is-busy');
+        wishBtn.textContent = 'auto fill';
     }
 }
 
@@ -1320,7 +1318,7 @@ async function submitWish() {
         return;
     }
 
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate = toLocalDateStr(new Date());
     const payload = {
         name: name, brand: brand,
         imageUrl: wishCrawledImageUrl,
@@ -1451,7 +1449,7 @@ async function startWishPromoteScan() {
             btn.innerText = "TAG DETECTED";
             statusDiv.innerText = "옷장에 예쁘게 넣는 중...";
 
-            const todayDate = new Date().toISOString().split('T')[0];
+            const todayDate = toLocalDateStr(new Date());
 
             try {
                 const regRes = await fetchWithAuth("/api/v1/perfumes/register", {
@@ -1507,7 +1505,7 @@ async function deleteWish(pageId) {
 
 function toggleWishReorderMode() {
     isWishReorderMode = !isWishReorderMode;
-    document.getElementById('wish-default-actions').style.display = isWishReorderMode ? 'none' : 'block';
+    document.getElementById('wish-default-actions').style.display = isWishReorderMode ? 'none' : 'flex';
     document.getElementById('wish-reorder-actions').style.display = isWishReorderMode ? 'flex' : 'none';
 
     if (isWishReorderMode) {
@@ -1542,10 +1540,9 @@ async function saveWishOrder() {
     }
 
     const saveBtn = document.getElementById('btn-save-wish-order');
-    const originalText = saveBtn.innerText;
-    saveBtn.innerText = "[ saving... ]";
-    saveBtn.style.color = "#f59e0b";
-    saveBtn.style.pointerEvents = "none";
+    const originalText = saveBtn.textContent;
+    saveBtn.textContent = "saving...";
+    saveBtn.classList.add('is-busy');
 
     try {
         const res = await fetchWithAuth("/api/v1/wishlist/reorder", {
@@ -1564,9 +1561,8 @@ async function saveWishOrder() {
         alert("네트워크 오류!");
     } finally {
         if (saveBtn) {
-            saveBtn.innerText = originalText;
-            saveBtn.style.color = "#10b981";
-            saveBtn.style.pointerEvents = "auto";
+            saveBtn.textContent = originalText;
+            saveBtn.classList.remove('is-busy');
         }
     }
 }
@@ -1744,8 +1740,10 @@ async function fetchNoteAnalytics() {
     const container = document.getElementById('analytics-container');
     if (!container) return;
 
+    container.style.opacity = '0.4';          // 갱신 중 표시
+
     try {
-        const res = await fetchWithAuth("/api/analytics/notes");
+        const res = await fetchWithAuth(`/api/analytics/notes?t=${Date.now()}`);
         if (res.ok) {
             const data = await res.json();
             renderNoteAnalytics(data.climateAnalytics);
@@ -1754,13 +1752,31 @@ async function fetchNoteAnalytics() {
         }
     } catch (e) {
         container.innerHTML = `[ERROR] 네트워크 오류.`;
+    } finally {
+        container.style.opacity = '1';
     }
 }
 
 function renderNoteAnalytics(climateAnalytics) {
     const container = document.getElementById('analytics-container');
+
     if (!climateAnalytics || Object.keys(climateAnalytics).length === 0) {
-        container.innerHTML = `착향 데이터가 부족합니다 (최소 3회 기록 필요).`;
+        const scored = globalRecentLogs.filter(l =>
+            l.rate && l.rate !== 'null' && parseFloat(l.rate) > 0 &&
+            l.temp !== null && l.temp !== ''
+        ).length;
+
+        container.innerHTML = `
+            <div style="line-height:1.7;">
+                아직 분석할 데이터가 부족합니다.<br>
+                <span style="color:var(--text-color); font-weight:bold;">
+                    별점 + 온습도가 모두 있는 로그: ${scored}건
+                </span><br>
+                <span style="font-size:11px;">
+                    · 같은 노트가 같은 날씨에서 <b>3회 이상</b> 쌓여야 표시됩니다<br>
+                    · 별점 없는 로그, 온습도 없는 로그는 집계에서 제외됩니다
+                </span>
+            </div>`;
         return;
     }
 
@@ -1782,7 +1798,8 @@ function renderNoteAnalytics(climateAnalytics) {
             html += `<div style="margin-bottom: 6px;">`;
             // 상위 5개까지만 노출
             stats.goldenNotes.slice(0, 5).forEach(note => {
-                html += `<span class="note-chip golden">✨ ${note.noteName} (${note.averageRating})</span>`;
+                const c = note.count ? `<span style="opacity:.65; font-weight:normal;"> ×${note.count}</span>` : '';
+                html += `<span class="note-chip golden">✨ ${note.noteName} ${note.averageRating}${c}</span>`;
             });
             html += `</div>`;
         }
@@ -1882,13 +1899,37 @@ function generateWishlistBadgeHtml(notesObj) {
     return html;
 }
 
+async function refreshSummary(btn) {
+    if (btn) { btn.classList.add('is-busy'); btn.textContent = 'refreshing...'; }
+    try {
+        await fetchSummary();
+        await fetchNoteAnalytics();   // ← 하단 블록도 같이 갱신
+    } finally {
+        if (btn) { btn.classList.remove('is-busy'); btn.textContent = 'refresh'; }
+    }
+}
+
+function toLocalDateStr(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 // 💡 수동 기록 모달 열기 (오늘 날짜 세팅)
 function openManualLogForm() {
-    document.getElementById('manual-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('manual-date').value = toLocalDateStr(new Date());
     document.getElementById('manual-temp').value = '';
     document.getElementById('manual-hum').value = '';
     fetchPerfumeList();
     switchView('manual-log', null);
+}
+
+// 착향 로그가 변경됐을 때 항상 이걸 호출
+function refreshAfterLogChange() {
+    fetchRecentLogs();
+    fetchSummary();
+    fetchNoteAnalytics();
 }
 
 // ==========================================
@@ -1906,11 +1947,12 @@ function initializeAppData() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric'
-    });
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('current-date').innerText = `${yyyy}.${mm}.${dd}`;
 
     checkAuth();
 

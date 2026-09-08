@@ -56,57 +56,68 @@
         <div id="auth-status" class="status-msg"></div>
 
         <div class="manual-trigger-container" style="margin: 20px auto 0 auto;">
-            <button id="auth-toggle-btn" class="manual-trigger-btn" onclick="toggleAuthMode()">[ Switch to Sign Up ]</button>
+            <button id="auth-toggle-btn" class="manual-trigger-btn" onclick="toggleAuthMode()">Switch to Sign Up</button>
         </div>
     </div>
 </section>
 
 <!-- 1. MAIN VIEW -->
-<section id="view-main" class="view-section" style="padding-bottom: 10px;">
-    <div class="weather-widget" style="margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--text-color); flex-shrink: 0;">
+<section id="view-main" class="view-section" style="padding-bottom: 20px; background-color: var(--bg-color);">
+
+    <!-- [1] 헤더 영역 (날짜, 위치, 날씨, 설정) -->
+    <div style="padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #e0e0dc;">
+        <!-- 첫 번째 줄: 날짜 & 설정/로그아웃 -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">DATE: <span id="current-date" style="color: var(--text-color);"></span></h2>
-            <div>
-                <span class="loc-btn" onclick="openSettingsView()" style="margin-right: 10px;">[ settings ]</span>
-                <span class="loc-btn" onclick="logout()" style="margin: 0;">[ logout ]</span>
+            <div id="current-date" style="font-size: 13px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px;"></div>
+            <div class="btn-row">
+                <button type="button" class="loc-btn" onclick="openSettingsView()">settings</button>
+                <button type="button" class="loc-btn loc-btn--danger" onclick="logout()">logout</button>
             </div>
         </div>
+        <!-- 두 번째 줄: 위치 & 날씨 -->
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 11px; color: var(--accent-color);">LOC: <span id="current-loc" style="color: var(--text-color);">loading...</span></h2>
-            <div id="weather-info" style="font-size: 12px; font-weight: bold; color: var(--text-color); text-align: right;"></div>
+            <div style="font-size: 15px; font-weight: bold; color: var(--text-color);">
+                <span id="current-loc">locating...</span>
+            </div>
+            <div id="weather-info" style="font-size: 11px; font-weight: bold; color: var(--text-color); background: rgba(0,0,0,0.03); padding: 8px 10px; border-radius: 6px; line-height: 1.4;">fetching...</div>
         </div>
     </div>
 
-    <div class="scan-container" style="margin-top: 0; flex-shrink: 0;">
-        <button id="scan-btn" class="scan-btn" style="padding: 10px 40px; font-size: 13px;">TAP TO SCAN</button>
-        <div id="status" class="status-msg" style="margin-top: 6px; height: auto;">waiting for interaction...</div>
-        <div style="margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
-            <label class="temp-mode-switch">
-                <input type="checkbox" id="scan-use-current-temp">
-                <span class="slider"></span>
-            </label>
-            <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
-        </div>
-        <div class="manual-trigger-container" style="margin-top: 10px; padding-top: 10px;">
-            <button class="manual-trigger-btn" onclick="openManualLogForm()">[ + MANUAL ENTRY (수동 기록) ]</button>
+    <!-- [2] 핵심 액션 영역 (NFC 스캔 & 수동기록 & 온도토글) -->
+    <div style="background: #ffffff; border: 1px solid #e0e0dc; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-shrink: 0;">
+        <button id="scan-btn" class="scan-btn" style="width: 100%; padding: 16px; font-size: 15px; letter-spacing: 1px; border-radius: 6px;">TAP TO SCAN (NFC)</button>
+        <div id="status" style="text-align: center; font-size: 11px; color: var(--accent-color); margin: 10px 0 15px 0;">waiting for interaction...</div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed #e0e0dc; padding-top: 15px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">오늘 최고</span>
+                <label class="temp-mode-switch">
+                    <input type="checkbox" id="scan-use-current-temp">
+                    <span class="slider"></span>
+                </label>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
+            </div>
+            <button type="button" class="loc-btn loc-btn--primary" onclick="openManualLogForm()">+ manual log</button>
         </div>
     </div>
 
-    <div id="recommendation-widget" style="margin-top: 15px; padding: 12px; border: 1px dashed #10b981; border-radius: 2px; display: none; flex-shrink: 0;">
-        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #10b981; padding-bottom: 6px; margin-bottom: 8px; font-weight: bold;">✨ Today's Weather Pick</div>
+    <!-- [3] 추천 위젯 -->
+    <div id="recommendation-widget" style="margin-bottom: 20px; padding: 15px; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; border-radius: 4px; display: none; flex-shrink: 0;">
+        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">✨ Today's Pick</div>
         <div id="recommendation-content" style="display: flex; align-items: center; gap: 12px;"></div>
     </div>
 
-    <div style="margin-top: 15px; border: 1px dashed var(--text-color); border-radius: 2px; display: flex; flex-direction: column; flex: 1; min-height: 0;">
-        <div style="padding: 12px 12px 10px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e0e0dc;">
-            <div style="font-size: 11px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px;">Recent Logs</div>
-            <span style="font-size: 11px; font-weight:bold; color: var(--text-color); text-decoration: underline; cursor: pointer;" onclick="openAllLogsView()">[ + view all ]</span>
+    <!-- [4] 최근 기록 리스트 -->
+    <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-size: 13px; font-weight: bold; color: var(--text-color);">Recent History</div>
+            <button type="button" class="loc-btn loc-btn--quiet is-link" onclick="openAllLogsView()">view all</button>
         </div>
-        <div id="recent-logs-container" style="flex: 1; overflow-y: auto; padding: 12px;">
+        <div id="recent-logs-container" style="flex: 1; overflow-y: auto; padding-bottom: 10px;">
             <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching logs...</div>
         </div>
     </div>
+
 </section>
 
 <!-- 2. WARDROBE VIEW -->
@@ -114,14 +125,14 @@
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 0 0; margin-top: -40px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
             <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Wardrobe</h2>
-            <div id="wardrobe-default-actions" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
-                <span id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">[ + sample ]</span>
-                <span class="loc-btn" onclick="toggleWardrobeReorderMode()">[ reorder ]</span>
-                <span class="loc-btn" onclick="fetchWardrobe()">[ refresh ]</span>
+            <div id="wardrobe-default-actions" class="btn-row" style="display: flex; justify-content: flex-end;">
+                <button type="button" id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">+ sample</button>
+                <button type="button" class="loc-btn" onclick="toggleWardrobeReorderMode()">sort</button>
+                <button type="button" class="loc-btn" onclick="fetchWardrobe()">refresh</button>
             </div>
-            <div id="wardrobe-reorder-actions" style="display: none; gap: 10px; justify-content: flex-end;">
-                <span class="loc-btn" onclick="toggleWardrobeReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
-                <span id="btn-save-w-order" class="loc-btn" onclick="saveWardrobeOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+            <div id="wardrobe-reorder-actions" class="btn-row" style="display: none; justify-content: flex-end;">
+                <button type="button" class="loc-btn loc-btn--muted" onclick="toggleWardrobeReorderMode()">cancel</button>
+                <button type="button" id="btn-save-w-order" class="loc-btn loc-btn--success" onclick="saveWardrobeOrder()">save</button>
             </div>
         </div>
 
@@ -137,9 +148,16 @@
 
 <!-- 3. SUMMARY VIEW -->
 <section id="view-summary" class="view-section">
-    <div class="weather-widget">
-        <h2>My Summary <span class="loc-btn" onclick="fetchSummary()" style="float: right;">[ refresh ]</span></h2>
-        <p>Your wearing statistics.</p>
+    <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h2 style="margin: 0; font-size: 16px;">Summary</h2>
+                <p style="margin-top: 8px;" >Your wearing statistics.</p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="loc-btn" onclick="refreshSummary(this)">refresh</button>
+            </div>
+        </div>
     </div>
     <div class="future-dashboard">
         <div class="dashboard-header">Top 3 Hall of Fame</div>
@@ -167,13 +185,13 @@
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 10px 0; margin-top: -40px; border-bottom: 1px solid #e0e0dc;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h2 id="wish-title" style="margin: 0; font-size: 16px;">Wishlist</h2>
-            <div id="wish-default-actions">
-                <span class="loc-btn" onclick="toggleWishReorderMode()" style="margin-right: 10px;">[ reorder ]</span>
-                <span class="loc-btn" onclick="toggleWishForm()">[ + add ]</span>
+            <div id="wish-default-actions" class="btn-row">
+                <button type="button" class="loc-btn" onclick="toggleWishReorderMode()">sort</button>
+                <button type="button" class="loc-btn loc-btn--primary" onclick="toggleWishForm()">+ add</button>
             </div>
-            <div id="wish-reorder-actions" style="display: none; gap: 10px;">
-                <span class="loc-btn" onclick="toggleWishReorderMode()" style="color: #a1a1aa;">[ cancel ]</span>
-                <span id="btn-save-wish-order" class="loc-btn" onclick="saveWishOrder()" style="color: #10b981; font-weight: bold;">[ save ]</span>
+            <div id="wish-reorder-actions" class="btn-row" style="display: none;">
+                <button type="button" class="loc-btn loc-btn--muted" onclick="toggleWishReorderMode()">cancel</button>
+                <button type="button" id="btn-save-wish-order" class="loc-btn loc-btn--success" onclick="saveWishOrder()">save</button>
             </div>
         </div>
     </div>
@@ -181,7 +199,9 @@
     <div id="wish-form-container" class="form-container" style="display: none; margin-top: 15px; padding: 15px; border: 1px dashed var(--accent-color); border-radius: 2px;">
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
         <div class="form-group">
-            <label>Fragrantica URL <span class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">[ auto fill ]</span></label>
+            <label class="with-action">Fragrantica URL
+                <button type="button" class="loc-btn loc-btn--quiet" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
+            </label>
             <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
             <div id="wish-crawl-terminal" class="crawl-terminal">
                 <span id="wish-crawl-step">> Fetching Notes... <span class="blink">_</span></span>
@@ -211,7 +231,10 @@
 <!-- 5. REGISTER VIEW -->
 <section id="view-register" class="view-section">
     <div class="weather-widget">
-        <h2>New Discovery <span class="loc-btn" onclick="cancelRegistration()">[ cancel ]</span></h2>
+        <h2>
+            <span>New Discovery</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelRegistration()">cancel</button>
+        </h2>
         <p>Unregistered tag detected.<br>Type details to log it.</p>
     </div>
     <div class="form-container">
@@ -220,7 +243,9 @@
             <input type="text" id="reg-uid" readonly>
         </div>
         <div class="form-group">
-            <label>Fragrantica URL <span class="loc-btn" id="crawl-btn" onclick="crawlUrl()">[ auto fill ]</span></label>
+            <label class="with-action">Fragrantica URL
+                <button type="button" class="loc-btn loc-btn--quiet" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
+            </label>
             <input type="url" id="reg-url" placeholder="Paste URL here...">
             <div id="crawl-terminal" class="crawl-terminal">
                 <span id="crawl-step-1">> Initializing Scraping Engine... [OK]</span>
@@ -247,12 +272,12 @@
         <div class="form-group" style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
             <label style="margin: 0;">온도 기록 기준</label>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">오늘 최고</span>
                 <label class="temp-mode-switch">
                     <input type="checkbox" id="reg-use-current-temp">
                     <span class="slider"></span>
                 </label>
-                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
             </div>
         </div>
         <button id="register-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;">Register & Log</button>
@@ -263,7 +288,10 @@
 <!-- 6. EDIT LOG VIEW -->
 <section id="view-edit-log" class="view-section">
     <div class="weather-widget">
-        <h2>Edit Log <span class="loc-btn" onclick="cancelEditLog()">[ cancel ]</span></h2>
+        <h2>
+            <span>Edit Log</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelEditLog()">cancel</button>
+        </h2>
         <p id="edit-perfume-name" style="font-weight: bold; margin-bottom: 5px;">Perfume Name</p>
         <p id="edit-date" style="font-size: 10px; color: var(--accent-color);">[2026-08-27]</p>
     </div>
@@ -306,7 +334,9 @@
 <!-- 7. MANUAL LOG VIEW -->
 <section id="view-manual-log" class="view-section">
     <div class="weather-widget">
-        <h2>Manual Log <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ cancel ]</span></h2>
+        <h2><span>Manual Log</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">cancel</button>
+        </h2>
         <p>Log a perfume without NFC tag.</p>
     </div>
     <div class="form-container">
@@ -337,14 +367,13 @@
         </div>
 
         <div class="form-group" style="margin-top: -5px; display: flex; align-items: center; justify-content: space-between;">
-            <label style="margin: 0;">온도 기록 기준</label>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(최고기온)</span>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">오늘 최고</span>
                 <label class="temp-mode-switch">
                     <input type="checkbox" id="manual-use-current-temp">
                     <span class="slider"></span>
                 </label>
-                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">(현재기온)</span>
+                <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
             </div>
         </div>
         <button id="manual-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitManualLog()">Save Log</button>
@@ -355,10 +384,13 @@
 <!-- 8. PERFUME DETAIL VIEW -->
 <section id="view-perfume-detail" class="view-section">
     <div class="weather-widget">
-        <h2>Perfume Details
-            <span class="loc-btn" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])" style="float: right;">[ back ]</span>
-            <span id="detail-edit-btn" class="loc-btn" style="float: right; margin-right: 15px;">[ edit ]</span>
-            <span id="detail-delete-btn" class="loc-btn" style="float: right; color: #f43f5e; margin-right: 15px;">[ delete ]</span>
+        <h2>
+            <span>Perfume Details</span>
+            <span class="btn-row">
+                <button type="button" id="detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
+                <button type="button" id="detail-edit-btn" class="loc-btn">edit</button>
+                <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('wardrobe', document.querySelectorAll('.nav-item')[1])">back</button>
+            </span>
         </h2>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
         <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
@@ -382,7 +414,7 @@
     <div style="padding: 0 0 10px 0; border-bottom: 1px solid #e0e0dc;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <h2 style="margin: 0; font-size: 16px;">All History</h2>
-            <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">[ back ]</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
             <input type="date" id="search-start-date" class="form-input" style="flex: 1; padding: 6px; border:1px solid #e0e0dc;" onchange="renderAllLogs()">
@@ -420,7 +452,10 @@
 <!-- 11. EDIT INFO VIEW -->
 <section id="view-edit-info" class="view-section">
     <div class="weather-widget">
-        <h2>Edit Details <span class="loc-btn" onclick="cancelEditInfo()">[ cancel ]</span></h2>
+        <h2>
+            <span>Edit Details</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelEditInfo()">cancel</button>
+        </h2>
         <p>Update name and brand.</p>
     </div>
     <div class="form-container">
@@ -441,7 +476,10 @@
 
 <section id="view-settings" class="view-section">
     <div class="weather-widget">
-        <h2>My Settings <span class="loc-btn" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" style="float: right;">[ back ]</span></h2>
+        <h2>
+            <span>My Settings</span>
+            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
+        </h2>
         <p>Update your profile information.</p>
     </div>
     <div class="form-container">
