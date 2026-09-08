@@ -103,7 +103,7 @@
 
     <!-- [3] 추천 위젯 -->
     <div id="recommendation-widget" style="margin-bottom: 20px; padding: 15px; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10b981; border-radius: 4px; display: none; flex-shrink: 0;">
-        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 10px;">✨ Today's Pick</div>
+        <div style="color: #10b981; font-size: 11px; text-transform: uppercase; font-weight: bold; margin-bottom: 6px;">✨ Today's Pick</div>
         <div id="recommendation-content" style="display: flex; align-items: center; gap: 12px;"></div>
     </div>
 
@@ -111,7 +111,7 @@
     <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div style="font-size: 13px; font-weight: bold; color: var(--text-color);">Recent History</div>
-            <button type="button" class="loc-btn loc-btn--quiet is-link" onclick="openAllLogsView()">view all</button>
+            <button type="button" class="loc-btn is-link" onclick="openAllLogsView()">view all</button>
         </div>
         <div id="recent-logs-container" style="flex: 1; overflow-y: auto; padding-bottom: 10px;">
             <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">fetching logs...</div>
@@ -200,7 +200,7 @@
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn loc-btn--assist" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
+                <button type="button" class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
             </label>
             <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
             <div id="wish-crawl-terminal" class="crawl-terminal">
@@ -244,7 +244,7 @@
         </div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn loc-btn--assist" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
+                <button type="button" class="loc-btn" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
             </label>
             <input type="url" id="reg-url" placeholder="Paste URL here...">
             <div id="crawl-terminal" class="crawl-terminal">

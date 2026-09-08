@@ -368,7 +368,7 @@ function renderLogItemHtml(log) {
 
     let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
         ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
-        : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+        : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid; align-self: flex-start;">✍️ 터치해서 별점 남기기</div>`;
 
     const toDetail = `onclick="event.stopPropagation(); openDetailFromLog('${log.pageId}')"`;
 
