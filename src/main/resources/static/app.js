@@ -1277,8 +1277,13 @@ async function crawlWishUrl() {
             wishCrawledNotesData = data.notes;
             wishCrawledImageUrl = data.imageUrl;
             document.getElementById('wish-img').value = data.imageUrl;
+
             step.innerHTML = '> [SUCCESS] Notes extracted.';
-            document.getElementById('wish-notes-preview-box').innerHTML = renderNotesHtml(data.notes);
+
+            // 💡 여기서 옷장 비교 분석 배지와 노트 목록을 함께 렌더링합니다
+            const badgeHtml = generateWishlistBadgeHtml(data.notes);
+            document.getElementById('wish-notes-preview-box').innerHTML = badgeHtml + renderNotesHtml(data.notes);
+
             document.getElementById('wish-notes-preview-container').style.display = 'block';
         } else {
             terminal.classList.add('error');
@@ -1777,6 +1782,87 @@ function renderNoteAnalytics(climateAnalytics) {
     }
 
     container.innerHTML = html || '분석 가능한 데이터가 부족합니다.';
+}
+
+// 옷장 데이터를 바탕으로 노트 일치율(%)을 계산하는 객관적 뱃지 생성기
+function generateWishlistBadgeHtml(notesObj) {
+    if (!globalWardrobeData || globalWardrobeData.length === 0) return '';
+
+    // 1. 크롤링된 새 향수의 노트 추출 및 중복 제거
+    const newNotes = [];
+    ['top', 'middle', 'base', 'general'].forEach(k => {
+        if (notesObj[k]) newNotes.push(...notesObj[k].map(n => n.toLowerCase().trim()));
+    });
+
+    const uniqueNewNotes = [...new Set(newNotes)];
+    const totalNotes = uniqueNewNotes.length;
+    if (totalNotes === 0) return '';
+
+    // 2. 내 옷장에 있는 모든 고유 노트 수집 (빈도수 계산 대신 존재 여부만 파악)
+    const wardrobeNotesSet = new Set();
+    globalWardrobeData.forEach(p => {
+        if (!p.notes) return;
+        ['top', 'middle', 'base', 'general'].forEach(k => {
+            if (p.notes[k]) {
+                p.notes[k].forEach(n => wardrobeNotesSet.add(n.toLowerCase().trim()));
+            }
+        });
+    });
+
+    // 3. 겹치는 노트와 새로운 노트 분류
+    const overlappingNotes = [];
+    const newDiscoveryNotes = [];
+
+    uniqueNewNotes.forEach(n => {
+        if (wardrobeNotesSet.has(n)) overlappingNotes.push(n);
+        else newDiscoveryNotes.push(n);
+    });
+
+    // 4. 일치율 계산
+    const overlapPercent = Math.round((overlappingNotes.length / totalNotes) * 100);
+
+    // 5. 비율에 따른 테마 색상 및 텍스트 설정
+    let themeColor = '';
+    let bgColor = '';
+    let titleText = '';
+
+    if (overlapPercent >= 60) {
+        // 높은 일치율 (초록)
+        themeColor = 'var(--success-color)'; // #10b981
+        bgColor = 'rgba(16, 185, 129, 0.1)';
+        titleText = `🌿 내 옷장과 ${overlapPercent}% 일치`;
+    } else if (overlapPercent >= 30) {
+        // 중간 일치율 (파랑)
+        themeColor = '#3b82f6';
+        bgColor = 'rgba(59, 130, 246, 0.1)';
+        titleText = `🌊 내 옷장과 ${overlapPercent}% 일치`;
+    } else {
+        // 낮은 일치율 (보라)
+        themeColor = '#8b5cf6';
+        bgColor = 'rgba(139, 92, 246, 0.1)';
+        titleText = `🚀 내 옷장과 ${overlapPercent}% 일치`;
+    }
+
+    const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+    const formatNotes = (arr) => arr.length > 0 ? arr.map(capitalize).join(', ') : '없음';
+
+    // 6. UI 렌더링
+    let html = `<div style="margin-bottom: 12px; padding: 10px; background: ${bgColor}; border-left: 3px solid ${themeColor}; border-radius: 4px;">
+                    <strong style="color: ${themeColor}; font-size: 12px;">${titleText}</strong><br>`;
+
+    if (overlappingNotes.length > 0) {
+        html += `<div style="font-size: 11px; color: var(--text-color); margin-top: 6px;">
+                    <b>보유 노트:</b> <span style="color: var(--accent-color);">${formatNotes(overlappingNotes)}</span>
+                 </div>`;
+    }
+    if (newDiscoveryNotes.length > 0) {
+        html += `<div style="font-size: 11px; color: var(--text-color); margin-top: 3px;">
+                    <b>미보유 노트:</b> <span style="color: var(--accent-color);">${formatNotes(newDiscoveryNotes)}</span>
+                 </div>`;
+    }
+    html += `</div>`;
+
+    return html;
 }
 
 // ==========================================
