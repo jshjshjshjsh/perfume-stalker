@@ -732,13 +732,8 @@ function renderWardrobeGrid() {
         const shortDate = p.date ? p.date.split('T')[0] : '';
         const notesPreview = parseNotesPreview(p.notes);
 
-        const seasonTags = (p.seasons || []).map(s => {
-            const style = seasonDisplay[s];
-            if (style) {
-                return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
-            }
-            return '';
-        }).join('');
+        // 기존 뱃지/바 생성 로직 지우고 통합 함수로 교체
+        const seasonUI = generateSeasonUI(p.seasons);
 
         return `
             <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
@@ -749,7 +744,7 @@ function renderWardrobeGrid() {
                         ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
                     </div>
                     <div class="wardrobe-name">${p.name}</div>
-                    ${seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : ''}
+                    ${seasonUI} <!-- 💡 생성된 UI 주입 -->
                     <div class="wardrobe-notes">${notesPreview}</div>
                 </div>
             </div>
@@ -1856,6 +1851,7 @@ async function openSettingsView() {
             document.getElementById('setting-name').value = user.name || '';
             document.getElementById('setting-loc').value = user.defaultLocation || '';
             document.getElementById('setting-noti').checked = user.notiEnabled === true;
+            document.getElementById('setting-season-bar').checked = localStorage.getItem('season_style_bar') === 'true';
             document.getElementById('setting-status').innerText = "";
         } else {
             document.getElementById('setting-status').innerText = "[ERROR] Failed to load.";
@@ -1866,15 +1862,28 @@ async function openSettingsView() {
 }
 
 async function submitSettings() {
-    const name = document.getElementById('setting-name').value.trim();
-    const loc = document.getElementById('setting-loc').value.trim();
-    const pw = document.getElementById('setting-pw').value;
-    const noti = document.getElementById('setting-noti').checked;
+    const elName = document.getElementById('setting-name');
+    const elLoc = document.getElementById('setting-loc');
+    const elPw = document.getElementById('setting-pw');
+    const elNoti = document.getElementById('setting-noti');
+    const elSeasonBar = document.getElementById('setting-season-bar');
+
+    const name = elName ? elName.value.trim() : '';
+    const loc = elLoc ? elLoc.value.trim() : '';
+    const pw = elPw ? elPw.value : '';
+    const noti = elNoti ? elNoti.checked : false;
+
+    // 로컬 스토리지에 UI 설정 업데이트
+    if (elSeasonBar) {
+        localStorage.setItem('season_style_bar', elSeasonBar.checked);
+    }
+
     const statusMsg = document.getElementById('setting-status');
     const btn = document.getElementById('setting-submit-btn');
 
-    statusMsg.innerText = "Updating profile...";
-    btn.innerText = "Saving...";
+    // 💡 에디터의 빨간 줄(null 경고)을 없애는 안전한 방어 로직
+    if (statusMsg) statusMsg.innerText = "Updating profile...";
+    if (btn) btn.innerText = "Saving...";
 
     const payload = { name: name, defaultLocation: loc, notiEnabled: noti };
     if (pw) payload.password = pw;
@@ -1887,27 +1896,36 @@ async function submitSettings() {
         });
 
         if (res.ok) {
-            btn.classList.add('success');
-            btn.innerText = "UPDATED";
-            statusMsg.innerText = "[SUCCESS] Profile updated.";
+            if (btn) {
+                btn.classList.add('success');
+                btn.innerText = "UPDATED";
+            }
+            if (statusMsg) statusMsg.innerText = "[SUCCESS] Profile updated.";
+
             if (pw) {
                 alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
                 logout();
                 return;
             }
             setTimeout(() => {
-                btn.classList.remove('success');
-                btn.innerText = "Save Changes";
+                if (btn) {
+                    btn.classList.remove('success');
+                    btn.innerText = "Save Changes";
+                }
                 switchView('main', document.querySelector('.nav-item.main-tab'));
                 fetchRealWeather();
+
+                // 설정 변경(Bar/뱃지) 후 옷장과 위시리스트 즉각 리렌더링
+                if (typeof renderWardrobeGrid === 'function') renderWardrobeGrid();
+                if (typeof fetchWishlist === 'function') fetchWishlist();
             }, 1500);
         } else {
-            statusMsg.innerText = "[ERROR] Update failed.";
-            btn.innerText = "Save Changes";
+            if (statusMsg) statusMsg.innerText = "[ERROR] Update failed.";
+            if (btn) btn.innerText = "Save Changes";
         }
     } catch (e) {
-        statusMsg.innerText = "[ERROR] Network failure.";
-        btn.innerText = "Save Changes";
+        if (statusMsg) statusMsg.innerText = "[ERROR] Network failure.";
+        if (btn) btn.innerText = "Save Changes";
     }
 }
 
@@ -2300,6 +2318,57 @@ function applyWardrobeFilter() {
 
     // 순서 꼬임 방지: 필터 작동 중일 때는 기본 동작들을 막거나 제어
     renderWardrobeGrid();
+}
+
+// 💡 계절 컬러 바(Gradient Bar) 생성기
+function generateSeasonBar(seasons) {
+    if (!seasons || seasons.length === 0) return '';
+
+    // 봄, 여름, 가을, 겨울 순서 고정 및 색상 매핑
+    const colorMap = { 'SPRING': '#ec4899', 'SUMMER': '#10b981', 'FALL': '#d97706', 'WINTER': '#0ea5e9' };
+    const order = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
+    const sorted = [...seasons].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+    const colors = sorted.map(s => colorMap[s]).filter(Boolean);
+
+    if (colors.length === 1) {
+        return `<div style="height: 5px; width: 150px; background-color: ${colors[0]}; border-radius: 2px; margin-bottom: 5px;"></div>`;
+    } else if (colors.length > 1) {
+        return `<div style="height: 5px; width: 150px; background: linear-gradient(to right, ${colors.join(', ')}); border-radius: 2px; margin-bottom: 5px;"></div>`;
+    }
+    return '';
+}
+
+// 💡 계절 UI 통합 생성기 (설정에 따라 뱃지 또는 컬러 바 반환)
+function generateSeasonUI(seasons) {
+    if (!seasons || seasons.length === 0) return '';
+
+    // 로컬 스토리지에서 세팅 값 읽기 (기본값: false = 뱃지 모드)
+    const useBar = localStorage.getItem('season_style_bar') === 'true';
+
+    if (useBar) {
+        // 1. 형님이 커스텀하신 150px 컬러 바 모드
+        const colorMap = { 'SPRING': '#ec4899', 'SUMMER': '#10b981', 'FALL': '#d97706', 'WINTER': '#0ea5e9' };
+        const order = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
+        const sorted = [...seasons].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        const colors = sorted.map(s => colorMap[s]).filter(Boolean);
+
+        if (colors.length === 1) {
+            return `<div style="height: 5px; width: 150px; background-color: ${colors[0]}; border-radius: 2px; margin: 4px 0 5px 0;"></div>`;
+        } else if (colors.length > 1) {
+            return `<div style="height: 5px; width: 150px; background: linear-gradient(to right, ${colors.join(', ')}); border-radius: 2px; margin: 4px 0 5px 0;"></div>`;
+        }
+    } else {
+        // 2. 기본 뱃지 모드
+        const seasonTags = seasons.map(s => {
+            const style = seasonDisplay[s];
+            if (style) {
+                return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
+            }
+            return '';
+        }).join('');
+        return seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : '';
+    }
+    return '';
 }
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출

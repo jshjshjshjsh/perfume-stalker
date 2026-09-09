@@ -563,3 +563,121 @@ button.action-btn {
     pointer-events: none;
     transform: none;
 }
+
+/* ========================================
+   SETTINGS VIEW
+======================================== */
+.settings-wrap { padding-bottom: 10px; }
+
+/* --- 그룹 카드 --- */
+.settings-group {
+    background: #ffffff;
+    border: 1px solid #e0e0dc;
+    border-radius: 8px;
+    padding: 18px 16px 4px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.settings-group__head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.settings-group__idx {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--bg-color);
+    background: var(--accent-color);
+    padding: 3px 6px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+.settings-group__title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-color);
+}
+
+.settings-group__desc {
+    font-size: 10px;
+    color: var(--accent-color);
+    line-height: 1.5;
+    margin: 0 0 18px 0;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed #e8e8e4;
+}
+
+/* 카드 안 마지막 항목의 여백 정리 */
+.settings-group__last { margin-bottom: 14px !important; }
+
+/* --- 읽기 전용 필드 --- */
+.settings-group input[readonly] {
+    background: rgba(0, 0, 0, 0.035);
+    color: var(--accent-color);
+    border-bottom-style: dashed;
+    cursor: not-allowed;
+}
+.settings-group input[readonly]:focus { outline: none; }
+
+/* --- 라벨 우측 태그 --- */
+.label-tag {
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    color: var(--accent-color);
+    background: rgba(0, 0, 0, 0.04);
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: none;
+}
+
+/* --- 필드 하단 힌트 --- */
+.field-hint {
+    font-size: 10px;
+    color: var(--accent-color);
+    line-height: 1.5;
+    margin: 8px 0 0 0;
+    opacity: 0.8;
+}
+
+/* --- 토글 행 --- */
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 0;
+}
+.settings-row + .settings-row { border-top: 1px dashed #e8e8e4; }
+
+.settings-row__text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+.settings-row__label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-color);
+    letter-spacing: 0.3px;
+}
+.settings-row__desc {
+    font-size: 10px;
+    color: var(--accent-color);
+    line-height: 1.4;
+    opacity: 0.85;
+}
+.settings-row .temp-mode-switch { flex-shrink: 0; }
+
+/* --- 저장 영역 --- */
+.settings-actions { margin-top: 22px; }
+.settings-actions .action-btn { width: 100%; }
+.settings-actions .status-msg { margin-top: 10px; text-align: center; }

@@ -515,6 +515,7 @@
     </div>
 </section>
 
+<!-- 12. SETTINGS VIEW -->
 <section id="view-settings" class="view-section">
     <div class="weather-widget">
         <h2>
@@ -523,17 +524,88 @@
         </h2>
         <p>Update your profile information.</p>
     </div>
-    <div class="form-container">
-        <div class="form-group"><label>User ID (Read Only)</label><input type="text" id="setting-id" readonly></div>
-        <div class="form-group"><label>Name</label><input type="text" id="setting-name" autocomplete="off"></div>
-        <div class="form-group"><label>Default Location (City)</label><input type="text" id="setting-loc" autocomplete="off"></div>
-        <div class="form-group"><label>New Password (비워두면 유지)</label><input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password"></div>
-        <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
-            <input type="checkbox" id="setting-noti" style="width: auto;">
-            <label style="margin: 0;">Enable Notifications</label>
+
+    <div class="form-container settings-wrap">
+
+        <!-- ============ GROUP 01. ACCOUNT ============ -->
+        <div class="settings-group">
+            <div class="settings-group__head">
+                <span class="settings-group__idx">01</span>
+                <span class="settings-group__title">Account</span>
+            </div>
+            <p class="settings-group__desc">// 프로필 및 기본 위치 정보</p>
+
+            <div class="form-group">
+                <label for="setting-id" class="with-action">
+                    User ID
+                    <span class="label-tag">🔒 read only</span>
+                </label>
+                <input type="text" id="setting-id" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="setting-name">Name</label>
+                <input type="text" id="setting-name" placeholder="e.g. 조승현" autocomplete="off">
+            </div>
+
+            <div class="form-group settings-group__last">
+                <label for="setting-loc">Default Location (City)</label>
+                <input type="text" id="setting-loc" placeholder="e.g. Busan" autocomplete="off">
+                <p class="field-hint">* GPS 사용이 불가할 때 이 도시의 날씨를 기준으로 기록합니다.</p>
+            </div>
         </div>
-        <button type="button" class="action-btn action-btn--primary" onclick="submitSettings()">Save Changes</button>
-        <div id="setting-status" class="status-msg"></div>
+
+        <!-- ============ GROUP 02. SECURITY ============ -->
+        <div class="settings-group">
+            <div class="settings-group__head">
+                <span class="settings-group__idx">02</span>
+                <span class="settings-group__title">Security</span>
+            </div>
+            <p class="settings-group__desc">// 비밀번호 변경</p>
+
+            <div class="form-group settings-group__last">
+                <label for="setting-pw">New Password</label>
+                <input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password">
+                <p class="field-hint">* 비워두면 기존 비밀번호가 그대로 유지됩니다.</p>
+            </div>
+        </div>
+
+        <!-- ============ GROUP 03. PREFERENCES ============ -->
+        <div class="settings-group">
+            <div class="settings-group__head">
+                <span class="settings-group__idx">03</span>
+                <span class="settings-group__title">Preferences</span>
+            </div>
+            <p class="settings-group__desc">// 알림 및 화면 표시 방식</p>
+
+            <div class="settings-row">
+                <div class="settings-row__text">
+                    <span class="settings-row__label">Enable Notifications</span>
+                    <span class="settings-row__desc">착향 리마인더 푸시 알림을 받습니다</span>
+                </div>
+                <label class="temp-mode-switch">
+                    <input type="checkbox" id="setting-noti">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="settings-row">
+                <div class="settings-row__text">
+                    <span class="settings-row__label">계절 표시 스타일</span>
+                    <span class="settings-row__desc">OFF: 배지(🌸☀️) / ON: 비중 바 그래프</span>
+                </div>
+                <label class="temp-mode-switch">
+                    <input type="checkbox" id="setting-season-bar">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div class="settings-actions">
+            <button type="button" class="action-btn action-btn--primary" onclick="submitSettings()">Save Changes</button>
+            <div id="setting-status" class="status-msg"></div>
+        </div>
+
     </div>
 </section>
 
