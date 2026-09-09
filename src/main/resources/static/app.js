@@ -33,6 +33,7 @@ let wishPromoteAbort = null;
 
 let detailReturnTo = 'wardrobe';
 let currentRecommendationLog = null;
+let radarChartInstance = null;
 
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('jwt_token');
@@ -231,8 +232,9 @@ async function fetchRealWeather(lat = null, lon = null) {
             if (lat !== null) buttonsHtml += `<button type="button" class="loc-btn loc-btn--sm" onclick="resetLocation()">default</button>`;
 
             const weatherIcon = getWeatherIcon(data.weather);
+            const displayTemp = parseFloat(data.temp).toFixed(1);
             locText.innerHTML = `${data.location} ${buttonsHtml}`;
-            weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${data.temp}°C / ${data.humidity}%</span>`;
+            weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${displayTemp}°C / ${data.humidity}%</span>`;
         } else {
             weatherInfo.innerText = "[ERROR] Failed to load weather data.";
         }
@@ -1235,6 +1237,33 @@ async function fetchSummary() {
         globalRecentLogs = logs;
         updateRecommendation();
 
+        // 💡 이달의 향수 (Perfume of the Month)
+        const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+        const thisMonthLogs = logs.filter(l => l.date && l.date.startsWith(currentMonth));
+        const potmContainer = document.getElementById('potm-container');
+
+        if (thisMonthLogs.length === 0) {
+            potmContainer.innerHTML = '<div style="color: var(--accent-color); font-size: 11px;">이번 달 기록이 없습니다.</div>';
+        } else {
+            const mCounts = {};
+            thisMonthLogs.forEach(l => {
+                const name = l.perfumeName || 'Unknown';
+                mCounts[name] = (mCounts[name] || 0) + 1;
+            });
+            const potm = Object.entries(mCounts).sort((a, b) => b[1] - a[1])[0];
+            const potmLog = thisMonthLogs.find(l => l.perfumeName === potm[0]);
+            const imgTag = potmLog.imageUrl ? `<img src="${potmLog.imageUrl}" style="width: 55px; height: 75px; object-fit: cover; border-radius: 4px; border: 1px solid #e0e0dc;">` : `<div style="width: 55px; height: 75px; background: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 4px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--accent-color);">No Img</div>`;
+
+            potmContainer.innerHTML = `
+                ${imgTag}
+                <div>
+                    <div style="font-size: 11px; color: var(--success-color); font-weight: bold; margin-bottom: 4px;">👑 ${new Date().getMonth() + 1}월의 최애 향수</div>
+                    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">${potm[0]}</div>
+                    <div style="font-size: 11px; color: var(--accent-color);">이번 달 총 <b style="color:var(--text-color);">${potm[1]}회</b> 착향</div>
+                </div>
+            `;
+        }
+
         // 1. Top 3 명예의 전당
         const counts = logs.reduce((acc, log) => {
             const name = log.perfumeName || 'Unknown';
@@ -1845,6 +1874,7 @@ async function fetchNoteAnalytics() {
 
 function renderNoteAnalytics(climateAnalytics) {
     const container = document.getElementById('analytics-container');
+    const radarContainer = document.getElementById('radar-chart-container');
 
     if (!climateAnalytics || Object.keys(climateAnalytics).length === 0) {
         const scored = globalRecentLogs.filter(l =>
@@ -1863,7 +1893,72 @@ function renderNoteAnalytics(climateAnalytics) {
                     · 별점 없는 로그, 온습도 없는 로그는 집계에서 제외됩니다
                 </span>
             </div>`;
+
+        radarContainer.style.display = 'none';
+
         return;
+    }
+
+    // 💡 1. 레이더 차트를 위한 노트별 종합 평점 계산
+    const noteScores = {};
+    for (const [climate, stats] of Object.entries(climateAnalytics)) {
+        stats.goldenNotes.forEach(note => {
+            if (!noteScores[note.noteName]) {
+                noteScores[note.noteName] = { sum: 0, count: 0 };
+            }
+            noteScores[note.noteName].sum += note.averageRating * note.wearingCount;
+            noteScores[note.noteName].count += note.wearingCount;
+        });
+    }
+
+    const aggregated = Object.keys(noteScores).map(name => ({
+        name: name,
+        avg: noteScores[name].sum / noteScores[name].count,
+        count: noteScores[name].count
+    })).sort((a, b) => b.count - a.count || b.avg - a.avg); // 많이 뿌린 순 정렬
+
+    const top6 = aggregated.slice(0, 6);
+
+    // 최소 3개의 노트가 있어야 다각형(육각형/삼각형)이 그려짐
+    if (top6.length >= 3) {
+        radarContainer.style.display = 'block';
+        const ctx = document.getElementById('noteRadarChart').getContext('2d');
+        if (radarChartInstance) radarChartInstance.destroy();
+
+        radarChartInstance = new Chart(ctx, {
+            type: 'radar',
+            data: {
+                labels: top6.map(n => n.name),
+                datasets: [{
+                    label: 'Average Rating',
+                    data: top6.map(n => n.avg),
+                    backgroundColor: 'rgba(16, 185, 129, 0.15)', // --success-color 투명도
+                    borderColor: '#10b981',
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#fff',
+                    borderWidth: 2,
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                scales: {
+                    r: {
+                        min: 0, max: 5,
+                        ticks: { stepSize: 1, display: false },
+                        grid: { color: 'rgba(0,0,0,0.05)' },
+                        angleLines: { color: 'rgba(0,0,0,0.05)' },
+                        pointLabels: {
+                            font: { size: 10, family: "'Courier Prime', sans-serif", weight: 'bold' },
+                            color: '#1a1a1a'
+                        }
+                    }
+                },
+                plugins: { legend: { display: false }, tooltip: { enabled: true } },
+                maintainAspectRatio: false
+            }
+        });
+    } else {
+        radarContainer.style.display = 'none';
     }
 
     const climateNames = {
