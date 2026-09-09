@@ -109,6 +109,14 @@ public enum NotionPerfumeMaster {
         public Map<String, Object> formatValue(Object value) {
             return Map.of("checkbox", Boolean.parseBoolean(String.valueOf(value)));
         }
+    },
+    SEASONS("SEASONS", "multi_select") {
+        @Override
+        @SuppressWarnings("unchecked")
+        public Map<String, Object> formatValue(Object value) {
+            List<String> seasons = parseNotesList(value);
+            return formatMultiSelect(seasons);
+        }
     };
 
     private final String columnName;

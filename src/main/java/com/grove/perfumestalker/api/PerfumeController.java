@@ -65,6 +65,10 @@ public class PerfumeController {
                     String newPerfumePageId = tuple.getT1();
                     WeatherService.WeatherData weather = tuple.getT2();
 
+                    if (Boolean.TRUE.equals(request.getSkipLog())) {
+                        return Mono.just("✅ 옷장에 향수만 등록 완료 (착향 로그 생략)");
+                    }
+
                     // 4. Zip으로 묶어서 착향 로그 기록
                     UsageLogCreateCommand command = new UsageLogCreateCommand(
                             newPerfumePageId,

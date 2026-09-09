@@ -71,6 +71,7 @@ public class NotionWishlistService {
                         notes.put("middle", NotionParserUtils.extractMultiSelect(props, NotionWishlist.MIDDLE_NOTES.getColumnName()));
                         notes.put("base", NotionParserUtils.extractMultiSelect(props, NotionWishlist.BASE_NOTES.getColumnName()));
                         notes.put("general", NotionParserUtils.extractMultiSelect(props, NotionWishlist.NOTES.getColumnName()));
+                        List<String> seasons = NotionParserUtils.extractMultiSelect(props, NotionWishlist.SEASONS.getColumnName());
 
                         return new WishlistResponse(
                                 (String) page.get("id"),
@@ -79,7 +80,8 @@ public class NotionWishlistService {
                                 NotionParserUtils.extractUrl(props, NotionWishlist.IMAGE_URL.getColumnName()),
                                 NotionParserUtils.extractUrl(props, NotionWishlist.URL.getColumnName()),
                                 NotionParserUtils.extractDate(props, NotionWishlist.DATE.getColumnName()),
-                                notes
+                                notes,
+                                seasons
                         );
                     }).collect(java.util.stream.Collectors.toList());
                 });
@@ -98,6 +100,9 @@ public class NotionWishlistService {
             properties.put(NotionWishlist.URL.getColumnName(), NotionWishlist.URL.formatValue(request.url()));
         if (request.date() != null && !request.date().isBlank())
             properties.put(NotionWishlist.DATE.getColumnName(), NotionWishlist.DATE.formatValue(request.date()));
+        if (request.seasons() != null && !request.seasons().isEmpty())
+            properties.put(NotionWishlist.SEASONS.getColumnName(), NotionWishlist.SEASONS.formatValue(request.seasons()));
+
         properties.put(NotionWishlist.USER.getColumnName(), NotionWishlist.USER.formatValue(userPageId));
 
         if (request.notes() != null) {

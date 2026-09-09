@@ -35,6 +35,19 @@ let detailReturnTo = 'wardrobe';
 let currentRecommendationLog = null;
 let radarChartInstance = null;
 
+let currentSearchQuery = '';
+let currentSeasonFilter = 'ALL';
+
+const seasonDisplay = {
+    'SPRING': { text: '🌸 봄', color: '#ec4899', border: 'rgba(236, 72, 153, 0.3)', bg: 'rgba(236, 72, 153, 0.05)' },
+    'SUMMER': { text: '🌿 여름', color: '#10b981', border: 'rgba(16, 185, 129, 0.3)', bg: 'rgba(16, 185, 129, 0.05)' },
+    'FALL': { text: '🍂 가을', color: '#d97706', border: 'rgba(217, 119, 6, 0.3)', bg: 'rgba(217, 119, 6, 0.05)' },
+    'WINTER': { text: '❄️ 겨울', color: '#0ea5e9', border: 'rgba(14, 165, 233, 0.3)', bg: 'rgba(14, 165, 233, 0.05)' }
+};
+
+let crawledSeasonsData = [];
+let wishCrawledSeasonsData = [];
+
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('jwt_token');
     const headers = {
@@ -671,20 +684,46 @@ async function fetchWardrobe() {
             renderWardrobeGrid();
         }
     } catch (e) {
+        console.error("옷장 로딩 에러:", e); // 💡 실제 에러 원인을 파악하기 위해 로그 추가
         container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px;">[ERROR] Network issue.</div>`;
     }
 }
 
 function renderWardrobeGrid() {
     const container = document.getElementById('wardrobe-container');
-    const filteredData = globalWardrobeData.filter(p =>
+
+    // 1. 탭 필터 (본품 vs 샘플)
+    let filteredData = globalWardrobeData.filter(p =>
         currentWardrobeTab === 'sample' ? p.isSample === true : p.isSample !== true
     );
+
+    // 2. 텍스트 검색 필터 (이름, 브랜드, 노트 전체)
+    if (currentSearchQuery) {
+        filteredData = filteredData.filter(p => {
+            const matchName = (p.name || '').toLowerCase().includes(currentSearchQuery);
+            const matchBrand = (p.brand || '').toLowerCase().includes(currentSearchQuery);
+            const allNotes = [];
+            if (p.notes) {
+                ['top', 'middle', 'base', 'general'].forEach(k => {
+                    if (p.notes[k]) allNotes.push(...p.notes[k].map(n => n.toLowerCase()));
+                });
+            }
+            const matchNote = allNotes.some(n => n.includes(currentSearchQuery));
+            return matchName || matchBrand || matchNote;
+        });
+    }
+
+    // 💡 3. 계절 스마트 필터 (구형 노트 필터링 폐기, 완벽한 seasons 데이터 기반 필터링)
+    if (currentSeasonFilter !== 'ALL') {
+        filteredData = filteredData.filter(p => {
+            return p.seasons && p.seasons.includes(currentSeasonFilter);
+        });
+    }
 
     document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
 
     if (filteredData.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">${currentWardrobeTab === 'sample' ? '샘플이' : '옷장이'} 비어있습니다.</div>`;
+        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 향수가 없습니다.</div>`;
         return;
     }
 
@@ -692,6 +731,14 @@ function renderWardrobeGrid() {
         const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
         const shortDate = p.date ? p.date.split('T')[0] : '';
         const notesPreview = parseNotesPreview(p.notes);
+
+        const seasonTags = (p.seasons || []).map(s => {
+            const style = seasonDisplay[s];
+            if (style) {
+                return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
+            }
+            return '';
+        }).join('');
 
         return `
             <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
@@ -702,15 +749,32 @@ function renderWardrobeGrid() {
                         ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
                     </div>
                     <div class="wardrobe-name">${p.name}</div>
+                    ${seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : ''}
                     <div class="wardrobe-notes">${notesPreview}</div>
                 </div>
             </div>
         `;
+
     }).join('');
 }
 
 function switchWardrobeTab(tab) {
     if (isWardrobeReorderMode) toggleWardrobeReorderMode();
+
+    currentSearchQuery = '';
+    const searchInput = document.getElementById('wardrobe-search');
+    if (searchInput) searchInput.value = '';
+
+    currentSeasonFilter = 'ALL';
+    document.querySelectorAll('.season-btn').forEach(btn => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-color)';
+    });
+    const allBtn = document.querySelector('.season-btn'); // 첫 번째 'All' 버튼
+    if (allBtn) {
+        allBtn.style.background = 'var(--text-color)';
+        allBtn.style.color = 'var(--bg-color)';
+    }
 
     currentWardrobeTab = tab;
     const btnBottle = document.getElementById('tab-bottle');
@@ -975,6 +1039,7 @@ scanBtn.addEventListener('click', async () => {
                     statusDiv.innerText = `[UNKNOWN] Redirecting to form...`;
                     setTimeout(() => {
                         document.getElementById('reg-uid').value = uid;
+                        fetchBrands();
                         switchView('register', null);
                         resetScanUI();
                         refreshAfterLogChange();
@@ -1016,6 +1081,7 @@ async function handleIosNfcScan(uid) {
         } else if (response.status === 400 && resultText.includes("Unregistered")) {
             alert("미등록된 향수 태그입니다. 신규 등록 화면으로 이동합니다.");
             document.getElementById('reg-uid').value = uid;
+            fetchBrands();
             switchView('register', null);
             statusDiv.innerText = "waiting for interaction...";
         } else {
@@ -1088,6 +1154,7 @@ async function crawlUrl() {
             const data = await res.json();
             crawledNotesData = data.notes;
             crawledImageUrl = data.imageUrl;
+            crawledSeasonsData = data.seasons || [];
 
             if (!data.notes || Object.keys(data.notes).length === 0) {
                 terminal.classList.add('error');
@@ -1096,7 +1163,17 @@ async function crawlUrl() {
             } else {
                 step2.innerHTML = '> [SUCCESS] Notes extracted perfectly.';
                 regStatus.innerText = "[SUCCESS] Data auto-filled.";
-                previewBox.innerHTML = renderNotesHtml(data.notes);
+
+                // 화면에 계절 뱃지도 예쁘게 뿌려줌 (색상 및 한글 적용)
+                const seasonBadges = crawledSeasonsData.map(s => {
+                    const style = seasonDisplay[s];
+                    if (style) {
+                        return `<span class="note-chip" style="color: ${style.color}; border-color: ${style.border}; background-color: ${style.bg}; font-weight: bold;">${style.text}</span>`;
+                    }
+                    return '';
+                }).join('');
+
+                previewBox.innerHTML = (seasonBadges ? `<div style="margin-bottom:10px;">${seasonBadges}</div>` : '') + renderNotesHtml(data.notes);
                 previewContainer.style.display = 'block';
             }
         } else {
@@ -1121,6 +1198,7 @@ async function crawlUrl() {
 
 function openRegisterView(isSample = false) {
     currentIsSample = isSample;
+    fetchBrands();
     switchView('register', null);
 
     const titleEl = document.querySelector('#view-register h2');
@@ -1186,7 +1264,8 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
                 lat: currentLat, lon: currentLon,
                 isSample: currentIsSample,
                 skipLog: !autoLog,
-                useCurrentTemp: document.getElementById('reg-use-current-temp')?.checked || false
+                useCurrentTemp: document.getElementById('reg-use-current-temp')?.checked || false,
+                seasons: crawledSeasonsData
             })
         });
 
@@ -1200,7 +1279,7 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
             setTimeout(() => {
                 document.querySelectorAll('#view-register input:not(#reg-uid):not([type="checkbox"])').forEach(el => el.value = '');
                 document.getElementById('notes-preview-container').style.display = 'none';
-                document.getElementById('reg-auto-log').checked = true;
+                document.getElementById('reg-auto-log').checked = false;
 
                 const terminal = document.getElementById('crawl-terminal');
                 if (terminal) terminal.style.display = 'none';
@@ -1208,7 +1287,7 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
                 crawledNotesData = null;
                 crawledImageUrl = "";
                 submitBtn.classList.remove('success');
-                submitBtn.innerText = "Register & Log";
+                submitBtn.innerText = "Register Only";
                 regStatus.innerText = "";
 
                 switchView('wardrobe', document.querySelector('.nav-item.wardrobe-tab') || null);
@@ -1374,6 +1453,7 @@ function toggleWishForm() {
         document.getElementById('wish-crawl-terminal').style.display = 'none';
         wishCrawledNotesData = null;
         wishCrawledImageUrl = "";
+        wishCrawledSeasonsData = [];
     }
 }
 
@@ -1402,13 +1482,20 @@ async function crawlWishUrl() {
             const data = await res.json();
             wishCrawledNotesData = data.notes;
             wishCrawledImageUrl = data.imageUrl;
+            wishCrawledSeasonsData = data.seasons || [];
             document.getElementById('wish-img').value = data.imageUrl;
 
             step.innerHTML = '> [SUCCESS] Notes extracted.';
 
-            // 💡 여기서 옷장 비교 분석 배지와 노트 목록을 함께 렌더링합니다
+            // 💡 계절 뱃지 생성 및 렌더링
+            const seasonBadges = wishCrawledSeasonsData.map(s => {
+                const style = seasonDisplay[s];
+                if (style) return `<span class="note-chip" style="color: ${style.color}; border-color: ${style.border}; background-color: ${style.bg}; font-weight: bold;">${style.text}</span>`;
+                return '';
+            }).join('');
+
             const badgeHtml = generateWishlistBadgeHtml(data.notes);
-            document.getElementById('wish-notes-preview-box').innerHTML = badgeHtml + renderNotesHtml(data.notes);
+            document.getElementById('wish-notes-preview-box').innerHTML = (seasonBadges ? `<div style="margin-bottom:10px;">${seasonBadges}</div>` : '') + badgeHtml + renderNotesHtml(data.notes);
 
             document.getElementById('wish-notes-preview-container').style.display = 'block';
         } else {
@@ -1439,7 +1526,8 @@ async function submitWish() {
         imageUrl: wishCrawledImageUrl,
         url: document.getElementById('wish-url').value.trim(),
         date: todayDate,
-        notes: wishCrawledNotesData
+        notes: wishCrawledNotesData,
+        seasons: wishCrawledSeasonsData
     };
 
     try {
@@ -1476,18 +1564,27 @@ async function fetchWishlist() {
                     ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
                     : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
                 const shortDate = w.date ? w.date.split('T')[0] : '';
+                const seasonTags = (w.seasons || []).map(s => {
+                    const style = seasonDisplay[s];
+                    if (style) {
+                        return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
+                    }
+                    return '';
+                }).join('');
+
                 return `
-                    <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
-                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                            <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
-                            ${imgTag}
-                            <div>
-                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
-                                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
-                            </div>
+                <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
+                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                        <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
+                        ${imgTag}
+                        <div>
+                            <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
+                            <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
+                            ${seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : ''} <!-- 💡 추가 -->
                         </div>
                     </div>
-                `;
+                </div>
+            `;
             }).join('');
         }
     } catch (e) {
@@ -1572,6 +1669,7 @@ async function startWishPromoteScan() {
                     body: JSON.stringify({
                         uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
                         imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate,
+                        seasons: wish.seasons,
                         lat: currentLat, lon: currentLon,
                         skipLog: true
                     })
@@ -2182,6 +2280,27 @@ function toggleAuthMode() {
         if (e.key === 'Enter') { e.preventDefault(); submitAuth(); }
     });
 });
+
+// 계절 필터 상태 업데이트
+function setSeasonFilter(season, btnElement) {
+    currentSeasonFilter = season;
+    document.querySelectorAll('.season-btn').forEach(btn => {
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-color)';
+    });
+    btnElement.style.background = 'var(--text-color)';
+    btnElement.style.color = 'var(--bg-color)';
+    applyWardrobeFilter();
+}
+
+// 텍스트 입력 및 필터 적용 트리거
+function applyWardrobeFilter() {
+    const searchInput = document.getElementById('wardrobe-search');
+    currentSearchQuery = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+    // 순서 꼬임 방지: 필터 작동 중일 때는 기본 동작들을 막거나 제어
+    renderWardrobeGrid();
+}
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출
 function refreshAfterLogChange() {

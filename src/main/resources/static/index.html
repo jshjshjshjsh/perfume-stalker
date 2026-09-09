@@ -144,6 +144,17 @@
             <div id="tab-sample" onclick="switchWardrobeTab('sample')" style="flex: 1; text-align: center; padding-bottom: 8px; cursor: pointer; font-size: 14px; color: #a1a1aa; border-bottom: 2px solid transparent;">Samples</div>
         </div>
     </div>
+    <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px; padding: 0 4px;">
+        <input type="text" id="wardrobe-search" placeholder="Search name, brand, or notes..." style="width: 100%; padding: 10px; border: 1px dashed var(--accent-color); border-radius: 4px; background: transparent; font-family: inherit; font-size: 12px; color: var(--text-color); outline: none;" oninput="applyWardrobeFilter()">
+
+        <div id="season-filters" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none;">
+            <span class="loc-btn season-btn active" style="background: var(--text-color); color: var(--bg-color);" onclick="setSeasonFilter('ALL', this)">All</span>
+            <span class="loc-btn season-btn" onclick="setSeasonFilter('SPRING', this)">🌸 봄</span>
+            <span class="loc-btn season-btn" onclick="setSeasonFilter('SUMMER', this)">☀️ 여름</span>
+            <span class="loc-btn season-btn" onclick="setSeasonFilter('FALL', this)">🍂 가을</span>
+            <span class="loc-btn season-btn" onclick="setSeasonFilter('WINTER', this)">❄️ 겨울</span>
+        </div>
+    </div>
     <div id="wardrobe-container" class="wardrobe-grid" style="margin-top: 15px;">
         <div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>
     </div>
@@ -298,7 +309,7 @@
                 <span style="font-size: 10px; color: var(--accent-color); font-weight: bold;">지금 온도</span>
             </div>
         </div>
-        <button id="register-submit-btn" class="scan-btn action-btn--primary" style="width: 100%; margin-top: 10px;">Register & Log</button>
+        <button id="register-submit-btn" class="scan-btn action-btn--primary" style="width: 100%; margin-top: 10px;">Register Only</button>
         <div id="reg-status" class="status-msg"></div>
     </div>
 </section>

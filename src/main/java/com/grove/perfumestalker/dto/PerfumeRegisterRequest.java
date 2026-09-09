@@ -18,4 +18,5 @@ public class PerfumeRegisterRequest {
     private Boolean skipLog;
     private Boolean isSample;
     private Boolean useCurrentTemp;
+    private List<String> seasons;
 }

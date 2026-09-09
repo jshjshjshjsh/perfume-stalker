@@ -67,7 +67,13 @@ public enum NotionWishlist {
     NOTES("NOTES", "multi_select") {
         @Override
         public Map<String, Object> formatValue(Object value) { return formatMultiSelect(parseNotesList(value)); }
-    };
+    },
+    SEASONS("SEASONS", "multi_select") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return formatMultiSelect(parseNotesList(value));
+        }
+    };;
 
     private final String columnName;
     private final String propertyType;

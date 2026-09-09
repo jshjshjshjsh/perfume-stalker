@@ -84,12 +84,14 @@ public class CrawlingService {
 
                         String imageUrl = extractImageUrl(page);
                         Map<String, Object> notesData = extractNotesData(page);
+                        List<String> seasonsData = extractSeasonsData(page);
 
                         log.info("✅ 크롤링 결과 - 이미지: [{}], 노트 추출 완료", !imageUrl.isEmpty() ? "성공" : "실패");
 
                         return Map.<String, Object>of(
                                 "imageUrl", imageUrl,
-                                "notes", notesData
+                                "notes", notesData,
+                                "seasons", seasonsData
                         );
                     }
                 })
@@ -102,7 +104,7 @@ public class CrawlingService {
                 )
                 .onErrorResume(e -> {
                     log.error("❌ 최종 크롤링 실패: {}", e.getMessage());
-                    return Mono.just(Map.of("imageUrl", "", "notes", Map.of()));
+                    return Mono.just(Map.of("imageUrl", "", "notes", Map.of(), "seasons", List.of()));
                 });
     }
 
@@ -148,6 +150,105 @@ public class CrawlingService {
                     "}");
         } catch (Exception e) {
             return Map.of("top", List.of(), "middle", List.of(), "base", List.of(), "general", List.of());
+        }
+    }
+
+    // 💡 2. 프레그런티카 WHEN TO WEAR 크롤링 엔진 (50% 비중 커트라인 적용)
+    @SuppressWarnings("unchecked")
+    private List<String> extractSeasonsData(Page page) {
+        try {
+            // ✅ (A) lazy-render 강제 트리거: 끝까지 스크롤 후 복귀
+            page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)");
+            page.waitForTimeout(1500);
+
+            Map<String, Object> raw = (Map<String, Object>) page.evaluate("""
+            () => {
+              const KEYS = ['winter','spring','summer','fall','autumn'];
+
+              // 자식 태그 제외, 본인 텍스트 노드만 추출
+              const own = el => Array.from(el.childNodes)
+                    .filter(n => n.nodeType === 3)
+                    .map(n => n.textContent).join('')
+                    .replace(/\\u00a0/g, ' ').trim().toLowerCase();
+
+              const num = s => {
+                if (!s) return NaN;
+                const m = s.replace(/,/g, '').match(/(\\d+(?:\\.\\d+)?)\\s*([km])?/i);
+                if (!m) return NaN;
+                let v = parseFloat(m[1]);
+                const u = (m[2] || '').toLowerCase();
+                if (u === 'k') v *= 1e3;
+                if (u === 'm') v *= 1e6;
+                return v;
+              };
+
+              const score = {};
+              document.querySelectorAll('span, div, p, b, strong').forEach(el => {
+                const t = own(el);
+                if (!KEYS.includes(t)) return;
+
+                let node = el, val = NaN;
+                // ✅ (B) 최대 5단계 조상까지 올라가며 수치 탐색
+                for (let i = 0; i < 5 && node.parentElement && isNaN(val); i++) {
+                  node = node.parentElement;
+
+                  // (1) 투표수 전용 span
+                  const n = node.querySelector('.tabular-nums');
+                  if (n) val = num(n.textContent);
+
+                  // (2) 퍼센트 텍스트
+                  if (isNaN(val)) {
+                    const m = (node.textContent || '').match(/(\\d+(?:\\.\\d+)?)\\s*%/);
+                    if (m) val = parseFloat(m[1]);
+                  }
+
+                  // (3) 막대그래프 inline width  ← Fragrantica 실제 케이스
+                  if (isNaN(val)) {
+                    const ws = Array.from(node.querySelectorAll('[style*="width"]'))
+                      .map(b => {
+                        const mm = (b.getAttribute('style') || '').match(/width:\\s*([\\d.]+)%/);
+                        return mm ? parseFloat(mm[1]) : NaN;
+                      })
+                      .filter(v => !isNaN(v) && v > 0);
+                    if (ws.length) val = Math.max(...ws);
+                  }
+
+                  // (4) 접근성 속성
+                  if (isNaN(val)) {
+                    const a = node.querySelector('[aria-valuenow]');
+                    if (a) val = parseFloat(a.getAttribute('aria-valuenow'));
+                  }
+                }
+
+                if (!isNaN(val) && val > 0) {
+                  const key = (t === 'autumn') ? 'fall' : t;
+                  score[key] = Math.max(score[key] || 0, val);
+                }
+              });
+              return score;
+            }
+        """);
+
+            log.info("🍂 계절 원시 점수: {}", raw);
+            if (raw == null || raw.isEmpty()) return List.of();
+
+            double max = raw.values().stream()
+                    .mapToDouble(v -> ((Number) v).doubleValue())
+                    .max().orElse(0);
+            if (max <= 0) return List.of();
+
+            List<String> result = new java.util.ArrayList<>();
+            for (String k : List.of("winter", "spring", "summer", "fall")) {
+                Number v = (Number) raw.get(k);
+                if (v != null && v.doubleValue() >= max * 0.6) {
+                    result.add(k.toUpperCase());
+                }
+            }
+            return result;
+
+        } catch (Exception e) {
+            log.warn("⚠️ 계절 추출 실패: {}", e.getMessage());
+            return List.of();
         }
     }
 }
