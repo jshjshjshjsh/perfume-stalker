@@ -117,6 +117,12 @@ public enum NotionPerfumeMaster {
             List<String> seasons = parseNotesList(value);
             return formatMultiSelect(seasons);
         }
+    },
+    SEASON_STATS("SEASON_STATS", "rich_text") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), List.of(Map.of("text", Map.of("content", String.valueOf(value)))));
+        }
     };
 
     private final String columnName;

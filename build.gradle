@@ -47,6 +47,8 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     implementation 'org.mindrot:jbcrypt:0.4'
 
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
     // 7. Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'io.projectreactor:reactor-test' // WebFlux 테스트용

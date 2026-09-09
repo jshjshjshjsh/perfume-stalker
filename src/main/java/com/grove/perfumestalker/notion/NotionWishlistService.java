@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +74,14 @@ public class NotionWishlistService {
                         notes.put("general", NotionParserUtils.extractMultiSelect(props, NotionWishlist.NOTES.getColumnName()));
                         List<String> seasons = NotionParserUtils.extractMultiSelect(props, NotionWishlist.SEASONS.getColumnName());
 
+                        String seasonStatsStr = NotionParserUtils.extractRichText(props, NotionWishlist.SEASON_STATS.getColumnName());
+                        Map<String, Integer> seasonStatsMap = Map.of();
+                        if (seasonStatsStr != null && !seasonStatsStr.isEmpty()) {
+                            try {
+                                seasonStatsMap = new ObjectMapper().readValue(seasonStatsStr, Map.class);
+                            } catch(Exception e) {}
+                        }
+
                         return new WishlistResponse(
                                 (String) page.get("id"),
                                 NotionParserUtils.extractPerfumeName(props, NotionWishlist.NAME.getColumnName()), // 형님 룰셋 적용
@@ -81,7 +90,8 @@ public class NotionWishlistService {
                                 NotionParserUtils.extractUrl(props, NotionWishlist.URL.getColumnName()),
                                 NotionParserUtils.extractDate(props, NotionWishlist.DATE.getColumnName()),
                                 notes,
-                                seasons
+                                seasons,
+                                seasonStatsMap
                         );
                     }).collect(java.util.stream.Collectors.toList());
                 });
@@ -102,6 +112,12 @@ public class NotionWishlistService {
             properties.put(NotionWishlist.DATE.getColumnName(), NotionWishlist.DATE.formatValue(request.date()));
         if (request.seasons() != null && !request.seasons().isEmpty())
             properties.put(NotionWishlist.SEASONS.getColumnName(), NotionWishlist.SEASONS.formatValue(request.seasons()));
+        if (request.seasonStats() != null && !request.seasonStats().isEmpty()) {
+            try {
+                String statsJson = new ObjectMapper().writeValueAsString(request.seasonStats());
+                properties.put(NotionWishlist.SEASON_STATS.getColumnName(), NotionWishlist.SEASON_STATS.formatValue(statsJson));
+            } catch(Exception e) {}
+        }
 
         properties.put(NotionWishlist.USER.getColumnName(), NotionWishlist.USER.formatValue(userPageId));
 

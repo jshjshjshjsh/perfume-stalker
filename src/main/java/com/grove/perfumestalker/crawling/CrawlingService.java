@@ -84,14 +84,20 @@ public class CrawlingService {
 
                         String imageUrl = extractImageUrl(page);
                         Map<String, Object> notesData = extractNotesData(page);
-                        List<String> seasonsData = extractSeasonsData(page);
+
+                        Map<String, Object> seasonDataMap = extractSeasonsData(page);
+                        @SuppressWarnings("unchecked")
+                        List<String> seasonsData = (List<String>) seasonDataMap.getOrDefault("tags", List.of());
+                        @SuppressWarnings("unchecked")
+                        Map<String, Integer> seasonStatsData = (Map<String, Integer>) seasonDataMap.getOrDefault("stats", Map.of());
 
                         log.info("✅ 크롤링 결과 - 이미지: [{}], 노트 추출 완료", !imageUrl.isEmpty() ? "성공" : "실패");
 
                         return Map.<String, Object>of(
                                 "imageUrl", imageUrl,
                                 "notes", notesData,
-                                "seasons", seasonsData
+                                "seasons", seasonsData,
+                                "seasonStats", seasonStatsData
                         );
                     }
                 })
@@ -154,8 +160,9 @@ public class CrawlingService {
     }
 
     // 💡 2. 프레그런티카 WHEN TO WEAR 크롤링 엔진 (50% 비중 커트라인 적용)
+    // 💡 2. 프레그런티카 WHEN TO WEAR 크롤링 엔진 (50% 비중 커트라인 및 비율 스탯 반환)
     @SuppressWarnings("unchecked")
-    private List<String> extractSeasonsData(Page page) {
+    private Map<String, Object> extractSeasonsData(Page page) {
         try {
             // ✅ (A) lazy-render 강제 트리거: 끝까지 스크롤 후 복귀
             page.evaluate("() => window.scrollTo(0, document.body.scrollHeight)");
@@ -202,7 +209,7 @@ public class CrawlingService {
                     if (m) val = parseFloat(m[1]);
                   }
 
-                  // (3) 막대그래프 inline width  ← Fragrantica 실제 케이스
+                  // (3) 막대그래프 inline width
                   if (isNaN(val)) {
                     const ws = Array.from(node.querySelectorAll('[style*="width"]'))
                       .map(b => {
@@ -227,28 +234,36 @@ public class CrawlingService {
               });
               return score;
             }
-        """);
+            """);
 
             log.info("🍂 계절 원시 점수: {}", raw);
-            if (raw == null || raw.isEmpty()) return List.of();
+            if (raw == null || raw.isEmpty()) return Map.of("tags", List.of(), "stats", Map.of());
 
             double max = raw.values().stream()
                     .mapToDouble(v -> ((Number) v).doubleValue())
                     .max().orElse(0);
-            if (max <= 0) return List.of();
 
-            List<String> result = new java.util.ArrayList<>();
-            for (String k : List.of("winter", "spring", "summer", "fall")) {
-                Number v = (Number) raw.get(k);
-                if (v != null && v.doubleValue() >= max * 0.6) {
-                    result.add(k.toUpperCase());
+            List<String> tags = new java.util.ArrayList<>();
+            Map<String, Integer> stats = new java.util.HashMap<>();
+
+            if (max > 0) {
+                for (String k : List.of("winter", "spring", "summer", "fall")) {
+                    Number v = (Number) raw.get(k);
+                    if (v != null && v.doubleValue() > 0) {
+                        String upperKey = k.toUpperCase();
+                        stats.put(upperKey, v.intValue()); // 💡 스탯 맵에 저장
+
+                        if (v.doubleValue() >= max * 0.5) { // 👑 50% 이상이면 태그 뱃지로 인정
+                            tags.add(upperKey);
+                        }
+                    }
                 }
             }
-            return result;
+            return Map.of("tags", tags, "stats", stats);
 
         } catch (Exception e) {
             log.warn("⚠️ 계절 추출 실패: {}", e.getMessage());
-            return List.of();
+            return Map.of("tags", List.of(), "stats", Map.of());
         }
     }
 }

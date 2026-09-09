@@ -48,6 +48,9 @@ const seasonDisplay = {
 let crawledSeasonsData = [];
 let wishCrawledSeasonsData = [];
 
+let crawledSeasonStats = {};      // 💡 본품 크롤링 스탯
+let wishCrawledSeasonStats = {};  // 💡 위시리스트 크롤링 스탯
+
 async function fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('jwt_token');
     const headers = {
@@ -1150,6 +1153,7 @@ async function crawlUrl() {
             crawledNotesData = data.notes;
             crawledImageUrl = data.imageUrl;
             crawledSeasonsData = data.seasons || [];
+            crawledSeasonStats = data.seasonStats || {};
 
             if (!data.notes || Object.keys(data.notes).length === 0) {
                 terminal.classList.add('error');
@@ -1260,7 +1264,8 @@ document.getElementById('register-submit-btn').addEventListener('click', async (
                 isSample: currentIsSample,
                 skipLog: !autoLog,
                 useCurrentTemp: document.getElementById('reg-use-current-temp')?.checked || false,
-                seasons: crawledSeasonsData
+                seasons: crawledSeasonsData,
+                seasonStats: crawledSeasonStats
             })
         });
 
@@ -1478,6 +1483,7 @@ async function crawlWishUrl() {
             wishCrawledNotesData = data.notes;
             wishCrawledImageUrl = data.imageUrl;
             wishCrawledSeasonsData = data.seasons || [];
+            wishCrawledSeasonStats = data.seasonStats || {};
             document.getElementById('wish-img').value = data.imageUrl;
 
             step.innerHTML = '> [SUCCESS] Notes extracted.';
@@ -1522,7 +1528,8 @@ async function submitWish() {
         url: document.getElementById('wish-url').value.trim(),
         date: todayDate,
         notes: wishCrawledNotesData,
-        seasons: wishCrawledSeasonsData
+        seasons: wishCrawledSeasonsData,
+        seasonStats: wishCrawledSeasonStats
     };
 
     try {
@@ -1665,6 +1672,7 @@ async function startWishPromoteScan() {
                         uid: uid, name: wish.name, brand: wish.brand, url: wish.url,
                         imageUrl: wish.imageUrl, notes: wish.notes, date: todayDate,
                         seasons: wish.seasons,
+                        seasonStats: wish.seasonStats,
                         lat: currentLat, lon: currentLon,
                         skipLog: true
                     })

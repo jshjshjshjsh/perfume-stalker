@@ -73,7 +73,13 @@ public enum NotionWishlist {
         public Map<String, Object> formatValue(Object value) {
             return formatMultiSelect(parseNotesList(value));
         }
-    };;
+    },
+    SEASON_STATS("SEASON_STATS", "rich_text") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of(getPropertyType(), List.of(Map.of("text", Map.of("content", String.valueOf(value)))));
+        }
+    };
 
     private final String columnName;
     private final String propertyType;

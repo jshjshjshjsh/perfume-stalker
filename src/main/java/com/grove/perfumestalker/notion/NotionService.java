@@ -1,5 +1,6 @@
 package com.grove.perfumestalker.notion;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.grove.perfumestalker.dto.PerfumeRegisterRequest;
 import com.grove.perfumestalker.enums.NotionPerfumeMaster;
 import com.grove.perfumestalker.enums.NotionUsageLog;
@@ -89,6 +90,14 @@ public class NotionService {
         }
         if (req.getSeasons() != null && !req.getSeasons().isEmpty()) {
             properties.put(NotionPerfumeMaster.SEASONS.getColumnName(), NotionPerfumeMaster.SEASONS.formatValue(req.getSeasons()));
+        }
+        if (req.getSeasonStats() != null && !req.getSeasonStats().isEmpty()) {
+            try {
+                String statsJson = new ObjectMapper().writeValueAsString(req.getSeasonStats());
+                properties.put(NotionPerfumeMaster.SEASON_STATS.getColumnName(), NotionPerfumeMaster.SEASON_STATS.formatValue(statsJson));
+            } catch(Exception e) {
+                log.error("seasonStats JSON 직렬화 실패", e);
+            }
         }
 
         if (req.getImageUrl() != null && !req.getImageUrl().isEmpty()) {
@@ -266,12 +275,15 @@ public class NotionService {
                         List<String> generalNotes = NotionParserUtils.extractMultiSelect(props, "NOTES");
                         List<String> seasons = NotionParserUtils.extractMultiSelect(props, NotionPerfumeMaster.SEASONS.getColumnName());
 
+                        String seasonStatsStr = NotionParserUtils.extractRichText(props, NotionPerfumeMaster.SEASON_STATS.getColumnName());
+
                         // 프론트엔드가 편하게 읽도록 Map으로 압축
                         Map<String, Object> notesMap = new java.util.HashMap<>();
                         if (!topNotes.isEmpty()) notesMap.put("top", topNotes);
                         if (!middleNotes.isEmpty()) notesMap.put("middle", middleNotes);
                         if (!baseNotes.isEmpty()) notesMap.put("base", baseNotes);
                         if (!generalNotes.isEmpty()) notesMap.put("general", generalNotes);
+
 
                         Map<String, Object> dto = new java.util.HashMap<>();
                         dto.put("id", id);
@@ -282,6 +294,18 @@ public class NotionService {
                         dto.put("date", date);
                         dto.put("isSample", isSample);
                         dto.put("seasons", seasons);
+
+                        if (seasonStatsStr != null && !seasonStatsStr.isEmpty()) {
+                            try {
+                                Map<String, Integer> statsMap = new ObjectMapper().readValue(seasonStatsStr, Map.class);
+                                dto.put("seasonStats", statsMap);
+                            } catch(Exception e) {
+                                dto.put("seasonStats", Map.of());
+                            }
+                        } else {
+                            dto.put("seasonStats", Map.of());
+                        }
+
                         return dto;
                     }).collect(Collectors.toList());
                 });

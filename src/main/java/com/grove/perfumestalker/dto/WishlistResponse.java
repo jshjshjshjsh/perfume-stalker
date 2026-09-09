@@ -11,5 +11,6 @@ public record WishlistResponse(
         String url,
         String date,
         Map<String, List<String>> notes,
-        List<String> seasons
+        List<String> seasons,
+        Map<String, Integer> seasonStats
 ) {}
