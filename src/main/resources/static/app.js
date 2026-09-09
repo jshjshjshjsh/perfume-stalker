@@ -718,9 +718,10 @@ function renderWardrobeGrid() {
 
     // 💡 3. 계절 스마트 필터 (구형 노트 필터링 폐기, 완벽한 seasons 데이터 기반 필터링)
     if (currentSeasonFilter !== 'ALL') {
-        filteredData = filteredData.filter(p => {
-            return p.seasons && p.seasons.includes(currentSeasonFilter);
-        });
+        filteredData = filteredData.filter(p =>
+            getRecommendedSeasons(p.seasons, p.seasonStats ?? p.season_stats)
+                .has(currentSeasonFilter)
+        );
     }
 
     document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
@@ -736,7 +737,7 @@ function renderWardrobeGrid() {
         const notesPreview = parseNotesPreview(p.notes);
 
         // 기존 뱃지/바 생성 로직 지우고 통합 함수로 교체
-        const seasonUI = generateSeasonUI(p.seasons);
+        const seasonUI = generateSeasonUI(p.seasons, p.seasonStats ?? p.season_stats);
 
         return `
             <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
@@ -764,15 +765,8 @@ function switchWardrobeTab(tab) {
     if (searchInput) searchInput.value = '';
 
     currentSeasonFilter = 'ALL';
-    document.querySelectorAll('.season-btn').forEach(btn => {
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--text-color)';
-    });
-    const allBtn = document.querySelector('.season-btn'); // 첫 번째 'All' 버튼
-    if (allBtn) {
-        allBtn.style.background = 'var(--text-color)';
-        allBtn.style.color = 'var(--bg-color)';
-    }
+    document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.season-btn')?.classList.add('active');
 
     currentWardrobeTab = tab;
     const btnBottle = document.getElementById('tab-bottle');
@@ -892,6 +886,10 @@ function openPerfumeDetail(perfumeId, from = 'wardrobe') {
         imgEl.style.display = 'none';
         boxEl.style.display = 'flex';
     }
+
+    document.getElementById('detail-notes-container').innerHTML =
+        generateSeasonUI(p.seasons, p.seasonStats ?? p.season_stats, { size: 'lg', force: 'bar' })
+        + renderNotesHtml(p.notes);
 
     document.getElementById('detail-notes-container').innerHTML = renderNotesHtml(p.notes);
     switchView('perfume-detail', null);
@@ -1164,13 +1162,7 @@ async function crawlUrl() {
                 regStatus.innerText = "[SUCCESS] Data auto-filled.";
 
                 // 화면에 계절 뱃지도 예쁘게 뿌려줌 (색상 및 한글 적용)
-                const seasonBadges = crawledSeasonsData.map(s => {
-                    const style = seasonDisplay[s];
-                    if (style) {
-                        return `<span class="note-chip" style="color: ${style.color}; border-color: ${style.border}; background-color: ${style.bg}; font-weight: bold;">${style.text}</span>`;
-                    }
-                    return '';
-                }).join('');
+                const seasonBadges = generateSeasonUI(crawledSeasonsData, crawledSeasonStats, { force: 'tag' });
 
                 previewBox.innerHTML = (seasonBadges ? `<div style="margin-bottom:10px;">${seasonBadges}</div>` : '') + renderNotesHtml(data.notes);
                 previewContainer.style.display = 'block';
@@ -1489,11 +1481,7 @@ async function crawlWishUrl() {
             step.innerHTML = '> [SUCCESS] Notes extracted.';
 
             // 💡 계절 뱃지 생성 및 렌더링
-            const seasonBadges = wishCrawledSeasonsData.map(s => {
-                const style = seasonDisplay[s];
-                if (style) return `<span class="note-chip" style="color: ${style.color}; border-color: ${style.border}; background-color: ${style.bg}; font-weight: bold;">${style.text}</span>`;
-                return '';
-            }).join('');
+            const seasonBadges = generateSeasonUI(crawledSeasonsData, crawledSeasonStats, { force: 'tag' });
 
             const badgeHtml = generateWishlistBadgeHtml(data.notes);
             document.getElementById('wish-notes-preview-box').innerHTML = (seasonBadges ? `<div style="margin-bottom:10px;">${seasonBadges}</div>` : '') + badgeHtml + renderNotesHtml(data.notes);
@@ -1566,13 +1554,7 @@ async function fetchWishlist() {
                     ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
                     : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
                 const shortDate = w.date ? w.date.split('T')[0] : '';
-                const seasonTags = (w.seasons || []).map(s => {
-                    const style = seasonDisplay[s];
-                    if (style) {
-                        return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
-                    }
-                    return '';
-                }).join('');
+                const seasonTags = generateSeasonUI(w.seasons, w.seasonStats ?? w.season_stats);
 
                 return `
                 <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
@@ -1582,7 +1564,7 @@ async function fetchWishlist() {
                         <div>
                             <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
                             <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
-                            ${seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : ''} <!-- 💡 추가 -->
+                            ${seasonTags}
                         </div>
                     </div>
                 </div>
@@ -2310,12 +2292,8 @@ function toggleAuthMode() {
 // 계절 필터 상태 업데이트
 function setSeasonFilter(season, btnElement) {
     currentSeasonFilter = season;
-    document.querySelectorAll('.season-btn').forEach(btn => {
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--text-color)';
-    });
-    btnElement.style.background = 'var(--text-color)';
-    btnElement.style.color = 'var(--bg-color)';
+    document.querySelectorAll('.season-btn').forEach(b => b.classList.remove('active'));
+    if (btnElement) btnElement.classList.add('active');
     applyWardrobeFilter();
 }
 
@@ -2328,56 +2306,129 @@ function applyWardrobeFilter() {
     renderWardrobeGrid();
 }
 
-// 💡 계절 컬러 바(Gradient Bar) 생성기
-function generateSeasonBar(seasons) {
-    if (!seasons || seasons.length === 0) return '';
 
-    // 봄, 여름, 가을, 겨울 순서 고정 및 색상 매핑
-    const colorMap = { 'SPRING': '#ec4899', 'SUMMER': '#10b981', 'FALL': '#d97706', 'WINTER': '#0ea5e9' };
-    const order = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
-    const sorted = [...seasons].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-    const colors = sorted.map(s => colorMap[s]).filter(Boolean);
+/* ========================================
+   SEASON METER
+======================================== */
+const SEASON_ORDER  = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
+const SEASON_CUTOFF = 0.5;                     // 최댓값의 50% 이상 → 추천
 
-    if (colors.length === 1) {
-        return `<div style="height: 5px; width: 150px; background-color: ${colors[0]}; border-radius: 2px; margin-bottom: 5px;"></div>`;
-    } else if (colors.length > 1) {
-        return `<div style="height: 5px; width: 150px; background: linear-gradient(to right, ${colors.join(', ')}); border-radius: 2px; margin-bottom: 5px;"></div>`;
-    }
-    return '';
+const SEASON_META = {
+    SPRING: { ko: '봄',   icon: '🌸', cls: 'is-spring' },
+    SUMMER: { ko: '여름', icon: '☀️', cls: 'is-summer' },
+    FALL:   { ko: '가을', icon: '🍂', cls: 'is-fall'   },
+    WINTER: { ko: '겨울', icon: '❄️', cls: 'is-winter' }
+};
+
+function fmtVotes(n) {
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
 }
 
-// 💡 계절 UI 통합 생성기 (설정에 따라 뱃지 또는 컬러 바 반환)
-function generateSeasonUI(seasons) {
-    if (!seasons || seasons.length === 0) return '';
+/** season_stats 정규화 (문자열/객체/AUTUMN/음수 모두 방어) */
+function parseSeasonStats(raw) {
+    if (!raw) return null;
+    let obj = raw;
+    if (typeof raw === 'string') {
+        try { obj = JSON.parse(raw); } catch (e) { return null; }
+    }
+    if (typeof obj !== 'object' || Array.isArray(obj)) return null;
 
-    // 로컬 스토리지에서 세팅 값 읽기 (기본값: false = 뱃지 모드)
-    const useBar = localStorage.getItem('season_style_bar') === 'true';
+    const out = {};
+    Object.keys(obj).forEach(k => {
+        let key = String(k).trim().toUpperCase();
+        if (key === 'AUTUMN') key = 'FALL';
+        if (!SEASON_META[key]) return;
+        const v = Number(obj[k]);
+        if (Number.isFinite(v) && v > 0) out[key] = (out[key] || 0) + v;
+    });
+    return Object.keys(out).length ? out : null;
+}
+
+/** stats 우선, 없으면 seasons 배열 균등 폴백 → { val, even } */
+function resolveSeasonValues(seasons, stats) {
+    const parsed = parseSeasonStats(stats);
+    if (parsed) return { val: parsed, even: false };
+
+    const val = {};
+    (seasons || []).forEach(s => {
+        let k = String(s).trim().toUpperCase();
+        if (k === 'AUTUMN') k = 'FALL';
+        if (SEASON_META[k]) val[k] = 1;
+    });
+    return { val, even: true };
+}
+
+/** 추천 계절 Set (필터·정렬 공용) */
+function getRecommendedSeasons(seasons, stats) {
+    const { val } = resolveSeasonValues(seasons, stats);
+    const keys = Object.keys(val);
+    if (!keys.length) return new Set();
+    const max = Math.max(...keys.map(k => val[k]));
+    return new Set(keys.filter(k => val[k] / max >= SEASON_CUTOFF));
+}
+
+/**
+ * 계절 UI 생성 (바 모드 / 배지 모드 자동 분기)
+ * @param {string[]} seasons
+ * @param {object|string} [stats]  season_stats
+ * @param {object} [opts] { size:'lg', force:'bar'|'tag' }
+ */
+function generateSeasonUI(seasons, stats, opts) {
+    const o = opts || {};
+    const { val, even } = resolveSeasonValues(seasons, stats);
+
+    const keys = Object.keys(val);
+    if (!keys.length) return '';
+
+    const total = keys.reduce((s, k) => s + val[k], 0);
+    const max   = Math.max(...keys.map(k => val[k]));
+    if (total <= 0 || max <= 0) return '';
+
+    const pass  = k => (val[k] || 0) / max >= SEASON_CUTOFF;
+    const pctOf = k => (val[k] || 0) / total * 100;
+
+    const useBar = o.force
+        ? o.force === 'bar'
+        : localStorage.getItem('season_style_bar') === 'true';
+
+    let inner = '';
 
     if (useBar) {
-        // 1. 형님이 커스텀하신 150px 컬러 바 모드
-        const colorMap = { 'SPRING': '#ec4899', 'SUMMER': '#10b981', 'FALL': '#d97706', 'WINTER': '#0ea5e9' };
-        const order = ['SPRING', 'SUMMER', 'FALL', 'WINTER'];
-        const sorted = [...seasons].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-        const colors = sorted.map(s => colorMap[s]).filter(Boolean);
+        const MIN_GROW = 3.5;   // 데이터 없는 계절의 잔여 슬롯
+        const FLOOR    = 6;     // 미세 비중도 최소한 보이게
 
-        if (colors.length === 1) {
-            return `<div style="height: 5px; width: 150px; background-color: ${colors[0]}; border-radius: 2px; margin: 4px 0 5px 0;"></div>`;
-        } else if (colors.length > 1) {
-            return `<div style="height: 5px; width: 150px; background: linear-gradient(to right, ${colors.join(', ')}); border-radius: 2px; margin: 4px 0 5px 0;"></div>`;
-        }
-    } else {
-        // 2. 기본 뱃지 모드
-        const seasonTags = seasons.map(s => {
-            const style = seasonDisplay[s];
-            if (style) {
-                return `<span style="display:inline-block; font-size:9px; padding:2px 5px; margin-right:4px; margin-bottom:4px; border-radius:2px; border:1px solid ${style.border}; color:${style.color}; background-color:${style.bg}; font-weight:bold;">${style.text}</span>`;
+        const segs = SEASON_ORDER.map(k => {
+            const m = SEASON_META[k];
+            const v = val[k] || 0;
+
+            if (v <= 0) {
+                return `<span class="season-bar__seg is-off" style="flex-grow:${MIN_GROW}" title="${m.ko} · 데이터 없음"></span>`;
             }
-            return '';
+            const pct  = pctOf(k);
+            const grow = Math.max(pct, FLOOR);
+            const tip  = even ? m.ko : `${m.ko} · ${pct.toFixed(1)}% (${fmtVotes(val[k])}표)`;
+
+            return `<span class="season-bar__seg ${m.cls}${pass(k) ? '' : ' is-weak'}" style="flex-grow:${grow.toFixed(2)}" title="${tip}"></span>`;
         }).join('');
-        return seasonTags ? `<div style="margin-top:2px;">${seasonTags}</div>` : '';
+
+        const label = SEASON_ORDER.filter(pass).map(k => SEASON_META[k].ko).join(', ');
+        inner = `<div class="season-bar" role="img" aria-label="추천 계절: ${label || '없음'}">${segs}</div>`;
+
+    } else {
+        const tags = SEASON_ORDER.filter(pass).map(k => {
+            const m   = SEASON_META[k];
+            const top = val[k] >= max ? ' is-top' : '';
+            const pct = even ? '' : `<span class="season-tag__pct">${Math.round(pctOf(k))}%</span>`;
+            return `<span class="season-tag ${m.cls}${top}">${m.icon} ${m.ko}${pct}</span>`;
+        }).join('');
+        if (!tags) return '';
+        inner = `<div class="season-tags">${tags}</div>`;
     }
-    return '';
+
+    return `<div class="season-meter${o.size === 'lg' ? ' season-meter--lg' : ''}">${inner}</div>`;
 }
+
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출
 function refreshAfterLogChange() {

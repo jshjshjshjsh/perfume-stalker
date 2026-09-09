@@ -681,3 +681,107 @@ button.action-btn {
 .settings-actions { margin-top: 22px; }
 .settings-actions .action-btn { width: 100%; }
 .settings-actions .status-msg { margin-top: 10px; text-align: center; }
+
+
+/* ========================================
+   SEASON METER
+======================================== */
+:root {
+    --season-spring: #ec4899;
+    --season-summer: #10b981;
+    --season-fall:   #d97706;
+    --season-winter: #0ea5e9;
+    --season-off:    #e0e0dc;
+    --season-bar-h:  5px;
+    --season-bar-w:  150px;
+}
+
+.is-spring { --seg: var(--season-spring); }
+.is-summer { --seg: var(--season-summer); }
+.is-fall   { --seg: var(--season-fall);   }
+.is-winter { --seg: var(--season-winter); }
+
+.season-meter { margin: 4px 0 5px; }
+
+/* --- 분절 바 --- */
+.season-bar {
+    display: flex;
+    align-items: stretch;
+    gap: 3px;                       /* 🔑 혼색 차단 */
+    height: var(--season-bar-h);
+    width: var(--season-bar-w);
+    max-width: 100%;
+}
+
+.season-bar__seg {
+    flex: 0 1 auto;
+    min-width: 4px;
+    border-radius: 99px;
+    background: var(--seg, var(--season-off));
+    transition: flex-grow .35s cubic-bezier(.4,0,.2,1), opacity .2s ease;
+}
+
+.season-bar__seg.is-weak { opacity: .24; }
+.season-bar__seg.is-off  { --seg: var(--season-off); opacity: .6; }
+
+/* --- 칩 --- */
+.season-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+
+.season-tag {
+    display: inline-block;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 2px;
+    white-space: nowrap;
+    color: var(--seg);
+    background: color-mix(in srgb, var(--seg) 5%, transparent);
+    border: 1px solid color-mix(in srgb, var(--seg) 30%, transparent);
+}
+.season-tag__pct { font-weight: bold; opacity: .6; margin-left: 2px; }
+
+/* --- 상세뷰 확대 --- */
+.season-meter--lg { --season-bar-h: 9px; --season-bar-w: 100%; }
+.season-meter--lg .season-tag { font-size: 10px; padding: 4px 8px; }
+
+/* ========================================
+   SEASON FILTER CHIPS
+======================================== */
+#season-filters::-webkit-scrollbar { display: none; }   /* iOS 대응 */
+
+.season-btn.active {
+    color: var(--bg-color);
+    background: var(--text-color);
+    border-color: var(--text-color);
+}
+.season-btn.is-spring.active { background: var(--season-spring); border-color: var(--season-spring); color: #fff; }
+.season-btn.is-summer.active { background: var(--season-summer); border-color: var(--season-summer); color: #fff; }
+.season-btn.is-fall.active   { background: var(--season-fall);   border-color: var(--season-fall);   color: #fff; }
+.season-btn.is-winter.active { background: var(--season-winter); border-color: var(--season-winter); color: #fff; }
+
+
+.season-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0 10px;
+}
+
+.season-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.season-badge.spring { background: #e91e8c; }  /* 봄   */
+.season-badge.summer { background: #cddc39; color: #4a4a00; }  /* 여름 */
+.season-badge.autumn { background: #f57c00; }  /* 가을 */
+.season-badge.winter { background: #1e88e5; }  /* 겨울 */

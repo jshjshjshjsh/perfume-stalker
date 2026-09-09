@@ -148,11 +148,11 @@
         <input type="text" id="wardrobe-search" placeholder="Search name, brand, or notes..." style="width: 100%; padding: 10px; border: 1px dashed var(--accent-color); border-radius: 4px; background: transparent; font-family: inherit; font-size: 12px; color: var(--text-color); outline: none;" oninput="applyWardrobeFilter()">
 
         <div id="season-filters" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 5px; scrollbar-width: none;">
-            <span class="loc-btn season-btn active" style="background: var(--text-color); color: var(--bg-color);" onclick="setSeasonFilter('ALL', this)">All</span>
-            <span class="loc-btn season-btn" onclick="setSeasonFilter('SPRING', this)">🌸 봄</span>
-            <span class="loc-btn season-btn" onclick="setSeasonFilter('SUMMER', this)">☀️ 여름</span>
-            <span class="loc-btn season-btn" onclick="setSeasonFilter('FALL', this)">🍂 가을</span>
-            <span class="loc-btn season-btn" onclick="setSeasonFilter('WINTER', this)">❄️ 겨울</span>
+            <button type="button" class="loc-btn season-btn active" onclick="setSeasonFilter('ALL', this)">All</button>
+            <button type="button" class="loc-btn season-btn is-spring" onclick="setSeasonFilter('SPRING', this)">🌸 봄</button>
+            <button type="button" class="loc-btn season-btn is-summer" onclick="setSeasonFilter('SUMMER', this)">☀️ 여름</button>
+            <button type="button" class="loc-btn season-btn is-fall"   onclick="setSeasonFilter('FALL', this)">🍂 가을</button>
+            <button type="button" class="loc-btn season-btn is-winter" onclick="setSeasonFilter('WINTER', this)">❄️ 겨울</button>
         </div>
     </div>
     <div id="wardrobe-container" class="wardrobe-grid" style="margin-top: 15px;">
