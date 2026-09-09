@@ -188,6 +188,11 @@ async function submitAuth() {
         }
     } catch (e) {
         statusMsg.innerText = "[ERROR] Network failure.";
+    } finally {
+        if (!btn.classList.contains('success')) {
+            btn.innerText = btn.dataset.label || "LOGIN";   // ✅ 모드에 맞게
+            btn.disabled = false;
+        }
     }
 }
 
@@ -2041,6 +2046,35 @@ function openDetailFromLog(pageId) {
     const cur = document.querySelector('.view-section.active')?.id.replace('view-', '') || 'main';
     openPerfumeDetail(pid, cur);
 }
+
+function setAuthMode(mode) {
+    const isSignup = mode === 'signup';
+    const btn    = document.getElementById('auth-submit-btn');
+    const toggle = document.getElementById('auth-toggle-btn');
+
+    document.getElementById('signup-fields').style.display = isSignup ? 'block' : 'none';
+
+    btn.dataset.label = isSignup ? 'SIGN UP' : 'LOGIN';
+    btn.innerText = btn.dataset.label;
+    toggle.innerText = isSignup ? 'Switch to Login' : 'Switch to Sign Up';
+
+    btn.disabled = false;
+    btn.classList.remove('success');
+    document.getElementById('auth-status').innerText = '';
+}
+
+function toggleAuthMode() {
+    const isSignup = document.getElementById('signup-fields').style.display !== 'none';
+    setAuthMode(isSignup ? 'login' : 'signup');
+}
+
+['auth-id', 'auth-pw', 'auth-name', 'auth-loc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); submitAuth(); }
+    });
+});
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출
 function refreshAfterLogChange() {

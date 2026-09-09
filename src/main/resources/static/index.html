@@ -40,7 +40,7 @@
         <div id="signup-fields" style="display: none;">
             <div class="form-group">
                 <label>Name</label>
-                <input type="text" id="auth-name" placeholder="e.g. 조승현">
+                <input type="text" id="auth-name" placeholder="e.g. 이름">
             </div>
             <div class="form-group">
                 <label>Default Location</label>
@@ -52,7 +52,10 @@
             </div>
         </div>
 
-        <button id="auth-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitAuth()">LOGIN</button>
+        <button type="button" id="auth-submit-btn"
+                class="action-btn action-btn--primary"
+                data-label="LOGIN"
+                style="margin-top: 8px;" onclick="submitAuth()">LOGIN</button>
         <div id="auth-status" class="status-msg"></div>
 
         <div class="manual-trigger-container" style="margin: 20px auto 0 auto;">
