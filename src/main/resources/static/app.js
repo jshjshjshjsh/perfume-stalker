@@ -519,15 +519,27 @@ async function deleteLog() {
     }
 }
 
-// 수동 기록
+// 수동 기록 폼 - 향수 리스트 불러오기 (본품 -> 샘플 순서 및 꼬리표 적용)
 async function fetchPerfumeList() {
     try {
         const res = await fetchWithAuth("/api/v1/perfumes/list");
         if (res.ok) {
             const perfumes = await res.json();
+
+            // 1. 본품과 샘플 분리 (백엔드에서 이미 옷장 순서대로 내려오므로 상대적 순서는 자동 유지됨)
+            const bottles = perfumes.filter(p => !p.isSample);
+            const samples = perfumes.filter(p => p.isSample);
+
+            // 2. 본품 먼저, 그 다음 샘플 순으로 배열 합치기
+            const sortedPerfumes = [...bottles, ...samples];
+
             const selectBox = document.getElementById('manual-perfume-select');
             selectBox.innerHTML = '<option value="">-- Choose a perfume --</option>' +
-                perfumes.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                sortedPerfumes.map(p => {
+                    // 3. 샘플일 경우 이름 뒤에 (샘플) 라벨 추가
+                    const label = p.isSample ? ' (샘플)' : '';
+                    return `<option value="${p.id}">${p.name}${label}</option>`;
+                }).join('');
         }
     } catch (e) {
         console.error("Perfume list load failed");
