@@ -60,7 +60,7 @@ body {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 }
-.nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
+.nav-item { flex: 1; text-align: center; font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
 .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
 
 /* --- Widgets & Headers --- */
@@ -183,6 +183,17 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
     --surface: color-mix(in srgb, var(--success-color) 7%, var(--bg-color));
     --surface-on: var(--success-color);
     --surface-down: color-mix(in srgb, var(--success-color) 85%, #000000);
+}
+
+/* 취소: 분홍 유지, 반전 없음 */
+.loc-btn--danger-soft {
+    --ink:          color-mix(in srgb, var(--danger-color) 88%, transparent);
+    --ink-on:       var(--danger-color);
+    --surface:      color-mix(in srgb, var(--danger-color) 7%,  var(--bg-color));
+    --surface-on:   color-mix(in srgb, var(--danger-color) 13%, var(--bg-color));
+    --surface-down: color-mix(in srgb, var(--danger-color) 20%, var(--bg-color));
+    --line:         color-mix(in srgb, var(--danger-color) 28%, transparent);
+    --line-on:      color-mix(in srgb, var(--danger-color) 45%, transparent);
 }
 
 /* 보조: cancel, back */
@@ -991,3 +1002,15 @@ button.action-btn {
     flex-shrink: 0;
 }
 
+.loc-btn--ico::before {
+    content: attr(data-ico);
+
+    /* 🔑 심볼 폰트 명시 — 폴백 예측 가능하게 */
+    font-family: 'Apple Symbols', 'Segoe UI Symbol', sans-serif;
+    font-size: .95em;
+    line-height: 1;
+    opacity: .55;
+
+    flex-shrink: 0;
+    display: block;
+}

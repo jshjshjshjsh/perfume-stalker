@@ -249,8 +249,8 @@ async function fetchRealWeather(lat = null, lon = null) {
             recWeatherData = { weather: data.weather, temp: parseFloat(data.temp) };
             updateRecommendation();
 
-            let buttonsHtml = `<button type="button" class="loc-btn loc-btn--sm" onclick="updateLocation()">update</button>`;
-            if (lat !== null) buttonsHtml += `<button type="button" class="loc-btn loc-btn--sm" onclick="resetLocation()">default</button>`;
+            let buttonsHtml = `<button type="button" class="loc-btn loc-btn--sm" onclick="updateLocation()">◎ locate</button>`;
+            if (lat !== null) buttonsHtml += `<button type="button" class="loc-btn loc-btn--sm" onclick="resetLocation()">⌂ my city</button>`;
 
             const weatherIcon = getWeatherIcon(data.weather);
             const displayTemp = parseFloat(data.temp).toFixed(1);
@@ -1655,7 +1655,7 @@ function openWishDetail(wishId) {
     document.getElementById('wish-detail-notes-container').innerHTML = renderNotesHtml(w.notes);
     const btn = document.getElementById('wish-promote-btn');
     btn.classList.remove('scanning', 'success');
-    btn.innerText = "Purchase & Register (NFC)";
+    btn.innerText = "→ MY PERFUMES (NFC)";
     document.getElementById('wish-promote-status').innerText = "";
 
     switchView('wish-detail', null);
@@ -1675,7 +1675,7 @@ async function startWishPromoteScan() {
     if (btn.classList.contains('scanning')) {
         if (wishPromoteAbort) wishPromoteAbort.abort();
         btn.classList.remove('scanning');
-        btn.innerText = "Purchase & Register (NFC)";
+        btn.innerText = "→ MY PERFUMES (NFC)";
         statusDiv.innerText = "";
         return;
     }
@@ -1724,18 +1724,18 @@ async function startWishPromoteScan() {
                     }, 2000);
                 } else {
                     statusDiv.innerText = `[ERROR] Registration failed.`;
-                    btn.innerText = "Purchase & Register (NFC)";
+                    btn.innerText = "→ MY PERFUMES (NFC)";
                 }
             } catch (e) {
                 statusDiv.innerText = "[ERROR] Network failure.";
-                btn.innerText = "Purchase & Register (NFC)";
+                btn.innerText = "→ MY PERFUMES (NFC)";
             }
         };
     } catch (error) {
         if (error.name !== 'AbortError') {
             statusDiv.innerText = `[ERROR] ${error}`;
             btn.classList.remove('scanning');
-            btn.innerText = "Purchase & Register (NFC)";
+            btn.innerText = "→ MY PERFUMES (NFC)";
         }
     }
 }

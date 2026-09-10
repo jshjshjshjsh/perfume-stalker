@@ -73,8 +73,8 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div id="current-date" style="font-size: 13px; color: var(--accent-color); font-weight: bold; letter-spacing: 1px;"></div>
             <div class="btn-row">
-                <button type="button" class="loc-btn" onclick="openSettingsView()">settings</button>
-                <button type="button" class="loc-btn loc-btn--danger" onclick="logout()">logout</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="openSettingsView()" data-ico="⚙">settings</button>
+                <button type="button" class="loc-btn loc-btn--danger loc-btn--ico" onclick="logout()" data-ico="⏏">logout</button>
             </div>
         </div>
         <!-- 두 번째 줄: 위치 & 날씨 -->
@@ -130,12 +130,12 @@
             <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Wardrobe</h2>
             <div id="wardrobe-default-actions" class="btn-row" style="display: flex; justify-content: flex-end;">
                 <button type="button" id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">+ sample</button>
-                <button type="button" class="loc-btn" onclick="toggleWardrobeReorderMode()">sort</button>
-                <button type="button" class="loc-btn" onclick="fetchWardrobe()">refresh</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="toggleWardrobeReorderMode()" data-ico="⇅">sort</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="fetchWardrobe()" data-ico="↻">refresh</button>
             </div>
             <div id="wardrobe-reorder-actions" class="btn-row" style="display: none; justify-content: flex-end;">
-                <button type="button" class="loc-btn loc-btn--muted" onclick="toggleWardrobeReorderMode()">cancel</button>
-                <button type="button" id="btn-save-w-order" class="loc-btn loc-btn--success" onclick="saveWardrobeOrder()">save</button>
+                <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="toggleWardrobeReorderMode()" data-ico="✕">cancel</button>
+                <button type="button" id="btn-save-w-order" class="loc-btn loc-btn--success loc-btn--ico" onclick="saveWardrobeOrder()" data-ico="✓">save</button>
             </div>
         </div>
 
@@ -169,7 +169,7 @@
                 <p style="margin-top: 8px;" >Your wearing statistics.</p>
             </div>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="loc-btn" onclick="refreshSummary(this)">refresh</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="refreshSummary(this)" data-ico="↻">refresh</button>
             </div>
         </div>
     </div>
@@ -222,13 +222,13 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <h2 id="wish-title" style="margin: 0; font-size: 16px;">Wishlist</h2>
             <div id="wish-default-actions" class="btn-row">
-                <button type="button" class="loc-btn" onclick="toggleWishReorderMode()">sort</button>
-                <button type="button" class="loc-btn" onclick="refreshWishlist(this)">refresh</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="toggleWishReorderMode()" data-ico="⇅">sort</button>
+                <button type="button" class="loc-btn loc-btn--ico" onclick="refreshWishlist(this)" data-ico="↻">refresh</button>
                 <button type="button" class="loc-btn loc-btn--primary" onclick="toggleWishForm()">+ add</button>
             </div>
             <div id="wish-reorder-actions" class="btn-row" style="display: none;">
-                <button type="button" class="loc-btn loc-btn--muted" onclick="toggleWishReorderMode()">cancel</button>
-                <button type="button" id="btn-save-wish-order" class="loc-btn loc-btn--success" onclick="saveWishOrder()">save</button>
+                <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="toggleWishReorderMode()" data-ico="✕">cancel</button>
+                <button type="button" id="btn-save-wish-order" class="loc-btn loc-btn--success loc-btn--ico" onclick="saveWishOrder()" data-ico="✓">save</button>
             </div>
         </div>
     </div>
@@ -237,7 +237,7 @@
         <div style="font-size: 12px; font-weight: bold; margin-bottom: 15px;">새로운 위시 추가</div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn" id="wish-crawl-btn" onclick="crawlWishUrl()">auto fill</button>
+                <button type="button" class="loc-btn loc-btn--ico" id="wish-crawl-btn" onclick="crawlWishUrl()" data-ico="✧">auto fill</button>
             </label>
             <input type="url" id="wish-url" placeholder="Paste URL here..." autocomplete="off">
             <div id="wish-crawl-terminal" class="crawl-terminal">
@@ -258,7 +258,7 @@
             <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="scan-btn delete-btn" style="flex: 1; padding: 10px;" onclick="toggleWishForm()">Cancel</button>
+            <button class="loc-btn loc-btn--danger-soft" style="flex: 1; padding: 10px; font-size:14px;" onclick="toggleWishForm()">Cancel</button>
             <button class="scan-btn action-btn--primary" style="flex: 2;" onclick="submitWish()">Save Wish</button>
         </div>
     </div>
@@ -270,7 +270,7 @@
     <div class="weather-widget">
         <h2>
             <span>New Discovery</span>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelRegistration()">cancel</button>
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelRegistration()" data-ico="✕">cancel</button>
         </h2>
         <p>Unregistered tag detected.<br>Type details to log it.</p>
     </div>
@@ -281,7 +281,7 @@
         </div>
         <div class="form-group">
             <label class="with-action">Fragrantica URL
-                <button type="button" class="loc-btn" id="crawl-btn" onclick="crawlUrl()">auto fill</button>
+                <button type="button" class="loc-btn loc-btn--ico" id="crawl-btn" onclick="crawlUrl()" data-ico="✧">auto fill</button>
             </label>
             <input type="url" id="reg-url" placeholder="Paste URL here...">
             <div id="crawl-terminal" class="crawl-terminal">
@@ -327,7 +327,7 @@
     <div class="weather-widget">
         <h2>
             <span>Edit Log</span>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelEditLog()">cancel</button>
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelEditLog()" data-ico="✕">cancel</button>
         </h2>
         <p id="edit-perfume-name" style="font-weight: bold; margin-bottom: 5px;">Perfume Name</p>
         <p id="edit-date" style="font-size: 10px; color: var(--accent-color);">[2026-08-27]</p>
@@ -381,7 +381,7 @@
 <section id="view-manual-log" class="view-section">
     <div class="weather-widget">
         <h2><span>Manual Log</span>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">cancel</button>
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" data-ico="✕">cancel</button>
         </h2>
         <p>Log a perfume without NFC tag.</p>
     </div>
@@ -494,7 +494,7 @@
         </div>
         <div id="wish-detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;"></div>
     </div>
-    <button id="wish-promote-btn" class="scan-btn" style="width: 100%;" onclick="startWishPromoteScan()">Purchase & Register (NFC)</button>
+    <button id="wish-promote-btn" class="scan-btn action-btn--primary" style="width: 100%;" onclick="startWishPromoteScan()">→ MY PERFUMES (NFC)</button>
     <div id="wish-promote-status" class="status-msg"></div>
 </section>
 
@@ -503,7 +503,7 @@
     <div class="weather-widget">
         <h2>
             <span>Edit Details</span>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="cancelEditInfo()">cancel</button>
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelEditInfo()" data-ico="✕">cancel</button>
         </h2>
         <p>Update name and brand.</p>
     </div>
@@ -619,10 +619,10 @@
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
-    <div class="nav-item active main-tab" onclick="switchView('main', this)">Main</div>
-    <div class="nav-item wardrobe-tab" onclick="switchView('wardrobe', this)">Wardrobe</div>
-    <div class="nav-item" onclick="switchView('summary', this)">Summary</div>
-    <div class="nav-item" onclick="switchView('wish', this)">Wish</div>
+    <div class="nav-item active main-tab" onclick="switchView('main', this)">MAIN</div>
+    <div class="nav-item wardrobe-tab" onclick="switchView('wardrobe', this)">MY PERFUMES</div>
+    <div class="nav-item" onclick="switchView('summary', this)">SUMMARY</div>
+    <div class="nav-item" onclick="switchView('wish', this)">WISH</div>
 </nav>
 
 <!-- 💡 완벽하게 분리된 JS 연결 -->
