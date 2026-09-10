@@ -1585,6 +1585,7 @@ async function submitWish() {
 async function fetchWishlist() {
     const container = document.getElementById('wish-container');
     container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">loading...</div>`;
+
     try {
         const res = await fetchWithAuth("/api/v1/wishlist");
         if (res.ok) {
@@ -1595,26 +1596,33 @@ async function fetchWishlist() {
                 container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">위시리스트가 비어있습니다.</div>`;
                 return;
             }
+
             container.innerHTML = globalWishlistData.map(w => {
                 const imgTag = w.imageUrl
                     ? `<img src="${w.imageUrl}" style="width: 50px; height: 70px; object-fit: cover; border-radius: 2px; border: 1px solid #e0e0dc; flex-shrink: 0;">`
                     : `<div style="width: 50px; height: 70px; background-color: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 2px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--accent-color);">No Img</div>`;
+
                 const shortDate = w.date ? w.date.split('T')[0] : '';
                 const seasonTags = generateSeasonUI(w.seasons, w.seasonStats ?? w.season_stats);
 
+                // 💡 옷장과 동일하게 노트를 파싱하여 미리보기 문자열 생성
+                const notesPreview = parseNotesPreview(w.notes);
+
                 return `
-                <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
-                    <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                        <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
-                        ${imgTag}
-                        <div>
-                            <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
-                            <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px;">${w.name}</div>
-                            ${seasonTags}
+                    <div class="log-item wish-card" data-id="${w.id}" style="padding: 10px;" onclick="openWishDetail('${w.id}')">
+                        <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+                            <div class="wish-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px;" onclick="event.stopPropagation()">≡</div>
+                            ${imgTag}
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">${w.brand || 'UNKNOWN'} <span style="margin-left:5px; font-size:9px;">[${shortDate}]</span></div>
+                                <div style="font-weight: bold; color: var(--text-color); font-size: 14px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${w.name}</div>
+                                ${seasonTags}
+                                <!-- 💡 계절 바/뱃지 아래에 노트 미리보기 추가 -->
+                                <div class="wardrobe-notes">${notesPreview}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
             }).join('');
         }
     } catch (e) {
