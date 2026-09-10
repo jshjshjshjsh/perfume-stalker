@@ -5,6 +5,18 @@
     --success-color: #10b981;
     --danger-color: #f43f5e;
     --warn-color: #f59e0b;
+
+    --card-bg:     #ffffff;
+    --card-line:   #e8e8e4;
+    --card-radius: 10px;
+    --rank: var(--accent-color);
+    --rank-1: #f43f5e;
+    --rank-2: #a855f7;
+    --rank-3: #6366f1;
+
+    --hm-cell: 24px;   /* 🔧 칸 크기 */
+    --hm-cols: 10;
+    --hm-gap:  5px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -304,12 +316,6 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 }
 .crawl-terminal.error { color: var(--danger-color); border-color: var(--danger-color); }
 .blink { animation: blinker 1s linear infinite; }
-
-/* --- Heatmap --- */
-.heatmap-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
-.heatmap-cell { aspect-ratio: 1; border-radius: 2px; background-color: #f5f5f5; border: 1px solid #e0e0dc; transition: all 0.2s ease; cursor: pointer; }
-.heatmap-cell:hover { transform: scale(1.15); border-color: var(--text-color); }
-.heatmap-cell.active { background-color: var(--success-color); border-color: #059669; box-shadow: 0 0 5px rgba(16, 185, 129, 0.4); }
 
 /* --- SortableJS Drag & Drop --- */
 .sortable-ghost { opacity: 0.3 !important; background-color: rgba(244, 63, 94, 0.05); border: 2px dashed var(--accent-color); border-radius: 8px; }
@@ -785,3 +791,180 @@ button.action-btn {
 .season-badge.summer { background: #cddc39; color: #4a4a00; }  /* 여름 */
 .season-badge.autumn { background: #f57c00; }  /* 가을 */
 .season-badge.winter { background: #1e88e5; }  /* 겨울 */
+
+
+
+.future-dashboard {
+    background: var(--card-bg);
+    border: 1px solid var(--card-line);
+    border-radius: var(--card-radius);
+    padding: 16px 16px 18px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.02);
+}
+
+.dashboard-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 14px;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--accent-color);
+}
+.dashboard-header::before {
+    content: '';
+    width: 3px; height: 11px;
+    border-radius: 99px;
+    background: var(--text-color);
+    opacity: .45;
+}
+
+/* --- 상단 스탯 스트립 --- */
+.stat-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 14px 0 4px;
+}
+.stat-cell {
+    background: var(--card-bg);
+    border: 1px solid var(--card-line);
+    border-radius: 8px;
+    padding: 11px 8px;
+    text-align: center;
+}
+.stat-cell__num {
+    font-size: 19px;
+    font-weight: bold;
+    line-height: 1.1;
+    color: var(--text-color);
+    font-variant-numeric: tabular-nums;
+}
+.stat-cell__num small { font-size: 10px; opacity: .5; margin-left: 1px; }
+.stat-cell__label {
+    display: block;
+    margin-top: 4px;
+    font-size: 9px;
+    letter-spacing: .5px;
+    color: var(--accent-color);
+}
+
+/* --- Perfume of the Month --- */
+.potm { display: flex; align-items: center; gap: 14px; }
+.potm__img {
+    width: 56px; height: 76px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--card-line);
+}
+.potm__img--empty {
+    display: flex; align-items: center; justify-content: center;
+    background: #f7f7f5;
+    font-size: 9px; color: var(--accent-color);
+}
+.potm__body { min-width: 0; flex: 1; }
+.potm__tag {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 99px;
+    font-size: 9px; font-weight: bold;
+    color: var(--success-color);
+    background: color-mix(in srgb, var(--success-color) 10%, transparent);
+}
+.potm__name {
+    margin: 6px 0 3px;
+    font-size: 15px; font-weight: bold;
+    color: var(--text-color);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.potm__sub { font-size: 11px; color: var(--accent-color); }
+.potm__sub b { color: var(--text-color); }
+
+/* --- Top 3 --- */
+.top3 { display: flex; align-items: center; gap: 16px; }
+.top3__chart { width: 76px; height: 76px; flex-shrink: 0; }
+.rank-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+
+.rank-row { min-width: 0; }
+.rank-row__top {
+    display: flex; align-items: baseline; gap: 6px;
+    font-size: 12px; color: var(--text-color);
+}
+.rank-row__medal { font-size: 12px; }
+.rank-row__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-row__count { font-weight: bold; font-variant-numeric: tabular-nums; color: var(--rank); }
+.rank-row__track {
+    height: 4px; margin-top: 5px;
+    border-radius: 99px;
+    background: color-mix(in srgb, var(--rank) 12%, transparent);
+    overflow: hidden;
+}
+.rank-row__fill {
+    height: 100%;
+    border-radius: 99px;
+    background: var(--rank);
+    transition: width .45s cubic-bezier(.4,0,.2,1);
+}
+
+/* --- Heatmap --- */
+.heatmap-wrap { display: flex; flex-direction: column; gap: 7px; }
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--hm-cols), minmax(0, 1fr));
+    gap: var(--hm-gap);
+}
+
+.heatmap-cell {
+    aspect-ratio: 1 / 1;
+    border-radius: 4px;
+    background: #ebebe7;
+}
+
+.heatmap-cell.lv1 { background: #a7f3d0; }
+.heatmap-cell.lv2 { background: #5eead4; }
+.heatmap-cell.lv3 { background: #14b8a6; }
+.heatmap-cell.lv4 { background: #0d9488; }
+
+/* 🔑 안쪽으로 그려서 잘림 방지 */
+.heatmap-cell.is-today {
+    outline: 2px solid color-mix(in srgb, var(--text-color) 45%, transparent);
+    outline-offset: -2px;
+}
+
+.heatmap-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 8px;
+    letter-spacing: .5px;
+    color: var(--accent-color);
+    opacity: .55;
+}
+
+/* --- Weather Pick --- */
+.wpick { display: flex; flex-direction: column; gap: 2px; }
+.wpick__row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 2px;
+    border-bottom: 1px solid color-mix(in srgb, var(--card-line) 60%, transparent);
+}
+.wpick__row:last-child { border-bottom: none; }
+.wpick__ico { font-size: 15px; width: 20px; text-align: center; }
+.wpick__label { font-size: 11px; color: var(--accent-color); width: 44px; flex-shrink: 0; }
+.wpick__name {
+    flex: 1; min-width: 0; text-align: right;
+    font-size: 12px; font-weight: bold; color: var(--text-color);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wpick__name.is-empty { font-weight: normal; color: var(--accent-color); opacity: .6; }
+.wpick__cnt {
+    font-size: 10px; font-weight: bold;
+    color: var(--accent-color);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+}
+

@@ -173,6 +173,7 @@
             </div>
         </div>
     </div>
+    <div id="summary-stats" class="stat-strip"></div>
 
     <div class="future-dashboard" style="margin-top: 15px;">
         <div class="dashboard-header">Perfume of the Month</div>
@@ -183,15 +184,21 @@
 
     <div class="future-dashboard">
         <div class="dashboard-header">Top 3 Hall of Fame</div>
-        <div style="display: flex; align-items: center; justify-content: flex-start; height: 100px; gap: 20px;">
-            <div style="width: 75px; height: 75px; flex-shrink: 0;"><canvas id="topPerfumeChart"></canvas></div>
-            <div id="top-legend-container" style="flex: 1; display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text-color); overflow: hidden;"></div>
+        <div class="top3">
+            <div class="top3__chart"><canvas id="topPerfumeChart"></canvas></div>
+            <div id="top-legend-container" class="rank-list"></div>
         </div>
     </div>
 
     <div class="future-dashboard" style="margin-top: 15px;">
         <div class="dashboard-header">Last 30 Days Activity</div>
-        <div id="heatmap-container" class="heatmap-grid"></div>
+        <div class="heatmap-wrap">
+            <div id="heatmap-container" class="heatmap-grid"></div>
+            <div class="heatmap-axis">
+                <span>30일 전</span>
+                <span>오늘</span>
+            </div>
+        </div>
     </div>
 
     <div class="future-dashboard" style="margin-top: 15px;">

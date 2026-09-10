@@ -1314,7 +1314,7 @@ async function fetchSummary() {
         const potmContainer = document.getElementById('potm-container');
 
         if (thisMonthLogs.length === 0) {
-            potmContainer.innerHTML = '<div style="color: var(--accent-color); font-size: 11px;">이번 달 기록이 없습니다.</div>';
+            potmContainer.innerHTML = `<div style="font-size:11px; color:var(--accent-color);">이번 달 기록이 없습니다.</div>`;
         } else {
             const mCounts = {};
             thisMonthLogs.forEach(l => {
@@ -1323,16 +1323,18 @@ async function fetchSummary() {
             });
             const potm = Object.entries(mCounts).sort((a, b) => b[1] - a[1])[0];
             const potmLog = thisMonthLogs.find(l => l.perfumeName === potm[0]);
-            const imgTag = potmLog.imageUrl ? `<img src="${potmLog.imageUrl}" style="width: 55px; height: 75px; object-fit: cover; border-radius: 4px; border: 1px solid #e0e0dc;">` : `<div style="width: 55px; height: 75px; background: #f5f5f5; border: 1px solid #e0e0dc; border-radius: 4px; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--accent-color);">No Img</div>`;
+            const imgTag = potmLog.imageUrl
+                ? `<img src="${potmLog.imageUrl}" class="potm__img" alt="">`
+                : `<div class="potm__img potm__img--empty">No Img</div>`;
 
+            potmContainer.className = 'potm';
             potmContainer.innerHTML = `
                 ${imgTag}
-                <div>
-                    <div style="font-size: 11px; color: var(--success-color); font-weight: bold; margin-bottom: 4px;">👑 ${new Date().getMonth() + 1}월의 최애 향수</div>
-                    <div style="font-weight: bold; font-size: 15px; margin-bottom: 4px;">${potm[0]}</div>
-                    <div style="font-size: 11px; color: var(--accent-color);">이번 달 총 <b style="color:var(--text-color);">${potm[1]}회</b> 착향</div>
-                </div>
-            `;
+                <div class="potm__body">
+                    <span class="potm__tag">👑 ${new Date().getMonth() + 1}월의 최애</span>
+                    <div class="potm__name">${potm[0]}</div>
+                    <div class="potm__sub">이번 달 <b>${potm[1]}회</b> 착향</div>
+                </div>`;
         }
 
         // 1. Top 3 명예의 전당
@@ -1376,55 +1378,94 @@ async function fetchSummary() {
         });
 
         const legendBox = document.getElementById('top-legend-container');
-        const trophies = ['🏆', '🥈', '🥉'];
-        legendBox.innerHTML = sortedTop.map((item, index) => `
-            <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                <span style="font-size: 15px;">${trophies[index]}</span>
-                <span style="font-weight: bold; color: ${chartColors[index]}; margin: 0 6px;">${item[1]}회</span>
-                ${item[0]}
-            </div>
-        `).join('');
+        const trophies = ['🥇', '🥈', '🥉'];
+        const maxCount = sortedTop.length ? sortedTop[0][1] : 1;
 
-        // 2. 잔디 심기
+        legendBox.innerHTML = sortedTop.map((item, i) => `
+                <div class="rank-row" style="--rank:${chartColors[i]}">
+                    <div class="rank-row__top">
+                        <span class="rank-row__medal">${trophies[i]}</span>
+                        <span class="rank-row__name">${item[0]}</span>
+                        <span class="rank-row__count">${item[1]}</span>
+                    </div>
+                    <div class="rank-row__track">
+                        <div class="rank-row__fill" style="width:${(item[1] / maxCount * 100).toFixed(1)}%"></div>
+                    </div>
+                </div>`).join('');
+
+        // 2. 잔디 심기 (횟수별 농도 + 요일 정렬)
         const heatmapBox = document.getElementById('heatmap-container');
-        const logDates = new Set(logs.map(l => l.date ? l.date.split('T')[0] : ''));
-        let heatmapHtml = '';
+        const dateCounts = {};
+        logs.forEach(l => {
+            if (!l.date) return;
+            const d = l.date.split('T')[0];
+            dateCounts[d] = (dateCounts[d] || 0) + 1;
+        });
+
         const today = new Date();
+        const todayStr = toLocalDateStr(today);
+        const days = [];
         for (let i = 29; i >= 0; i--) {
             const d = new Date();
             d.setDate(today.getDate() - i);
-            const dateStr = toLocalDateStr(d);
-            const isActive = logDates.has(dateStr) ? 'active' : '';
-            heatmapHtml += `<div class="heatmap-cell ${isActive}" title="${dateStr}"></div>`;
+            days.push(d);
         }
-        heatmapBox.innerHTML = heatmapHtml;
+
+        const lvOf = n => n <= 0 ? '' : n === 1 ? 'lv1' : n === 2 ? 'lv2' : n === 3 ? 'lv3' : 'lv4';
+
+        heatmapBox.innerHTML = days.map(d => {
+            const ds  = toLocalDateStr(d);
+            const n   = dateCounts[ds] || 0;
+            const cls = [lvOf(n), ds === todayStr ? 'is-today' : ''].filter(Boolean).join(' ');
+            const md  = `${d.getMonth() + 1}/${d.getDate()}`;
+            return `<div class="heatmap-cell ${cls}" title="${md} · ${n}회"></div>`;
+        }).join('');
+
+        // 스탯 스트립
+        const strip = document.getElementById('summary-stats');
+        if (strip) {
+            const uniq = new Set(logs.map(l => l.perfumeName).filter(Boolean)).size;
+            const dset = new Set(Object.keys(dateCounts));
+            let streak = 0;
+            const cur = new Date();
+            if (!dset.has(toLocalDateStr(cur))) cur.setDate(cur.getDate() - 1);
+            while (dset.has(toLocalDateStr(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+
+            strip.innerHTML = `
+                <div class="stat-cell"><div class="stat-cell__num">${logs.length}</div><span class="stat-cell__label">TOTAL LOGS</span></div>
+                <div class="stat-cell"><div class="stat-cell__num">${uniq}</div><span class="stat-cell__label">PERFUMES</span></div>
+                <div class="stat-cell"><div class="stat-cell__num">${streak}<small>d</small></div><span class="stat-cell__label">STREAK</span></div>`;
+        }
 
         // 3. 날씨 픽
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(today.getDate() - 30);
         const recentLogs = logs.filter(l => l.date && new Date(l.date.split('T')[0]) >= thirtyDaysAgo);
 
-        const weatherCount = (conditionList) => {
-            const filtered = recentLogs.filter(l => l.weather && conditionList.some(c => l.weather.includes(c)));
-            if (filtered.length === 0) return '기록 부족';
-            const fCounts = filtered.reduce((acc, log) => {
-                acc[log.perfumeName] = (acc[log.perfumeName] || 0) + 1;
+        const weatherPick = (list) => {
+            const filtered = recentLogs.filter(l => l.weather && list.some(c => l.weather.includes(c)));
+            if (filtered.length === 0) return null;
+            const fc = filtered.reduce((acc, l) => {
+                acc[l.perfumeName] = (acc[l.perfumeName] || 0) + 1;
                 return acc;
             }, {});
-            return Object.entries(fCounts).sort((a, b) => b[1] - a[1])[0][0];
+            const top = Object.entries(fc).sort((a, b) => b[1] - a[1])[0];
+            return { name: top[0], count: top[1] };
         };
 
-        document.getElementById('weather-insight-container').innerHTML = `
-            <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
-                <b>☀️ 맑은 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Clear', 'Sunny'])}</span>
-            </div>
-            <div style="padding: 8px 0; border-bottom: 1px dashed #e0e0dc; display: flex; justify-content: space-between;">
-                <b>☁️ 흐린 날</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Cloud'])}</span>
-            </div>
-            <div style="padding: 8px 0; display: flex; justify-content: space-between;">
-                <b>🌧️ 비/눈</b> <span style="color: var(--accent-color); text-align: right; max-width: 60%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${weatherCount(['Rain', 'Snow', 'Drizzle'])}</span>
-            </div>
-        `;
+        const wRow = (ico, label, pick) => `
+            <div class="wpick__row">
+                <span class="wpick__ico">${ico}</span>
+                <span class="wpick__label">${label}</span>
+                <span class="wpick__name${pick ? '' : ' is-empty'}">${pick ? pick.name : '기록 부족'}</span>
+                ${pick ? `<span class="wpick__cnt">${pick.count}회</span>` : ''}
+            </div>`;
+
+        document.getElementById('weather-insight-container').className = 'wpick';
+        document.getElementById('weather-insight-container').innerHTML =
+            wRow('☀️', '맑은 날', weatherPick(['Clear', 'Sunny'])) +
+            wRow('☁️', '흐린 날', weatherPick(['Cloud'])) +
+            wRow('🌧️', '비 · 눈', weatherPick(['Rain', 'Snow', 'Drizzle']));
     } catch (e) {
         console.error("통계 로딩 실패:", e);
     }
@@ -1841,7 +1882,7 @@ async function openSettingsView() {
             document.getElementById('setting-name').value = user.name || '';
             document.getElementById('setting-loc').value = user.defaultLocation || '';
             document.getElementById('setting-noti').checked = user.notiEnabled === true;
-            document.getElementById('setting-season-bar').checked = localStorage.getItem('season_style_bar') === 'true';
+            document.getElementById('setting-season-bar').checked = localStorage.getItem('season_style_bar') !== 'false';
             document.getElementById('setting-status').innerText = "";
         } else {
             document.getElementById('setting-status').innerText = "[ERROR] Failed to load.";
@@ -2390,7 +2431,7 @@ function generateSeasonUI(seasons, stats, opts) {
 
     const useBar = o.force
         ? o.force === 'bar'
-        : localStorage.getItem('season_style_bar') === 'true';
+        : localStorage.getItem('season_style_bar') !== 'false';
 
     let inner = '';
 
