@@ -112,6 +112,7 @@ public class NotionService {
             properties.put(NotionPerfumeMaster.IMAGE_URL.name(), Map.of("url", req.getImageUrl()));
         }
         properties.put(NotionPerfumeMaster.USER.getColumnName(), NotionPerfumeMaster.USER.formatValue(userPageId));
+        properties.put(NotionPerfumeMaster.ORDER_INDEX.getColumnName(), NotionPerfumeMaster.ORDER_INDEX.formatValue(System.currentTimeMillis()));
 
         // 날짜가 비어있으면 백엔드에서 KST 기준 오늘 날짜 강제 주입!
         String targetDate = (req.getDate() != null && !req.getDate().isBlank())
@@ -236,7 +237,7 @@ public class NotionService {
                                 Map.of("property", NotionPerfumeMaster.DELETED.getColumnName(), "checkbox", Map.of("equals", false))
                         )
                 ),
-                "sorts", List.of(Map.of("property", NotionPerfumeMaster.ORDER_INDEX.getColumnName(), "direction", "ascending"))
+                "sorts", List.of(Map.of("property", NotionPerfumeMaster.ORDER_INDEX.getColumnName(), "direction", "descending"))
         );
 
         return notionWebClient.post()
@@ -337,10 +338,11 @@ public class NotionService {
     }
 
     public Mono<Void> reorderWardrobe(List<String> pageIds) {
+        long baseTime = System.currentTimeMillis();
         return reactor.core.publisher.Flux.range(0, pageIds.size())
                 .concatMap(index -> {
                     String pageId = pageIds.get(index);
-                    Map<String, Object> body = Map.of("properties", Map.of(NotionPerfumeMaster.ORDER_INDEX.getColumnName(), NotionPerfumeMaster.ORDER_INDEX.formatValue(index)));
+                    Map<String, Object> body = Map.of("properties", Map.of(NotionPerfumeMaster.ORDER_INDEX.getColumnName(), NotionPerfumeMaster.ORDER_INDEX.formatValue(baseTime - index)));
                     return notionWebClient.patch().uri("/pages/{pageId}", pageId).bodyValue(body).retrieve().bodyToMono(Void.class);
                 }).then();
     }

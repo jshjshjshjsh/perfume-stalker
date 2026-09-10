@@ -50,7 +50,7 @@ public class NotionWishlistService {
 
         Map<String, Object> queryBody = Map.of(
                 "filter", Map.of("property", NotionWishlist.USER.getColumnName(), "relation", Map.of("contains", userPageId)),
-                "sorts", List.of(Map.of("property", NotionWishlist.ORDER_INDEX.getColumnName(), "direction", "ascending"))
+                "sorts", List.of(Map.of("property", NotionWishlist.ORDER_INDEX.getColumnName(), "direction", "descending"))
         );
 
         return notionWebClient.post()
@@ -120,6 +120,7 @@ public class NotionWishlistService {
         }
 
         properties.put(NotionWishlist.USER.getColumnName(), NotionWishlist.USER.formatValue(userPageId));
+        properties.put(NotionWishlist.ORDER_INDEX.getColumnName(), NotionWishlist.ORDER_INDEX.formatValue(System.currentTimeMillis()));
 
         if (request.notes() != null) {
             if (request.notes().containsKey("top")) properties.put(NotionWishlist.TOP_NOTES.getColumnName(), NotionWishlist.TOP_NOTES.formatValue(request.notes().get("top")));
@@ -151,13 +152,14 @@ public class NotionWishlistService {
     }
 
     public Mono<Void> reorderWishlist(List<String> pageIds) {
+        long baseTime = System.currentTimeMillis();
         return reactor.core.publisher.Flux.range(0, pageIds.size())
-                .concatMap(index -> { // 💡 노션 API 429 에러(Rate Limit) 방지를 위한 순차 처리
+                .concatMap(index -> {
                     String pageId = pageIds.get(index);
                     Map<String, Object> body = Map.of(
                             "properties", Map.of(
                                     NotionWishlist.ORDER_INDEX.getColumnName(),
-                                    NotionWishlist.ORDER_INDEX.formatValue(index)
+                                    NotionWishlist.ORDER_INDEX.formatValue(baseTime - index)
                             )
                     );
                     return notionWebClient.patch()
