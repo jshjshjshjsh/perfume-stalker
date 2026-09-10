@@ -1351,6 +1351,7 @@ async function fetchSummary() {
         const sortedTop = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
         const chartColors = ['#f43f5e', '#a855f7', '#6366f1'];
 
+        /*
         const ctx = document.getElementById('topPerfumeChart').getContext('2d');
         if (summaryChartInstance) summaryChartInstance.destroy();
         summaryChartInstance = new Chart(ctx, {
@@ -1381,6 +1382,8 @@ async function fetchSummary() {
                 }
             }
         });
+
+         */
 
         const legendBox = document.getElementById('top-legend-container');
         const trophies = ['🥇', '🥈', '🥉'];
@@ -2535,7 +2538,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('current-date').innerText = `${yyyy}.${mm}.${dd}`;
+    document.getElementById('current-date').innerText = `[ ${yyyy}.${mm}.${dd} ]`;
 
     checkAuth();
 

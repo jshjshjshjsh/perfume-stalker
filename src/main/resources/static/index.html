@@ -127,7 +127,7 @@
 <section id="view-wardrobe" class="view-section">
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 0 0; margin-top: -40px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-            <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Wardrobe</h2>
+            <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Perfumes</h2>
             <div id="wardrobe-default-actions" class="btn-row" style="display: flex; justify-content: flex-end;">
                 <button type="button" id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">+ sample</button>
                 <button type="button" class="loc-btn loc-btn--ico" onclick="toggleWardrobeReorderMode()" data-ico="⇅">sort</button>
@@ -185,7 +185,9 @@
     <div class="future-dashboard">
         <div class="dashboard-header">Top 3 Hall of Fame</div>
         <div class="top3">
+            <!--
             <div class="top3__chart"><canvas id="topPerfumeChart"></canvas></div>
+            -->
             <div id="top-legend-container" class="rank-list"></div>
         </div>
     </div>
@@ -258,7 +260,7 @@
             <div id="wish-notes-preview-box" style="border: 1px dashed var(--accent-color); padding: 12px; background: transparent;"></div>
         </div>
         <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="loc-btn loc-btn--danger-soft" style="flex: 1; padding: 10px; font-size:14px;" onclick="toggleWishForm()">Cancel</button>
+            <button class="loc-btn loc-btn--danger-soft" style="flex: 1; padding: 10px; font-size:14px; font-weight:normal;" onclick="toggleWishForm()">Cancel</button>
             <button class="scan-btn action-btn--primary" style="flex: 2;" onclick="submitWish()">Save Wish</button>
         </div>
     </div>
