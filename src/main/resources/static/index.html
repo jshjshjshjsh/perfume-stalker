@@ -65,7 +65,7 @@
 </section>
 
 <!-- 1. MAIN VIEW -->
-<section id="view-main" class="view-section" style="padding-bottom: 20px; background-color: var(--bg-color);">
+<section id="view-main" class="view-section" style="background-color: var(--bg-color);">
 
     <!-- [1] 헤더 영역 (날짜, 위치, 날씨, 설정) -->
     <div style="padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #e0e0dc;">
@@ -223,6 +223,7 @@
             <h2 id="wish-title" style="margin: 0; font-size: 16px;">Wishlist</h2>
             <div id="wish-default-actions" class="btn-row">
                 <button type="button" class="loc-btn" onclick="toggleWishReorderMode()">sort</button>
+                <button type="button" class="loc-btn" onclick="refreshWishlist(this)">refresh</button>
                 <button type="button" class="loc-btn loc-btn--primary" onclick="toggleWishForm()">+ add</button>
             </div>
             <div id="wish-reorder-actions" class="btn-row" style="display: none;">

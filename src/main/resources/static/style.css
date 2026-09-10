@@ -17,6 +17,8 @@
     --hm-cell: 24px;   /* 🔧 칸 크기 */
     --hm-cols: 10;
     --hm-gap:  5px;
+
+    --nav-h: 64px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -27,17 +29,37 @@ body {
     color: var(--text-color);
     font-size: 13px;
     letter-spacing: -0.3px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
+
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
 }
 
 /* --- Layout & Views --- */
-.view-section { flex: 1; padding: 40px 24px; display: none; opacity: 0; transition: opacity 0.4s ease-in-out; overflow-y: auto; }
-.view-section.active { display: flex; flex-direction: column; opacity: 1; }
+.view-section {
+    display: none;
+    opacity: 0;
+    transition: opacity .4s ease-in-out;
+    padding: 40px 24px calc(var(--nav-h, 64px) + env(safe-area-inset-bottom) + 40px);
+}
+.view-section.active { display: block; opacity: 1; }
 
-.bottom-nav { display: flex; justify-content: space-between; padding: 20px 30px 30px 30px; border-top: 1px solid #ddd; background-color: var(--bg-color); }
+.bottom-nav {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 100;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 30px calc(30px + env(safe-area-inset-bottom));
+    border-top: 1px solid #ddd;
+
+    background: color-mix(in srgb, var(--bg-color) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
 .nav-item { font-size: 11px; color: var(--accent-color); text-transform: uppercase; cursor: pointer; transition: color 0.3s ease; }
 .nav-item.active { color: var(--text-color); font-weight: bold; text-decoration: underline; text-underline-offset: 4px; }
 
@@ -46,7 +68,6 @@ body {
 .weather-widget h2 { font-size: 11px; font-weight: normal; color: var(--accent-color); margin-bottom: 8px; text-transform: uppercase; }
 .weather-widget p { font-size: 14px; line-height: 1.6; }
 
-.future-dashboard { flex: 1; margin-top: 25px; border: 1px dashed var(--text-color); border-radius: 2px; display: flex; flex-direction: column; padding: 16px; overflow-y: auto; }
 .dashboard-header { font-size: 11px; color: var(--accent-color); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; border-bottom: 1px solid var(--text-color); padding-bottom: 8px; }
 
 h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; }
@@ -795,6 +816,8 @@ button.action-btn {
 
 
 .future-dashboard {
+    flex: none;
+    overflow: visible;
     background: var(--card-bg);
     border: 1px solid var(--card-line);
     border-radius: var(--card-radius);

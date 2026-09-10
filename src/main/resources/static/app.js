@@ -220,12 +220,17 @@ function logout() {
 }
 
 function switchView(viewId, element) {
+    if ('scrollRestoration' in history) {
+        history.scrollRestoration = 'manual';
+    }
+
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
 
     const targetView = document.getElementById('view-' + viewId);
     if (targetView) targetView.classList.add('active');
     if (element) element.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
 // ==========================================
@@ -2470,6 +2475,30 @@ function generateSeasonUI(seasons, stats, opts) {
     return `<div class="season-meter${o.size === 'lg' ? ' season-meter--lg' : ''}">${inner}</div>`;
 }
 
+// 💡 위시리스트 새로고침 트리거
+async function refreshWishlist(btn) {
+    if (btn) {
+        btn.classList.add('is-busy');
+        btn.textContent = 'refreshing...';
+    }
+    try {
+        await fetchWishlist();
+    } finally {
+        if (btn) {
+            btn.classList.remove('is-busy');
+            btn.textContent = 'refresh';
+        }
+    }
+}
+
+function syncNavHeight() {
+    const nav = document.querySelector('.bottom-nav');
+    if (!nav) return;
+    document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
+}
+
+window.addEventListener('load', syncNavHeight);
+window.addEventListener('resize', syncNavHeight);
 
 // 착향 로그가 변경됐을 때 항상 이걸 호출
 function refreshAfterLogChange() {
