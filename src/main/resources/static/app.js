@@ -146,6 +146,7 @@ async function submitAuth() {
         'auth-name': document.getElementById('auth-name'),
         'auth-loc': document.getElementById('auth-loc')
     };
+    const btn = document.getElementById('auth-submit-btn');
     const noti = document.getElementById('auth-noti').checked;
     const statusMsg = document.getElementById('auth-status');
 
@@ -360,6 +361,7 @@ async function fetchRecentLogs() {
         const response = await fetchWithAuth(`/api/v1/logs/recent?limit=5&t=${Date.now()}`);
         if (response.ok) {
             const logs = await response.json();
+            updateTodayFlag(logs);
             if (logs.length === 0) {
                 container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">No records found.</div>`;
                 return;
@@ -729,7 +731,7 @@ function renderWardrobeGrid() {
         );
     }
 
-    document.getElementById('wardrobe-title').innerText = `My Wardrobe (${filteredData.length})`;
+    document.getElementById('wardrobe-title').innerText = `My Perfumes (${filteredData.length})`;
 
     if (filteredData.length === 0) {
         container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 향수가 없습니다.</div>`;
@@ -737,28 +739,29 @@ function renderWardrobeGrid() {
     }
 
     container.innerHTML = filteredData.map(p => {
-        const imgTag = p.imageUrl ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">` : `<div class="wardrobe-thumb">No Img</div>`;
-        const shortDate = p.date ? p.date.split('T')[0] : '';
-        const notesPreview = parseNotesPreview(p.notes);
+        const imgTag = p.imageUrl
+            ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">`
+            : `<div class="wardrobe-thumb">No Img</div>`;
 
-        // 기존 뱃지/바 생성 로직 지우고 통합 함수로 교체
+        const notesPreview = parseNotesPreview(p.notes);
         const seasonUI = generateSeasonUI(p.seasons, p.seasonStats ?? p.season_stats);
+        const wearMeta = renderWearMeta(WEAR_INDEX.get(nameKey(p.name)));
 
         return `
-            <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
-                <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
-                ${imgTag}
-                <div class="wardrobe-info">
-                    <div class="wardrobe-brand">
-                        ${p.brand || 'UNKNOWN'} ${shortDate ? `<span style="margin-left:5px; font-size:9px;">[${shortDate}]</span>` : ''}
-                    </div>
-                    <div class="wardrobe-name">${p.name}</div>
-                    ${seasonUI} <!-- 💡 생성된 UI 주입 -->
-                    <div class="wardrobe-notes">${notesPreview}</div>
+        <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
+            <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
+            ${imgTag}
+            <div class="wardrobe-info">
+                <div class="wardrobe-brand">
+                    <span>${p.brand || 'UNKNOWN'}</span>
+                    ${wearMeta}
                 </div>
+                <div class="wardrobe-name">${p.name}</div>
+                ${seasonUI}
+                <div class="wardrobe-notes">${notesPreview}</div>
             </div>
-        `;
-
+        </div>
+    `;
     }).join('');
 }
 
@@ -896,7 +899,6 @@ function openPerfumeDetail(perfumeId, from = 'wardrobe') {
         generateSeasonUI(p.seasons, p.seasonStats ?? p.season_stats, { size: 'lg', force: 'bar' })
         + renderNotesHtml(p.notes);
 
-    document.getElementById('detail-notes-container').innerHTML = renderNotesHtml(p.notes);
     switchView('perfume-detail', null);
     fetchPerfumeHistory(perfumeId);
 }
@@ -983,7 +985,10 @@ function resetScanUI() {
     isScanning = false;
     scanBtn.classList.remove('scanning', 'success');
     scanBtn.innerText = "TAP TO SCAN (NFC)";
+    statusDiv.classList.remove('is-logged');
+    statusDiv.removeAttribute('data-ico');
     statusDiv.innerText = "waiting for interaction...";
+    updateTodayFlag(globalRecentLogs);              // ✅ 오늘 기록 있으면 복원
     if (abortController) abortController.abort();
 }
 
@@ -1311,6 +1316,10 @@ async function fetchSummary() {
         if (!res.ok) return;
         const logs = await res.json();
         globalRecentLogs = logs;
+        WEAR_INDEX = buildWearIndex(logs);
+        if (!isWardrobeReorderMode && globalWardrobeData.length) {
+            renderWardrobeGrid();
+        }
         updateRecommendation();
 
         // 💡 이달의 향수 (Perfume of the Month)
@@ -2506,6 +2515,73 @@ function syncNavHeight() {
     const nav = document.querySelector('.bottom-nav');
     if (!nav) return;
     document.documentElement.style.setProperty('--nav-h', nav.offsetHeight + 'px');
+}
+
+let WEAR_INDEX = new Map();
+
+const nameKey = s => (s || '').trim().toLowerCase();
+
+function buildWearIndex(logs) {
+    const idx = new Map();
+    (logs || []).forEach(log => {
+        const key = nameKey(log.perfumeName);
+        if (!key || !log.date) return;
+
+        const d = log.date.split('T')[0];
+        const cur = idx.get(key);
+
+        if (!cur) idx.set(key, { last: d, count: 1 });
+        else {
+            cur.count += 1;
+            if (d > cur.last) cur.last = d;
+        }
+    });
+    return idx;
+}
+
+function daysBetween(a, b) {
+    return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+function renderWearMeta(stat) {
+    if (!stat || !stat.count) return '';
+
+    const d = daysBetween(stat.last, toLocalDateStr(new Date()));
+    const rel = d === 0 ? 'today'
+        : d === 1 ? 'yesterday'
+            : d < 30 ? `${d}d`
+                : `${Math.floor(d / 30)}mo`;
+
+    return `<span class="wear-chip${d >= 30 ? ' is-dormant' : ''}"
+                  title="last worn ${stat.last}">${rel} · ${stat.count}회</span>`;
+}
+
+function updateTodayFlag(logs) {
+    const el = document.getElementById('status');
+    if (!el || isScanning) return;                  // 🔑 스캔 중엔 건드리지 않음
+
+    const today = toLocalDateStr(new Date());       // 이미 있는 유틸 재사용
+    const todays = (logs || []).filter(l => l.date && l.date.split('T')[0] === today);
+
+    if (!todays.length) {
+        el.classList.remove('is-logged');
+        el.removeAttribute('data-ico');
+        el.textContent = 'waiting for interaction...';
+        return;
+    }
+
+    const name  = todays[0].perfumeName || 'Unknown';
+    const extra = todays.length > 1 ? ` +${todays.length - 1}` : '';
+
+    el.setAttribute('data-ico', '✓');
+    el.classList.add('is-logged');
+    el.textContent = `logged today · ${name}${extra}`;
+}
+
+function setScanStatus(text) {
+    statusDiv.classList.remove('is-logged');
+    statusDiv.removeAttribute('data-ico');
+    statusDiv.innerText = text;
 }
 
 window.addEventListener('load', syncNavHeight);

@@ -5,6 +5,7 @@
     --success-color: #10b981;
     --danger-color: #f43f5e;
     --warn-color: #f59e0b;
+    --mint-color: #4fb894;
 
     --card-bg:     #ffffff;
     --card-line:   #e8e8e4;
@@ -317,8 +318,26 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 .log-date { font-size: 10px; color: var(--accent-color); margin-top: 3px; }
 .log-weather { font-size: 10px; color: var(--accent-color); text-align: right; margin-left: 10px; white-space: nowrap; line-height: 1.4; }
 
-.wardrobe-brand { font-size: 10px; color: var(--accent-color); text-transform: uppercase; margin-bottom: 2px; }
-.wardrobe-notes { font-size: 11px; color: var(--accent-color); line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
+.wardrobe-brand {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+.wear-chip {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--mint-color) 85%, #000);
+}
+
+.wear-chip.is-dormant {
+    color: color-mix(in srgb, var(--danger-color) 55%, var(--accent-color));
+}
+.wardrobe-notes { font-size: 11px; color: var(--accent-color); line-height: 1.4; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; }
 .wardrobe-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
 
 /* --- Tags & Chips --- */
@@ -1013,4 +1032,40 @@ button.action-btn {
 
     flex-shrink: 0;
     display: block;
+}
+
+.wear-rel {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--mint-color) 13%, var(--bg-color));
+    color: color-mix(in srgb, var(--mint-color) 80%, #000);
+}
+
+/* 30일 이상 방치 — "요즘 안 뿌렸네" 신호 */
+.wear-meta.is-dormant .wear-rel {
+    background: color-mix(in srgb, var(--danger-color) 9%, var(--bg-color));
+    color: color-mix(in srgb, var(--danger-color) 82%, transparent);
+}
+
+.wear-meta--none {
+    color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+    font-style: italic;
+}
+
+.scan-status { color: var(--accent-color); }
+.scan-status.is-logged {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    color: color-mix(in srgb, var(--mint-color) 80%, #000);
+}
+
+.scan-status.is-logged::before {
+    content: attr(data-ico);
+    font-size: .95em;
+    opacity: .7;
+    line-height: 1;
+    transform: translateY(.5px);   /* ✓ 정렬 보정 */
 }
