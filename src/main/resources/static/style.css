@@ -242,7 +242,71 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 /* --- 버튼이 들어가는 컨테이너 --- */
 .btn-row { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
-#current-loc { display: inline-flex; align-items: center; gap: 6px; }
+#current-loc {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+}
+
+.loc-name {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+    font-size: 15px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* (GPS) → 조용한 꼬리표 */
+.loc-src {
+    flex-shrink: 0;
+    font-style: normal;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--accent-color);
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--text-color) 6%, transparent);
+}
+
+#current-loc .btn-row { flex-shrink: 0; }
+
+/* --- 날씨 줄 --- */
+#weather-info {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+.wx-ico  { font-size: 14px; line-height: 1; }
+.wx-desc { font-weight: bold; }
+.wx-num  {
+    white-space: nowrap;              /* 🔑 숫자 묶음 보호 */
+    font-weight: normal;
+    color: var(--accent-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.date-row {           /* [ 2026.09.11 ] + settings/logout 감싸는 요소 */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+.date-row .btn-row { flex-shrink: 0; }
+
+@media (max-width: 380px) {
+    .loc-btn { padding: 5px 9px; }
+    .loc-btn--sm { padding: 4px 7px; font-size: 9px; }
+}
 
 .weather-widget h2 {
     display: flex;
@@ -420,7 +484,10 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 /* --- Animations --- */
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(26, 26, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(26, 26, 26, 0); } }
 @keyframes stamp { 0% { transform: scale(1.5) rotate(-5deg); opacity: 0; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
-@keyframes badge-pulse { 0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); } 70% { box-shadow: 0 0 0 5px rgba(244, 63, 94, 0); } 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); } }
+@keyframes badge-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: .72; }
+}
 @keyframes blinker { 50% { opacity: 0; } }
 
 /* Summary 뷰의 Flex 강제 축소 기능을 끄고 자연스러운 세로 스크롤 유도 */
@@ -1053,19 +1120,139 @@ button.action-btn {
     font-style: italic;
 }
 
-.scan-status { color: var(--accent-color); }
-.scan-status.is-logged {
+.scan-status {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    color: color-mix(in srgb, var(--mint-color) 80%, #000);
+    gap: 6px;
+
+    width: fit-content;
+    margin: 10px auto 15px;
+    padding: 5px 12px;
+
+    border: 1px solid transparent;
+    border-radius: 999px;
+
+    font-size: 11px;
+    line-height: 1.5;
+    color: color-mix(in srgb, var(--accent-color) 70%, transparent);
+
+    transition: background .25s ease, color .25s ease, border-color .25s ease;
 }
 
+/* --- 기록 완료 --- */
+.scan-status.is-logged {
+    font-weight: 700;
+    color: color-mix(in srgb, var(--mint-color) 82%, #000);
+    background: color-mix(in srgb, var(--mint-color) 11%, var(--bg-color));
+    border-color: color-mix(in srgb, var(--mint-color) 28%, transparent);
+    animation: logged-in .32s cubic-bezier(.16,1,.3,1);
+}
+
+/* ✓ 를 채워진 원형 배지로 */
 .scan-status.is-logged::before {
     content: attr(data-ico);
-    font-size: .95em;
-    opacity: .7;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+
+    background: var(--mint-color);
+    color: #fff;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 2;
+    transform: none;
+    opacity: 1;
+}
+
+.scan-status .ss-label { font-weight: 400; opacity: .72; }
+.scan-status b { font-weight: 700; }
+.scan-status:not(.is-logged) {
+    border: 1px dashed color-mix(in srgb, var(--text-color) 30%, transparent);
+    background: repeating-linear-gradient(
+            -45deg,
+            transparent 0 5px,
+            color-mix(in srgb, var(--text-color) 5%, transparent) 5px 10px
+    );
+    color: color-mix(in srgb, var(--text-color) 58%, transparent);
+
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+/* 속 빈 링 — 채워질 자리 */
+.scan-status:not(.is-logged)::before {
+    content: '';
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.5px currentColor;
+    opacity: .5;
+    animation: slot-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes slot-breathe {
+    0%, 100% { opacity: .5; }
+    50%      { opacity: .18; }
+}
+
+@keyframes logged-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scan-status.is-logged { animation: none; }
+}
+
+.rate-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    margin-top: 6px;
+    padding: 4px 9px;
+
+    border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+    border-radius: 6px;
+    background: color-mix(in srgb, #f59e0b 8%, transparent);
+}
+
+.rate-cta__track {
+    font-size: 11px;
     line-height: 1;
-    transform: translateY(.5px);   /* ✓ 정렬 보정 */
+    letter-spacing: 1.5px;
+    color: color-mix(in srgb, #f59e0b 38%, transparent);
+    animation: star-wink 2.8s ease-in-out infinite;
+}
+
+.rate-cta__txt {
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    color: color-mix(in srgb, #f59e0b 88%, #000);
+}
+
+@keyframes star-wink {
+    0%, 100% { color: color-mix(in srgb, #f59e0b 38%, transparent); }
+    50%      { color: color-mix(in srgb, #f59e0b 70%, transparent); }
+}
+
+.rate-done {
+    margin-top: 5px;
+    color: #f59e0b;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .rate-cta__track { animation: none; }
 }

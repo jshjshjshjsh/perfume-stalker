@@ -255,8 +255,20 @@ async function fetchRealWeather(lat = null, lon = null) {
 
             const weatherIcon = getWeatherIcon(data.weather);
             const displayTemp = parseFloat(data.temp).toFixed(1);
-            locText.innerHTML = `${data.location} ${buttonsHtml}`;
-            weatherInfo.innerHTML = `<span style="font-size: 14px; margin-right: 4px;">${weatherIcon}</span>${data.weather} <span style="margin-left: 8px; color: var(--accent-color); font-weight: normal;">${displayTemp}°C / ${data.humidity}%</span>`;
+
+            // (GPS) 같은 괄호 꼬리표 분리
+            const m = (data.location || '').match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+            const locName = m ? m[1] : (data.location || '');
+            const locSrc  = m ? m[2] : '';
+
+            locText.innerHTML = `
+                <span class="loc-name">${locName}${locSrc ? `<em class="loc-src">${locSrc}</em>` : ''}</span>
+                <span class="btn-row">${buttonsHtml}</span>`;
+
+            weatherInfo.innerHTML = `
+                <span class="wx-ico">${weatherIcon}</span>
+                <span class="wx-desc">${data.weather}</span>
+                <span class="wx-num">${displayTemp}°C · ${data.humidity}%</span>`;
         } else {
             weatherInfo.innerText = "[ERROR] Failed to load weather data.";
         }
@@ -397,8 +409,11 @@ function renderLogItemHtml(log) {
     const weatherIcon = getWeatherIcon(log.weather);
 
     let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
-        ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
-        : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid; align-self: flex-start;">✍️ 터치해서 별점 남기기</div>`;
+        ? `<div class="rate-done">★ ${parseFloat(log.rate).toFixed(1)}</div>`
+        : `<div class="rate-cta">
+           <span class="rate-cta__track">★★★★★</span>
+           <span class="rate-cta__txt">별점 남기기</span>
+       </div>`;
 
     const toDetail = `onclick="event.stopPropagation(); openDetailFromLog('${log.pageId}')"`;
 
@@ -937,8 +952,11 @@ async function fetchPerfumeHistory(perfumeId) {
                 const weatherIcon = getWeatherIcon(log.weather);
                 const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
                 let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
-                    ? `<div style="color:#f59e0b; font-size:12px; font-weight:bold; margin-top:5px; letter-spacing:2px;">⭐ ${parseFloat(log.rate).toFixed(1)}</div>`
-                    : `<div style="display:inline-block; padding:4px 8px; margin: 5px 4px 4px 4px; background-color:rgba(244, 63, 94, 0.1); color:#f43f5e; border-radius:4px; font-size:10px; font-weight:bold; animation:badge-pulse 2s infinite; border: 1px solid;">✍️ 터치해서 별점 남기기</div>`;
+                    ? `<div class="rate-done">★ ${parseFloat(log.rate).toFixed(1)}</div>`
+                    : `<div class="rate-cta">
+                           <span class="rate-cta__track">★★★★★</span>
+                           <span class="rate-cta__txt">별점 남기기</span>
+                       </div>`;
 
                 return `
                     <div class="log-item" onclick="openEditLogById('${log.pageId}')">
@@ -987,7 +1005,7 @@ function resetScanUI() {
     scanBtn.innerText = "TAP TO SCAN (NFC)";
     statusDiv.classList.remove('is-logged');
     statusDiv.removeAttribute('data-ico');
-    statusDiv.innerText = "waiting for interaction...";
+    statusDiv.innerText = "NOT LOGGED YET";
     updateTodayFlag(globalRecentLogs);              // ✅ 오늘 기록 있으면 복원
     if (abortController) abortController.abort();
 }
@@ -1089,7 +1107,7 @@ async function handleIosNfcScan(uid) {
             document.getElementById('reg-uid').value = uid;
             fetchBrands();
             switchView('register', null);
-            statusDiv.innerText = "waiting for interaction...";
+            statusDiv.innerText = "NOT LOGGED YET";
         } else {
             statusDiv.innerText = `[ERROR] ${resultText}`;
         }
@@ -2566,7 +2584,7 @@ function updateTodayFlag(logs) {
     if (!todays.length) {
         el.classList.remove('is-logged');
         el.removeAttribute('data-ico');
-        el.textContent = 'waiting for interaction...';
+        el.textContent = 'NOT LOGGED YET';
         return;
     }
 
@@ -2575,7 +2593,7 @@ function updateTodayFlag(logs) {
 
     el.setAttribute('data-ico', '✓');
     el.classList.add('is-logged');
-    el.textContent = `logged today · ${name}${extra}`;
+    el.innerHTML = `<span class="ss-label">logged today ·</span> <b>${name}</b>${extra}`;
 }
 
 function setScanStatus(text) {
