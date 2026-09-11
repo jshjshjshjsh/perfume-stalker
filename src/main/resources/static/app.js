@@ -224,6 +224,7 @@ function switchView(viewId, element) {
     if ('scrollRestoration' in history) {
         history.scrollRestoration = 'manual';
     }
+    initPwConfirm();
 
     document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -397,23 +398,39 @@ function openDetailFromRecommendation() {
     openPerfumeDetail(pid, 'main');
 }
 
-function renderLogItemHtml(log) {
+function renderLogItemHtml(log, compact = false) {
     registerLog(log);
 
     const imgTag = log.imageUrl
         ? `<img src="${log.imageUrl}" class="log-thumb" alt="thumb">`
         : `<div class="log-thumb">No Img</div>`;
 
-    const shortDate = log.date ? log.date.split('T')[0] : 'N/A';
+    const shortDate = log.date ? log.date.split('T')[0] : '';
+
+    // ① compact 모드일 때만 "일 + 요일"
+    let dateHtml = `[${shortDate || 'N/A'}]`;
+
+    if (compact && shortDate) {
+        const dow = ['일','월','화','수','목','금','토'][new Date(shortDate).getDay()];
+        const gap = daysBetween(shortDate, toLocalDateStr(new Date()));
+        const tag = gap === 0 ? '오늘' : gap === 1 ? '어제' : '';
+
+        dateHtml = `<span class="log-day">
+                        <b>${parseInt(shortDate.slice(8), 10)}일</b>
+                        <i class="${dow === '일' ? 'is-sun' : dow === '토' ? 'is-sat' : ''}">${dow}</i>
+                        ${tag ? `<em>${tag}</em>` : ''}
+                    </span>`;
+    }
+
     const tempHum = [log.temp ? `${log.temp}°C` : '', log.humidity ? `${log.humidity}%` : ''].filter(Boolean).join(' / ');
     const weatherIcon = getWeatherIcon(log.weather);
 
     let rateHtml = (log.rate && log.rate !== 'null' && log.rate > 0)
         ? `<div class="rate-done">★ ${parseFloat(log.rate).toFixed(1)}</div>`
         : `<div class="rate-cta">
-           <span class="rate-cta__track">★★★★★</span>
-           <span class="rate-cta__txt">별점 남기기</span>
-       </div>`;
+               <span class="rate-cta__track">★★★★★</span>
+               <span class="rate-cta__txt">별점 남기기</span>
+           </div>`;
 
     const toDetail = `onclick="event.stopPropagation(); openDetailFromLog('${log.pageId}')"`;
 
@@ -427,12 +444,12 @@ function renderLogItemHtml(log) {
                     <div class="log-perfume">
                         <span class="log-name-link" ${toDetail} title="향수 정보 보기">${log.perfumeName}</span>
                     </div>
-                    <div class="log-date">[${shortDate}]</div>
+                    <div class="log-date">${dateHtml}</div>
                     ${rateHtml}
                 </div>
             </div>
             <div class="log-weather">
-                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br>${tempHum}
+                <span style="font-size: 14px;">${weatherIcon}</span> ${log.weather || 'Unknown'}<br><span class="log-wx-num">${tempHum}</span>
             </div>
         </div>
     `;
@@ -669,6 +686,7 @@ function clearSearchDates() {
     document.getElementById('search-start-date').value = '';
     document.getElementById('search-end-date').value = '';
     renderAllLogs();
+    document.querySelectorAll('#hist-quick .qchip').forEach((b, i) => b.classList.toggle('is-active', i === 0));
 }
 
 function renderAllLogs() {
@@ -688,12 +706,78 @@ function renderAllLogs() {
         });
     }
 
+    renderHistSummary(filteredLogs);
+
     if (filteredLogs.length === 0) {
-        container.innerHTML = `<div style="text-align: center; color: var(--accent-color); font-size: 11px; margin-top: 20px;">조건에 맞는 로그가 없습니다.</div>`;
+        container.innerHTML = `<div class="hist-empty">조건에 맞는 로그가 없습니다.</div>`;
         return;
     }
 
-    container.innerHTML = filteredLogs.map(log => renderLogItemHtml(log)).join('');
+    // 월별 그룹
+    const groups = {};
+    filteredLogs.forEach(log => {
+        const key = (log.date || '').slice(0, 7);      // "2026-09"
+        (groups[key] ||= []).push(log);
+    });
+
+    container.innerHTML = Object.keys(groups)
+        .sort((a, b) => b.localeCompare(a))
+        .map(key => {
+            const [y, m] = key.split('-');
+            const items = groups[key];
+            return `
+                <div class="hist-group">
+                    <div class="hist-group__head">
+                        <span class="hist-group__month">${y}. ${m}</span>
+                        <span class="hist-group__line"></span>
+                        <span class="hist-group__cnt">${items.length}</span>
+                    </div>
+                    <div class="hist-group__body">
+                        ${items.map(l => renderLogItemHtml(l, true)).join('')}
+                    </div>
+                </div>`;
+        }).join('');
+}
+
+function renderHistSummary(logs) {
+    const el = document.getElementById('hist-summary');
+    if (!el) return;
+    if (!logs.length) { el.innerHTML = ''; return; }
+
+    const rated = logs.filter(l => l.rate && l.rate !== 'null' && l.rate > 0);
+    const avg = rated.length
+        ? (rated.reduce((s, l) => s + parseFloat(l.rate), 0) / rated.length).toFixed(1)
+        : '–';
+
+    el.innerHTML = `
+        <div class="hs-item"><b>${logs.length}</b><span>logs</span></div>
+        <div class="hs-div"></div>
+        <div class="hs-item"><b>${new Set(logs.map(l => l.perfumeName)).size}</b><span>perfumes</span></div>
+        <div class="hs-div"></div>
+        <div class="hs-item"><b><span class="hs-star">★</span> ${avg}</b><span>avg rate</span></div>`;
+}
+
+function onDateFilterChange() {
+    document.querySelectorAll('#hist-quick .qchip').forEach(b => b.classList.remove('is-active'));
+    renderAllLogs();
+}
+
+function setQuickRange(days, btn) {
+    document.querySelectorAll('#hist-quick .qchip').forEach(b => b.classList.remove('is-active'));
+    if (btn) btn.classList.add('is-active');
+
+    const s = document.getElementById('search-start-date');
+    const e = document.getElementById('search-end-date');
+
+    if (!days) {
+        s.value = ''; e.value = '';
+    } else {
+        const from = new Date();
+        from.setDate(from.getDate() - (days - 1));
+        s.value = toLocalDateStr(from);
+        e.value = toLocalDateStr(new Date());
+    }
+    renderAllLogs();
 }
 
 // ==========================================
@@ -1556,11 +1640,15 @@ async function crawlWishUrl() {
 
             step.innerHTML = '> [SUCCESS] Notes extracted.';
 
-            // 💡 계절 뱃지 생성 및 렌더링
-            const seasonBadges = generateSeasonUI(crawledSeasonsData, crawledSeasonStats, { force: 'tag' });
+            const seasonBadges = generateSeasonUI(wishCrawledSeasonsData, wishCrawledSeasonStats, { force: 'tag' });
 
-            const badgeHtml = generateWishlistBadgeHtml(data.notes);
-            document.getElementById('wish-notes-preview-box').innerHTML = (seasonBadges ? `<div style="margin-bottom:10px;">${seasonBadges}</div>` : '') + badgeHtml + renderNotesHtml(data.notes);
+            const previewBox = document.getElementById('wish-notes-preview-box');
+            previewBox.innerHTML =
+                (seasonBadges ? `<div class="wish-season-row">${seasonBadges}</div>` : '')
+                + renderWardrobeMatch(data.notes, { summary: true })
+                + renderNotesHtml(data.notes);
+
+            markOwnedChips(previewBox);
 
             document.getElementById('wish-notes-preview-container').style.display = 'block';
         } else {
@@ -1673,16 +1761,23 @@ function openWishDetail(wishId) {
 
     const imgEl = document.getElementById('wish-detail-image');
     const boxEl = document.getElementById('wish-detail-image-box');
-    if (w.imageUrl) {
-        imgEl.src = w.imageUrl;
-        imgEl.style.display = 'block';
-        boxEl.style.display = 'none';
-    } else {
-        imgEl.style.display = 'none';
-        boxEl.style.display = 'flex';
-    }
+    const hasImg = !!w.imageUrl;
 
-    document.getElementById('wish-detail-notes-container').innerHTML = renderNotesHtml(w.notes);
+    imgEl.src = hasImg ? w.imageUrl : '';
+    imgEl.hidden = !hasImg;
+    boxEl.hidden = hasImg;
+
+    // 일치율 → 썸네일 옆
+    const matchEl = document.getElementById('wish-detail-match');
+    matchEl.innerHTML =
+        renderWardrobeMatch(w.notes, { summary: true })
+        || `<p class="wmatch__none">옷장에 향수를 등록하면<br>일치율을 볼 수 있어요</p>`;
+
+    // 노트 → 아래 전체 폭
+    const noteBox = document.getElementById('wish-detail-notes-container');
+    noteBox.innerHTML = renderNotesHtml(w.notes);
+    markOwnedChips(noteBox);
+
     const btn = document.getElementById('wish-promote-btn');
     btn.classList.remove('scanning', 'success');
     btn.innerText = "→ MY PERFUMES (NFC)";
@@ -1936,6 +2031,10 @@ async function openSettingsView() {
 }
 
 async function submitSettings() {
+
+    const pwCheck = getPwPayload();
+    if (!pwCheck.ok) return;
+
     const elName = document.getElementById('setting-name');
     const elLoc = document.getElementById('setting-loc');
     const elPw = document.getElementById('setting-pw');
@@ -1977,6 +2076,7 @@ async function submitSettings() {
             if (statusMsg) statusMsg.innerText = "[SUCCESS] Profile updated.";
 
             if (pw) {
+                clearPwFields();
                 alert("비밀번호가 변경되었습니다. 다시 로그인해주세요.");
                 logout();
                 return;
@@ -2187,87 +2287,6 @@ function renderNoteAnalytics(climateAnalytics) {
     }
 
     container.innerHTML = html || '분석 가능한 데이터가 부족합니다.';
-}
-
-// 옷장 데이터를 바탕으로 노트 일치율(%)을 계산하는 객관적 뱃지 생성기
-function generateWishlistBadgeHtml(notesObj) {
-    if (!globalWardrobeData || globalWardrobeData.length === 0) return '';
-
-    // 1. 크롤링된 새 향수의 노트 추출 및 중복 제거
-    const newNotes = [];
-    ['top', 'middle', 'base', 'general'].forEach(k => {
-        if (notesObj[k]) newNotes.push(...notesObj[k].map(n => n.toLowerCase().trim()));
-    });
-
-    const uniqueNewNotes = [...new Set(newNotes)];
-    const totalNotes = uniqueNewNotes.length;
-    if (totalNotes === 0) return '';
-
-    // 2. 내 옷장에 있는 모든 고유 노트 수집 (빈도수 계산 대신 존재 여부만 파악)
-    const wardrobeNotesSet = new Set();
-    globalWardrobeData.forEach(p => {
-        if (!p.notes) return;
-        ['top', 'middle', 'base', 'general'].forEach(k => {
-            if (p.notes[k]) {
-                p.notes[k].forEach(n => wardrobeNotesSet.add(n.toLowerCase().trim()));
-            }
-        });
-    });
-
-    // 3. 겹치는 노트와 새로운 노트 분류
-    const overlappingNotes = [];
-    const newDiscoveryNotes = [];
-
-    uniqueNewNotes.forEach(n => {
-        if (wardrobeNotesSet.has(n)) overlappingNotes.push(n);
-        else newDiscoveryNotes.push(n);
-    });
-
-    // 4. 일치율 계산
-    const overlapPercent = Math.round((overlappingNotes.length / totalNotes) * 100);
-
-    // 5. 비율에 따른 테마 색상 및 텍스트 설정
-    let themeColor = '';
-    let bgColor = '';
-    let titleText = '';
-
-    if (overlapPercent >= 60) {
-        // 높은 일치율 (초록)
-        themeColor = 'var(--success-color)'; // #10b981
-        bgColor = 'rgba(16, 185, 129, 0.1)';
-        titleText = `🌿 내 옷장과 ${overlapPercent}% 일치`;
-    } else if (overlapPercent >= 30) {
-        // 중간 일치율 (파랑)
-        themeColor = '#3b82f6';
-        bgColor = 'rgba(59, 130, 246, 0.1)';
-        titleText = `🌊 내 옷장과 ${overlapPercent}% 일치`;
-    } else {
-        // 낮은 일치율 (보라)
-        themeColor = '#8b5cf6';
-        bgColor = 'rgba(139, 92, 246, 0.1)';
-        titleText = `🚀 내 옷장과 ${overlapPercent}% 일치`;
-    }
-
-    const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-    const formatNotes = (arr) => arr.length > 0 ? arr.map(capitalize).join(', ') : '없음';
-
-    // 6. UI 렌더링
-    let html = `<div style="margin-bottom: 12px; padding: 10px; background: ${bgColor}; border-left: 3px solid ${themeColor}; border-radius: 4px;">
-                    <strong style="color: ${themeColor}; font-size: 12px;">${titleText}</strong><br>`;
-
-    if (overlappingNotes.length > 0) {
-        html += `<div style="font-size: 11px; color: var(--text-color); margin-top: 6px;">
-                    <b>보유 노트:</b> <span style="color: var(--accent-color);">${formatNotes(overlappingNotes)}</span>
-                 </div>`;
-    }
-    if (newDiscoveryNotes.length > 0) {
-        html += `<div style="font-size: 11px; color: var(--text-color); margin-top: 3px;">
-                    <b>미보유 노트:</b> <span style="color: var(--accent-color);">${formatNotes(newDiscoveryNotes)}</span>
-                 </div>`;
-    }
-    html += `</div>`;
-
-    return html;
 }
 
 async function refreshSummary(btn) {
@@ -2600,6 +2619,261 @@ function setScanStatus(text) {
     statusDiv.classList.remove('is-logged');
     statusDiv.removeAttribute('data-ico');
     statusDiv.innerText = text;
+}
+
+/* ========================================
+   PASSWORD CONFIRM + VIEW TOGGLE
+======================================== */
+const PW = {
+    MIN: 8,
+    pw:   null,
+    pw2:  null,
+    tag:  null,
+    hint: null,
+    btn:  null,
+};
+
+function initPwConfirm() {
+    PW.pw   = document.getElementById('setting-pw');
+    PW.pw2  = document.getElementById('setting-pw2');
+    PW.tag  = document.getElementById('pw-match-tag');
+    PW.hint = document.getElementById('pw-match-hint');
+    PW.btn  = document.getElementById('pw-toggle');
+    if (!PW.pw || !PW.pw2) return;
+
+    // 중복 바인딩 방지 (설정 뷰를 여러 번 열어도 안전)
+    if (PW.pw.dataset.pwBound) { paintPw(); return; }
+    PW.pw.dataset.pwBound = '1';
+
+    PW.pw.addEventListener('input', paintPw);
+    PW.pw2.addEventListener('input', paintPw);
+
+    // CapsLock 경고
+    [PW.pw, PW.pw2].forEach(el => {
+        el.addEventListener('keyup', e => {
+            const on = e.getModifierState && e.getModifierState('CapsLock');
+            el.classList.toggle('is-caps', !!on);
+        });
+        el.addEventListener('blur', () => el.classList.remove('is-caps'));
+    });
+
+    if (PW.btn) PW.btn.addEventListener('click', togglePwView);
+
+    paintPw();
+}
+
+/* --- 상태 판정 --- */
+function evaluatePw() {
+    const a = PW.pw.value;
+    const b = PW.pw2.value;
+
+    if (!a && !b)        return { state: 'idle', msg: '변경하지 않으려면 두 칸 모두 비워두세요.' };
+    if (a.length < PW.MIN) return { state: 'bad',  msg: `${PW.MIN}자 이상 입력해주세요. (현재 ${a.length}자)` };
+    if (!b)              return { state: 'wait', msg: '확인을 위해 한 번 더 입력해주세요.' };
+    if (a !== b)         return { state: 'bad',  msg: '비밀번호가 일치하지 않습니다.' };
+
+    return { state: 'ok', msg: '비밀번호가 일치합니다.' };
+}
+
+/* --- 화면 반영 --- */
+function paintPw() {
+    const r = evaluatePw();
+
+    const pwShort  = r.state === 'bad' && PW.pw.value.length > 0 && PW.pw.value.length < PW.MIN;
+    const mismatch = r.state === 'bad' && !pwShort && PW.pw2.value.length > 0;
+
+    PW.pw.classList.toggle('error-border', pwShort);
+    PW.pw2.classList.toggle('error-border', mismatch);
+
+    if (PW.hint) {
+        PW.hint.textContent = r.msg;
+        PW.hint.className = 'field-hint pw-hint--' + r.state;
+    }
+    if (PW.tag) {
+        PW.tag.textContent = r.state === 'ok' ? '확인됨' : '';
+        PW.tag.className = 'label-tag' + (r.state === 'ok' ? ' is-ok' : '');
+    }
+    return r.state;
+}
+
+/* --- 보기 토글 --- */
+function togglePwView() {
+    const show = PW.pw.type === 'password';
+    PW.pw.type  = show ? 'text' : 'password';
+    PW.pw2.type = show ? 'text' : 'password';
+
+    if (PW.btn) {
+        PW.btn.textContent = show ? 'hide' : 'show';
+        PW.btn.setAttribute('aria-pressed', String(show));
+        PW.btn.classList.toggle('is-on', show);
+    }
+}
+
+/* --- 저장 시 호출 --- */
+function getPwPayload() {
+    const s = paintPw();
+
+    if (s === 'idle') return { ok: true, password: null };   // 변경 안 함
+    if (s === 'ok')   return { ok: true, password: PW.pw.value };
+
+    // 실패 → 문제 필드로 포커스
+    const target = (PW.pw.value.length < PW.MIN) ? PW.pw : PW.pw2;
+    target.focus();
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return { ok: false, password: null };
+}
+
+/* --- 저장 성공 후 정리 --- */
+function clearPwFields() {
+    if (!PW.pw) return;
+    PW.pw.value = '';
+    PW.pw2.value = '';
+    PW.pw.type = PW.pw2.type = 'password';
+    if (PW.btn) {
+        PW.btn.textContent = 'show';
+        PW.btn.setAttribute('aria-pressed', 'false');
+        PW.btn.classList.remove('is-on');
+    }
+    paintPw();
+}
+
+/* ========================================
+   WARDROBE MATCH — 계산 + 렌더 공용
+======================================== */
+const NOTE_KEYS = ['top', 'middle', 'base', 'general'];
+
+function flattenNotes(notesObj) {
+    if (!notesObj) return [];
+    // 배열/문자열로 들어오는 경우도 방어
+    if (Array.isArray(notesObj)) {
+        return [...new Set(notesObj.map(n => String(n).toLowerCase().trim()).filter(Boolean))];
+    }
+    if (typeof notesObj === 'string') {
+        return [...new Set(notesObj.split(',').map(n => n.toLowerCase().trim()).filter(Boolean))];
+    }
+    const out = [];
+    NOTE_KEYS.forEach(k => {
+        if (Array.isArray(notesObj[k])) {
+            out.push(...notesObj[k].map(n => String(n).toLowerCase().trim()));
+        }
+    });
+    return [...new Set(out.filter(Boolean))];
+}
+
+/* 옷장 전체 노트 집합 */
+function getWardrobeNoteSet() {
+    const set = new Set();
+    (globalWardrobeData || []).forEach(p => {
+        flattenNotes(p.notes).forEach(n => set.add(n));
+    });
+    return set;
+}
+
+/* 일치율 계산 — 렌더와 무관한 순수 함수 */
+function calcWardrobeMatch(notesObj) {
+    if (!globalWardrobeData || globalWardrobeData.length === 0) return null;
+
+    const notes = flattenNotes(notesObj);
+    if (!notes.length) return null;
+
+    const owned = getWardrobeNoteSet();
+    const overlap = notes.filter(n => owned.has(n));
+    const missing = notes.filter(n => !owned.has(n));
+    const pct = Math.round(overlap.length / notes.length * 100);
+
+    return {
+        pct, overlap, missing,
+        total: notes.length,
+        tier: pct >= 60 ? 'high' : (pct >= 30 ? 'mid' : 'low'),
+    };
+}
+
+const MATCH_META = {
+    high: { ico: '🌿', msg: '비슷한 향을 이미 갖고 있어요' },
+    mid:  { ico: '🌊', msg: '익숙하면서도 변주가 있어요' },
+    low:  { ico: '🚀', msg: '옷장에 없는 새로운 계열이에요' },
+};
+
+const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
+const fmtNotes = arr => arr.length ? arr.map(capitalize).join(', ') : '없음';
+
+/**
+ * @param {object} notesObj
+ * @param {object} [opts] { compact:true, chips:true, hint:true }
+ */
+function renderWardrobeMatch(notesObj, opts) {
+    const o = opts || {};
+    const m = calcWardrobeMatch(notesObj);
+    if (!m) return '';
+
+    const meta = MATCH_META[m.tier];
+
+    // 🔑 요약 모드 — 칩/나열 없이 헤드+바+힌트만
+    if (o.summary) {
+        return `
+            <div class="wmatch wmatch--summary" data-tier="${m.tier}">
+                <div class="wmatch__head">
+                    <strong>${meta.ico} 내 옷장과 ${m.pct}% 일치</strong>
+                    <span class="wmatch__frac">${m.overlap.length}/${m.total}</span>
+                </div>
+                <div class="wmatch__bar"><i style="width:${m.pct}%"></i></div>
+                <p class="wmatch__hint">${meta.msg}</p>
+            </div>`;
+    }
+
+    let body = '';
+
+    if (o.chips) {
+        // 상세용 — 칩으로
+        const chips = [
+            ...m.overlap.map(n => `<span class="note-chip golden">${capitalize(n)}</span>`),
+            ...m.missing.map(n => `<span class="note-chip">${capitalize(n)}</span>`),
+        ].join('');
+        body = `<div class="wmatch__chips">${chips}</div>`;
+    } else {
+        // 등록용 — 기존과 동일한 텍스트 나열
+        if (m.overlap.length) {
+            body += `<div class="wmatch__row"><b>보유 노트:</b> <span>${fmtNotes(m.overlap)}</span></div>`;
+        }
+        if (m.missing.length) {
+            body += `<div class="wmatch__row"><b>미보유 노트:</b> <span>${fmtNotes(m.missing)}</span></div>`;
+        }
+    }
+
+    const hint = o.hint
+        ? `<p class="wmatch__hint">${meta.msg}</p>`
+        : '';
+
+    return `
+        <div class="wmatch${o.compact ? ' wmatch--compact' : ''}" data-tier="${m.tier}">
+            <div class="wmatch__head">
+                <strong>${meta.ico} 내 옷장과 ${m.pct}% 일치</strong>
+                <span class="wmatch__frac">${m.overlap.length}/${m.total}</span>
+            </div>
+            <div class="wmatch__bar"><i style="width:${m.pct}%"></i></div>
+            ${body}
+            ${hint}
+        </div>`;
+}
+
+/* 노트 박스 안의 칩 중 보유 노트에 golden 부여 */
+function markOwnedChips(rootEl) {
+    if (!rootEl) return;
+    const owned = getWardrobeNoteSet();
+    if (!owned.size) return;
+
+    rootEl.querySelectorAll('.note-chip').forEach(chip => {
+        const key = chip.textContent.toLowerCase().trim();
+        if (owned.has(key)) {
+            chip.classList.add('golden');
+            chip.title = '내 옷장에 있는 노트';
+        }
+    });
+}
+
+/* 기존 호출부 호환 — 등록 화면은 수정 불필요 */
+function generateWishlistBadgeHtml(notesObj) {
+    return renderWardrobeMatch(notesObj, { chips: false, hint: false });
 }
 
 window.addEventListener('load', syncNavHeight);

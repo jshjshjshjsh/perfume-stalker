@@ -463,13 +463,27 @@
             <h2 style="margin: 0; font-size: 16px;">All History</h2>
             <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <input type="date" id="search-start-date" class="form-input" style="flex: 1; padding: 6px; border:1px solid #e0e0dc;" onchange="renderAllLogs()">
-            <span style="color: var(--accent-color); font-weight: bold;">~</span>
-            <input type="date" id="search-end-date" class="form-input" style="flex: 1; padding: 6px; border:1px solid #e0e0dc;" onchange="renderAllLogs()">
-            <button class="scan-btn" style="width: auto; padding: 6px 10px;" onclick="clearSearchDates()">Clear</button>
+
+        <div class="hist-filter">
+            <div class="hist-filter__range">
+            <span class="date-field" data-label="START">
+                <input type="date" id="search-start-date" class="form-input" required onchange="onDateFilterChange()">
+            </span>
+                <span class="date-field__sep">→</span>
+                <span class="date-field" data-label="END">
+                <input type="date" id="search-end-date" class="form-input" required onchange="onDateFilterChange()">
+            </span>
+            </div>
+            <div class="hist-filter__quick" id="hist-quick">
+                <button type="button" class="qchip is-active" onclick="setQuickRange(0, this)">ALL</button>
+                <button type="button" class="qchip" onclick="setQuickRange(7, this)">7D</button>
+                <button type="button" class="qchip" onclick="setQuickRange(30, this)">30D</button>
+                <button type="button" class="qchip" onclick="setQuickRange(90, this)">90D</button>
+            </div>
         </div>
     </div>
+
+    <div id="hist-summary"></div>
     <div id="all-logs-container" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;"></div>
 </section>
 
@@ -488,12 +502,20 @@
         <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
         <p id="wish-detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
-    <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 25px;">
-        <div style="flex-shrink: 0;">
-            <div id="wish-detail-image-box" class="wardrobe-thumb" style="width: 85px; height: 115px; margin: 0;">No Img</div>
-            <img id="wish-detail-image" src="" style="width: 85px; height: 115px; object-fit: cover; border: 1px solid #e0e0dc; border-radius: 2px; display: none;">
+    <div class="wdetail">
+
+        <!-- 1행: 썸네일 + 일치율 -->
+        <div class="wdetail__top">
+            <div class="wdetail__thumb">
+                <div id="wish-detail-image-box" class="wardrobe-thumb">No Img</div>
+                <img id="wish-detail-image" src="" alt="">
+            </div>
+            <div id="wish-detail-match" class="wdetail__match"></div>
         </div>
-        <div id="wish-detail-notes-container" style="flex: 1; border: 1px dashed var(--accent-color); padding: 12px; background: transparent; border-radius: 2px; min-height: 115px;"></div>
+
+        <!-- 2행: 노트 전체 폭 -->
+        <div id="wish-detail-notes-container" class="wdetail__notes"></div>
+
     </div>
     <button id="wish-promote-btn" class="scan-btn action-btn--primary" style="width: 100%;" onclick="startWishPromoteScan()">→ MY PERFUMES (NFC)</button>
     <div id="wish-promote-status" class="status-msg"></div>
@@ -572,10 +594,32 @@
             </div>
             <p class="settings-group__desc">// 비밀번호 변경</p>
 
+            <!-- 새 비밀번호 -->
+            <div class="form-group">
+                <label class="with-action" for="setting-pw">
+                    새 비밀번호
+                    <button type="button"
+                            class="loc-btn loc-btn--quiet loc-btn--sm"
+                            id="pw-toggle"
+                            aria-pressed="false">show</button>
+                </label>
+                <input type="password"
+                       id="setting-pw"
+                       placeholder="변경 시에만 입력"
+                       autocomplete="new-password">
+            </div>
+
+            <!-- 비밀번호 확인 -->
             <div class="form-group settings-group__last">
-                <label for="setting-pw">New Password</label>
-                <input type="password" id="setting-pw" placeholder="Enter new password" autocomplete="new-password">
-                <p class="field-hint">* 비워두면 기존 비밀번호가 그대로 유지됩니다.</p>
+                <label class="with-action" for="setting-pw2">
+                    비밀번호 확인
+                    <span class="label-tag" id="pw-match-tag"></span>
+                </label>
+                <input type="password"
+                       id="setting-pw2"
+                       placeholder="한 번 더 입력"
+                       autocomplete="new-password">
+                <p class="field-hint" id="pw-match-hint">변경하지 않으려면 두 칸 모두 비워두세요.</p>
             </div>
         </div>
 
@@ -621,7 +665,7 @@
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
     <div class="nav-item active main-tab" onclick="switchView('main', this)">MAIN</div>
-    <div class="nav-item wardrobe-tab" onclick="switchView('wardrobe', this)">MY PERFUMES</div>
+    <div class="nav-item wardrobe-tab" onclick="switchView('wardrobe', this)">PERFUMES</div>
     <div class="nav-item" onclick="switchView('summary', this)">SUMMARY</div>
     <div class="nav-item" onclick="switchView('wish', this)">WISH</div>
 </nav>
