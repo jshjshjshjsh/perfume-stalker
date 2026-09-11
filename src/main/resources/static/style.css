@@ -336,13 +336,37 @@ h2, .loc-btn, .dashboard-header { -webkit-user-select: none; user-select: none; 
 
 .scan-container { display: flex; align-items: center; flex-direction: column; margin-top: 20px; }
 .scan-btn {
-    background: transparent; color: var(--text-color); border: 1px solid var(--text-color);
-    padding: 18px 40px; font-family: inherit; font-size: 14px; cursor: pointer; border-radius: 2px; text-transform: uppercase;
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-sizing: border-box;
+    display: flex;                 /* 🔑 */
+    align-items: center;           /* 🔑 세로 중앙 */
+    justify-content: center;       /* 🔑 가로 중앙 */
+    gap: 6px;
+
+    width: 100%;
+    height: 52px;                  /* 🔑 min/max 대신 고정 */
+    padding: 0 16px;               /* 🔑 상하 패딩 제거 */
+
+    background: transparent;
+    color: var(--text-color);
+    border: 1px solid var(--text-color);
+    font-family: inherit;
+    font-size: 15px;
+    line-height: 1;                /* 🔑 상속 차단 */
+    white-space: nowrap;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background .3s, color .3s, border-color .3s;
 }
 .scan-btn:active { transform: scale(0.95); }
 .scan-btn.scanning { background: var(--text-color); color: var(--bg-color); animation: pulse 1.5s infinite; }
 .scan-btn.success { background: var(--text-color); color: var(--bg-color); animation: stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+.scan-btn__ico {
+    font-size: 13px;
+    opacity: .85;
+    transform: translateY(-0.5px);
+}
 
 .delete-btn { color: var(--danger-color); border-color: var(--danger-color); }
 .delete-btn:active { background: var(--danger-color); color: var(--bg-color); }
