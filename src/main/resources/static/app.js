@@ -1352,12 +1352,8 @@ function openRegisterView(isSample = false) {
     fetchBrands();
     switchView('register', null);
 
-    const titleEl = document.querySelector('#view-register h2');
-    const uidInput = document.getElementById('reg-uid');
-    const uidGroup = uidInput ? uidInput.closest('.form-group') : null;
-
-    const cancelBtn = `<button type="button" class="loc-btn loc-btn--muted" onclick="cancelRegistration()">cancel</button>`;
-    if (titleEl) titleEl.innerHTML = `<span>Register ${isSample ? 'Sample' : 'Perfume'}</span>${cancelBtn}`;
+    const titleEl = document.getElementById('register-title');
+    if (titleEl) titleEl.innerText = `Register ${isSample ? 'Sample' : 'Perfume'}`;   // 🔑 텍스트만
 }
 
 function cancelRegistration() {

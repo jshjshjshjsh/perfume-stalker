@@ -1919,3 +1919,23 @@ button.action-btn {
     opacity: .5;
     pointer-events: none;
 }
+
+/* ========================================
+   VIEW HEAD — 화면 상단 툴바
+======================================== */
+.view-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+    margin-bottom: 14px;
+}
+.view-head__actions {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 툴바 아래 h2는 일반 텍스트로 */
+.view-head + h2 { display: block; }

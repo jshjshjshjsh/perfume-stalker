@@ -128,10 +128,10 @@
     <div style="position: sticky; top: -40px; background-color: var(--bg-color); z-index: 10; padding: 40px 0 0 0; margin-top: -40px;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
             <h2 id="wardrobe-title" style="margin: 0; font-size: 16px; white-space: nowrap; padding-top: 2px;">My Perfumes</h2>
-            <div id="wardrobe-default-actions" class="btn-row" style="display: flex; justify-content: flex-end;">
-                <button type="button" id="btn-add-sample" class="loc-btn" onclick="openRegisterView(true)" style="display: none;">+ sample</button>
+            <div id="wardrobe-default-actions" class="btn-row" style="display: flex; justify-content: flex-end; gap:2px;">
                 <button type="button" class="loc-btn loc-btn--ico" onclick="toggleWardrobeReorderMode()" data-ico="⇅">sort</button>
                 <button type="button" class="loc-btn loc-btn--ico" onclick="fetchWardrobe()" data-ico="↻">refresh</button>
+                <button type="button" id="btn-add-sample" class="loc-btn loc-btn--primary" onclick="openRegisterView(true)" style="display: none;">+ add</button>
             </div>
             <div id="wardrobe-reorder-actions" class="btn-row" style="display: none; justify-content: flex-end;">
                 <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="toggleWardrobeReorderMode()" data-ico="✕">cancel</button>
@@ -269,10 +269,11 @@
 <!-- 5. REGISTER VIEW -->
 <section id="view-register" class="view-section">
     <div class="weather-widget">
-        <h2>
-            <span>New Discovery</span>
-            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelRegistration()" data-ico="✕">cancel</button>
-        </h2>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="✕"
+                    onclick="cancelRegistration()">cancel</button>
+        </div>
+        <h2 id="register-title">New Discovery</h2>
         <p>Unregistered tag detected.<br>Type details to log it.</p>
     </div>
     <div class="form-container">
@@ -326,10 +327,11 @@
 <!-- 6. EDIT LOG VIEW -->
 <section id="view-edit-log" class="view-section">
     <div class="weather-widget">
-        <h2>
-            <span>Edit Log</span>
-            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelEditLog()" data-ico="✕">cancel</button>
-        </h2>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="✕"
+                    onclick="cancelEditLog()">cancel</button>
+        </div>
+        <h2>Edit Log</h2>
         <p id="edit-perfume-name" style="font-weight: bold; margin-bottom: 5px;">Perfume Name</p>
         <p id="edit-date" style="font-size: 10px; color: var(--accent-color);">[2026-08-27]</p>
     </div>
@@ -381,9 +383,11 @@
 <!-- 7. MANUAL LOG VIEW -->
 <section id="view-manual-log" class="view-section">
     <div class="weather-widget">
-        <h2><span>Manual Log</span>
-            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))" data-ico="✕">cancel</button>
-        </h2>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="✕"
+                    onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">cancel</button>
+        </div>
+        <h2>Manual Log</h2>
         <p>Log a perfume without NFC tag.</p>
     </div>
     <div class="form-container">
@@ -431,20 +435,20 @@
 <!-- 8. PERFUME DETAIL VIEW -->
 <section id="view-perfume-detail" class="view-section">
     <div class="weather-widget">
-        <h2>
+        <div class="view-head">
             <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="←"
                     onclick="closePerfumeDetail()">back</button>
-            <span class="btn-row">
+            <span class="view-head__actions">
                 <button type="button" id="detail-edit-btn" class="loc-btn loc-btn--ico" data-ico="✎">edit</button>
                 <button type="button" id="detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
             </span>
-        </h2>
+        </div>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
         <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
 
         <div class="pdetail-meta">
             <span id="detail-date">Added: N/A</span>
-            <button type="button" id="perfume-empty-btn" class="state-chip">
+            <button type="button" id="perfume-empty-btn" class="state-chip" onclick="toggleCurrentEmpty()">
                 <span class="state-chip__dot"></span>
                 <span class="state-chip__txt">사용 중</span>
             </button>
@@ -466,10 +470,11 @@
 <!-- 9. ALL LOGS VIEW -->
 <section id="view-all-logs" class="view-section">
     <div style="padding: 0 0 10px 0; border-bottom: 1px solid #e0e0dc;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h2 style="margin: 0; font-size: 16px;">All History</h2>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="←"
+                    onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
         </div>
+        <h2 style="margin: 0 0 14px; font-size: 16px;">All History</h2>
 
         <div class="hist-filter">
             <div class="hist-filter__range">
@@ -497,14 +502,14 @@
 <!-- 10. WISH DETAIL VIEW -->
 <section id="view-wish-detail" class="view-section">
     <div class="weather-widget">
-        <h2>
-            <span>Wish Details</span>
-            <span class="btn-row">
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="←"
+                    onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])">back</button>
+            <span class="view-head__actions">
+                <button type="button" id="wish-detail-edit-btn" class="loc-btn loc-btn--ico" data-ico="✎">edit</button>
                 <button type="button" id="wish-detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
-                <button type="button" id="wish-detail-edit-btn" class="loc-btn">edit</button>
-                <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('wish', document.querySelectorAll('.nav-item')[3])">back</button>
             </span>
-        </h2>
+        </div>
         <p id="wish-detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
         <p id="wish-detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
         <p id="wish-detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
@@ -531,10 +536,11 @@
 <!-- 11. EDIT INFO VIEW -->
 <section id="view-edit-info" class="view-section">
     <div class="weather-widget">
-        <h2>
-            <span>Edit Details</span>
-            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" onclick="cancelEditInfo()" data-ico="✕">cancel</button>
-        </h2>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="✕"
+                    onclick="cancelEditInfo()">cancel</button>
+        </div>
+        <h2>Edit Details</h2>
         <p>Update name and brand.</p>
     </div>
     <div class="form-container">
@@ -556,10 +562,11 @@
 <!-- 12. SETTINGS VIEW -->
 <section id="view-settings" class="view-section">
     <div class="weather-widget">
-        <h2>
-            <span>My Settings</span>
-            <button type="button" class="loc-btn loc-btn--muted" onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
-        </h2>
+        <div class="view-head">
+            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="←"
+                    onclick="switchView('main', document.querySelector('.nav-item.main-tab'))">back</button>
+        </div>
+        <h2>My Settings</h2>
         <p>Update your profile information.</p>
     </div>
 
