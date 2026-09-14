@@ -123,6 +123,12 @@ public enum NotionPerfumeMaster {
         public Map<String, Object> formatValue(Object value) {
             return Map.of(getPropertyType(), List.of(Map.of("text", Map.of("content", String.valueOf(value)))));
         }
+    },
+    IS_EMPTY("IS_EMPTY", "checkbox") {
+        @Override
+        public Map<String, Object> formatValue(Object value) {
+            return Map.of("checkbox", Boolean.parseBoolean(String.valueOf(value)));
+        }
     };
 
     private final String columnName;

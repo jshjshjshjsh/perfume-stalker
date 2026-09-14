@@ -583,17 +583,21 @@ async function fetchPerfumeList() {
         if (res.ok) {
             const perfumes = await res.json();
 
-            // 1. 본품과 샘플 분리 (백엔드에서 이미 옷장 순서대로 내려오므로 상대적 순서는 자동 유지됨)
-            const bottles = perfumes.filter(p => !p.isSample);
-            const samples = perfumes.filter(p => p.isSample);
+            const usable = perfumes.filter(p => !isEmptyPerfume(p));   // 🔑
 
-            // 2. 본품 먼저, 그 다음 샘플 순으로 배열 합치기
+            const bottles = usable.filter(p => !p.isSample);
+            const samples = usable.filter(p => p.isSample);
             const sortedPerfumes = [...bottles, ...samples];
 
             const selectBox = document.getElementById('manual-perfume-select');
+
+            if (sortedPerfumes.length === 0) {
+                selectBox.innerHTML = '<option value="">-- 사용 가능한 향수가 없습니다 --</option>';
+                return;
+            }
+
             selectBox.innerHTML = '<option value="">-- Choose a perfume --</option>' +
                 sortedPerfumes.map(p => {
-                    // 3. 샘플일 경우 이름 뒤에 (샘플) 라벨 추가
                     const label = p.isSample ? ' (샘플)' : '';
                     return `<option value="${p.id}">${p.name}${label}</option>`;
                 }).join('');
@@ -620,6 +624,15 @@ async function submitManualLog() {
     if (!manualDate) {
         statusMsg.innerText = "[ERROR] 날짜를 지정해주세요.";
         return;
+    }
+
+    const selP = globalWardrobeData.find(x => x.id === perfumeId);
+    if (selP && isEmptyPerfume(selP)) {
+        const label = `${selP.brand || ''} ${selP.name}`.trim();
+        if (!confirm(`사용 완료된 향수예요.\n\n${label}\n\n그래도 기록할까요?`)) {
+            statusMsg.innerText = "";
+            return;
+        }
     }
 
     statusMsg.innerText = "Saving log to Notion...";
@@ -837,6 +850,8 @@ function renderWardrobeGrid() {
         return;
     }
 
+    filteredData = sortEmptyLast(filteredData);
+
     container.innerHTML = filteredData.map(p => {
         const imgTag = p.imageUrl
             ? `<img src="${p.imageUrl}" class="wardrobe-thumb" alt="thumb">`
@@ -845,9 +860,11 @@ function renderWardrobeGrid() {
         const notesPreview = parseNotesPreview(p.notes);
         const seasonUI = generateSeasonUI(p.seasons, p.seasonStats ?? p.season_stats);
         const wearMeta = renderWearMeta(WEAR_INDEX.get(nameKey(p.name)));
+        const empty = isEmptyPerfume(p);
 
         return `
-        <div class="wardrobe-card" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
+        <div class="wardrobe-card${empty ? ' is-empty' : ''}" data-id="${p.id}" onclick="openPerfumeDetail('${p.id}')">
+            ${empty ? '<span class="empty-badge">EMPTY</span>' : ''}
             <div class="wardrobe-drag-handle" style="display: none; cursor: grab; font-size: 18px; color: var(--accent-color); padding: 0 10px 0 0;" onclick="event.stopPropagation()">≡</div>
             ${imgTag}
             <div class="wardrobe-info">
@@ -1000,6 +1017,8 @@ function openPerfumeDetail(perfumeId, from = 'wardrobe') {
 
     switchView('perfume-detail', null);
     fetchPerfumeHistory(perfumeId);
+    renderEmptyToggleBtn(p);
+    applyEmptyStateToDetail(isEmptyPerfume(p));
 }
 
 function closePerfumeDetail() {
@@ -1126,16 +1145,32 @@ scanBtn.addEventListener('click', async () => {
             statusDiv.innerText = `Tag detected. UID: ${uid}\nSyncing with server...`;
 
             try {
-                const response = await fetchWithAuth("/api/v1/logs/scan", {
+                const postScan = (force) => fetchWithAuth("/api/v1/logs/scan", {
                     method: "POST", headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         uid: uid,
                         lat: currentLat,
                         lon: currentLon,
-                        useCurrentTemp: document.getElementById('scan-use-current-temp')?.checked || false
+                        useCurrentTemp: document.getElementById('scan-use-current-temp')?.checked || false,
+                        force: !!force
                     })
                 });
-                const resultText = await response.text();
+
+                let response = await postScan(false);
+                let resultText = await response.text();
+
+                // 🔑 사용 완료 → 재확인 후 강제 기록
+                if (response.status === 409 && resultText.includes("EmptyPerfume:")) {
+                    const label = resultText.split("EmptyPerfume:")[1].trim();
+                    if (!confirm(`이미 사용 완료된 향수예요.\n\n${label}\n\n그래도 기록할까요?`)) {
+                        setScanStatus("[CANCELLED] 기록을 취소했습니다.");
+                        setTimeout(resetScanUI, 1800);
+                        return;
+                    }
+                    setScanStatus("Syncing with server...");
+                    response = await postScan(true);
+                    resultText = await response.text();
+                }
 
                 if (response.ok) {
                     statusDiv.innerText = `[SUCCESS] Logged on Notion.`;
@@ -1173,13 +1208,26 @@ async function handleIosNfcScan(uid) {
     const statusDiv = document.getElementById('status');
     statusDiv.innerText = `[iOS NFC] 태그(${uid}) 확인 중...`;
 
+    const postScan = (force) => fetchWithAuth("/api/v1/logs/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon, force: !!force })
+    });
+
     try {
-        const response = await fetchWithAuth("/api/v1/logs/scan", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uid: uid, lat: currentLat, lon: currentLon })
-        });
-        const resultText = await response.text();
+        let response = await postScan(false);
+        let resultText = await response.text();
+
+        // 🔑 사용 완료 확인
+        if (response.status === 409 && resultText.includes("EmptyPerfume:")) {
+            const label = resultText.split("EmptyPerfume:")[1].trim();
+            if (!confirm(`이미 사용 완료된 향수예요.\n\n${label}\n\n그래도 기록할까요?`)) {
+                updateTodayFlag(globalRecentLogs);
+                return;
+            }
+            response = await postScan(true);
+            resultText = await response.text();
+        }
 
         if (response.ok) {
             statusDiv.innerText = `[SUCCESS] 착향 로그가 기록되었습니다.`;
@@ -2305,13 +2353,76 @@ function toLocalDateStr(d) {
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
 }
+/* ========================================
+   EMPTY (사용 완료)
+======================================== */
+const isEmptyPerfume = p =>
+    p?.isEmpty === true || p?.isEmpty === 'true' || p?.isEmpty === 1;
+
+/* 사용 완료를 뒤로 — 안정 정렬이라 ORDER_INDEX 순서는 유지 */
+function sortEmptyLast(list) {
+    return [...(list || [])].sort((a, b) =>
+        (isEmptyPerfume(a) ? 1 : 0) - (isEmptyPerfume(b) ? 1 : 0)
+    );
+}
+
+async function setPerfumeEmpty(id, next) {
+    const res = await fetchWithAuth(`/api/v1/perfumes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isEmpty: next })
+    });
+    if (!res.ok) throw new Error('update failed');
+
+    const p = globalWardrobeData.find(x => x.id === id);
+    if (p) p.isEmpty = next;
+    return next;
+}
+
+function renderEmptyToggleBtn(p) {
+    const btn = document.getElementById('perfume-empty-btn');
+    if (!btn) return;
+
+    const empty = isEmptyPerfume(p);
+    btn.classList.toggle('is-empty', empty);
+    btn.querySelector('.state-chip__txt').innerText = empty ? '사용 완료' : '사용 중';
+    btn.title = empty ? '탭하면 사용 중으로 되돌립니다' : '탭하면 사용 완료 처리합니다';
+    btn.onclick = () => handleEmptyToggle(p.id, !empty);
+}
+
+function applyEmptyStateToDetail(empty) {
+    const view = document.getElementById('view-perfume-detail');
+    if (view) view.classList.toggle('detail-empty', empty);
+}
+
+async function handleEmptyToggle(id, next) {
+    const btn = document.getElementById('perfume-empty-btn');
+    if (next && !confirm('사용 완료 처리할까요?\n\n목록 아래로 내려가고\n수동 기록 선택지에서 제외됩니다.')) return;
+
+    btn.classList.add('is-busy');          // 기존 .loc-btn.is-busy 재사용
+
+    try {
+        await setPerfumeEmpty(id, next);
+
+        const p = globalWardrobeData.find(x => x.id === id);
+        renderEmptyToggleBtn(p);
+        applyEmptyStateToDetail(next);
+
+        renderWardrobeGrid();              // 목록 즉시 반영
+        fetchPerfumeList();                // 수동 기록 select 갱신
+    } catch (e) {
+        alert('상태 변경에 실패했어요. 잠시 후 다시 시도해주세요.');
+    } finally {
+        btn.classList.remove('is-busy');
+    }
+}
 
 // 💡 수동 기록 모달 열기 (오늘 날짜 세팅)
-function openManualLogForm() {
+async function openManualLogForm() {
     document.getElementById('manual-date').value = toLocalDateStr(new Date());
     document.getElementById('manual-temp').value = '';
     document.getElementById('manual-hum').value = '';
-    fetchPerfumeList();
+    await fetchPerfumeList();
     switchView('manual-log', null);
 }
 

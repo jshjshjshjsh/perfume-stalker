@@ -159,6 +159,7 @@ public class NotionService {
         if (request.getName() != null) properties.put(NotionPerfumeMaster.NAME.getColumnName(), NotionPerfumeMaster.NAME.formatValue(request.getName()));
         if (request.getBrand() != null) properties.put(NotionPerfumeMaster.BRAND.getColumnName(), NotionPerfumeMaster.BRAND.formatValue(request.getBrand()));
         if (request.getImageUrl() != null) properties.put(NotionPerfumeMaster.IMAGE_URL.getColumnName(), NotionPerfumeMaster.IMAGE_URL.formatValue(request.getImageUrl()));
+        if (request.getIsEmpty() != null) properties.put(NotionPerfumeMaster.IS_EMPTY.getColumnName(), NotionPerfumeMaster.IS_EMPTY.formatValue(request.getIsEmpty()));
 
         return notionWebClient.patch().uri("/pages/{pageId}", pageId)
                 .bodyValue(Map.of("properties", properties)).retrieve().bodyToMono(Void.class);
@@ -270,6 +271,14 @@ public class NotionService {
                             }
                         } catch (Exception e) {}
 
+                        boolean isEmpty = false;
+                        try {
+                            Map<String, Object> emptyProp = (Map<String, Object>) props.get(NotionPerfumeMaster.IS_EMPTY.getColumnName());
+                            if (emptyProp != null && emptyProp.get("checkbox") != null) {
+                                isEmpty = (Boolean) emptyProp.get("checkbox");
+                            }
+                        } catch (Exception e) {}
+
                         List<String> topNotes = NotionParserUtils.extractMultiSelect(props, "TOP_NOTES");
                         List<String> middleNotes = NotionParserUtils.extractMultiSelect(props, "MIDDLE_NOTES");
                         List<String> baseNotes = NotionParserUtils.extractMultiSelect(props, "BASE_NOTES");
@@ -295,6 +304,7 @@ public class NotionService {
                         dto.put("date", date);
                         dto.put("isSample", isSample);
                         dto.put("seasons", seasons);
+                        dto.put("isEmpty", isEmpty);
 
                         if (seasonStatsStr != null && !seasonStatsStr.isEmpty()) {
                             try {

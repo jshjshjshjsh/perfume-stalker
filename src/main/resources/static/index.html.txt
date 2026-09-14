@@ -432,23 +432,16 @@
 <section id="view-perfume-detail" class="view-section">
     <div class="weather-widget">
         <h2>
-            <button type="button" class="loc-btn loc-btn--muted loc-btn--ico" data-ico="←"
-                    onclick="closePerfumeDetail()">back</button>
+            <span>Perfume Details</span>
             <span class="btn-row">
-                <button type="button" id="detail-edit-btn" class="loc-btn loc-btn--ico" data-ico="✎">edit</button>
                 <button type="button" id="detail-delete-btn" class="loc-btn loc-btn--danger">delete</button>
+                <button type="button" id="detail-edit-btn" class="loc-btn">edit</button>
+                <button type="button" class="loc-btn loc-btn--muted" onclick="closePerfumeDetail()">back</button>
             </span>
         </h2>
         <p id="detail-brand" style="font-size: 10px; color: var(--accent-color); text-transform: uppercase;">Brand</p>
         <p id="detail-name" style="font-weight: bold; font-size: 16px; margin-bottom: 2px;">Perfume Name</p>
-
-        <div class="pdetail-meta">
-            <span id="detail-date">Added: N/A</span>
-            <button type="button" id="perfume-empty-btn" class="state-chip">
-                <span class="state-chip__dot"></span>
-                <span class="state-chip__txt">사용 중</span>
-            </button>
-        </div>
+        <p id="detail-date" style="font-size: 10px; color: var(--accent-color);">Added: N/A</p>
     </div>
     <div style="display: flex; align-items: flex-start; gap: 15px; margin-bottom: 10px;">
         <div style="flex-shrink: 0;">
@@ -548,7 +541,7 @@
             <label>Name *</label>
             <input type="text" id="edit-info-name" required autocomplete="off">
         </div>
-        <button id="edit-info-submit-btn" class="scan-btn action-btn--primary" style="width: 100%; margin-top: 10px;" onclick="submitEditInfo()">Update Data</button>
+        <button id="edit-info-submit-btn" class="scan-btn" style="width: 100%; margin-top: 10px;" onclick="submitEditInfo()">Update Data</button>
         <div id="edit-info-status" class="status-msg"></div>
     </div>
 </section>

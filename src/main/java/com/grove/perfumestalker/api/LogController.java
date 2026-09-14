@@ -4,6 +4,8 @@ import com.grove.perfumestalker.dto.LogUpdateRequest;
 import com.grove.perfumestalker.dto.ManualLogRequest;
 import com.grove.perfumestalker.dto.UsageLogCreateCommand;
 import com.grove.perfumestalker.dto.UsageLogResponse;
+import com.grove.perfumestalker.enums.NotionPerfumeMaster;
+import com.grove.perfumestalker.exception.EmptyPerfumeException;
 import com.grove.perfumestalker.notion.NotionLogService;
 import com.grove.perfumestalker.notion.NotionService;
 import com.grove.perfumestalker.notion.util.NotionParserUtils;
@@ -32,7 +34,7 @@ public class LogController {
     private final NotionLogService notionLogService;
     private final WeatherService weatherService;
     private final UserService userService;
-    public record ScanRequest(String uid, Double lat, Double lon, Boolean useCurrentTemp) {}
+    public record ScanRequest(String uid, Double lat, Double lon, Boolean useCurrentTemp, Boolean force) {}
 
     @GetMapping("/perfume/{perfumeId}")
     public Mono<ResponseEntity<List<UsageLogResponse>>> getLogsByPerfumeId(
@@ -79,6 +81,24 @@ public class LogController {
                         return Mono.error(new SecurityException("🚨 타인이 소유한 태그입니다. 접근 불가."));
                     }
 
+                    // 🔑 사용 완료 향수 — force 아니면 프론트에 확인 요청
+                    boolean isUsedUp = false;
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> emptyProp =
+                                (Map<String, Object>) props.get(NotionPerfumeMaster.IS_EMPTY.getColumnName());
+                        if (emptyProp != null && emptyProp.get("checkbox") != null) {
+                            isUsedUp = (Boolean) emptyProp.get("checkbox");
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (isUsedUp && !Boolean.TRUE.equals(request.force())) {
+                        String name  = NotionParserUtils.extractRichText(props, "NAME");
+                        String brand = NotionParserUtils.extractSelect(props, "BRAND");
+                        String label = ((brand == null ? "" : brand + " ") + (name == null ? "" : name)).trim();
+                        return Mono.error(new EmptyPerfumeException(label));
+                    }
+
                     // 내 향수가 맞으면 Page ID 꺼내서 날씨랑 Zip으로 묶기!
                     String perfumePageId = (String) perfumePage.get("id");
                     return Mono.zip(Mono.just(perfumePageId), weatherMono);
@@ -99,6 +119,11 @@ public class LogController {
                 })
                 .map(v -> ResponseEntity.ok("✅ 날씨 정보와 함께 착향 로그가 기록되었습니다."))
                 .onErrorResume(e -> {
+                    // 🔑 사용 완료 향수 → 프론트 재확인
+                    if (e instanceof EmptyPerfumeException) {
+                        return Mono.just(ResponseEntity.status(HttpStatus.CONFLICT)
+                                .body("EmptyPerfume:" + e.getMessage()));
+                    }
                     // 에러 타입에 따라 프론트로 던질 메시지 세분화
                     if (e instanceof IllegalArgumentException) {
                         return Mono.just(ResponseEntity.badRequest().body("Unregistered NFC UID"));

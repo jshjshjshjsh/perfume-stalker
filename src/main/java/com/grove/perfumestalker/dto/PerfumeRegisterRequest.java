@@ -20,4 +20,5 @@ public class PerfumeRegisterRequest {
     private Boolean useCurrentTemp;
     private List<String> seasons;
     private Map<String, Integer> seasonStats;
+    private Boolean isEmpty;
 }
