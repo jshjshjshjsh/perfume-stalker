@@ -2983,6 +2983,13 @@ function generateWishlistBadgeHtml(notesObj) {
     return renderWardrobeMatch(notesObj, { chips: false, hint: false });
 }
 
+function clearWardrobeSearch() {
+    const input = document.getElementById('wardrobe-search');
+    input.value = '';
+    applyWardrobeFilter();
+    input.focus();                     // 바로 다시 입력 가능
+}
+
 window.addEventListener('load', syncNavHeight);
 window.addEventListener('resize', syncNavHeight);
 

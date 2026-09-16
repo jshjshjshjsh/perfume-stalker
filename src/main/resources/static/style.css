@@ -1939,3 +1939,74 @@ button.action-btn {
 
 /* 툴바 아래 h2는 일반 텍스트로 */
 .view-head + h2 { display: block; }
+
+/* ========================================
+   SEARCH FIELD
+======================================== */
+.search-field {
+    position: relative;
+    display: block;
+}
+
+.search-field input {
+    width: 100%;
+    padding: 10px 36px 10px 10px;      /* 🔑 오른쪽은 버튼 자리 */
+    border: 1px dashed var(--accent-color);
+    border-radius: 4px;
+    background: transparent;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--text-color);
+    outline: none;
+}
+.search-field input::placeholder { color: #ccc; }
+.search-field input:focus {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--text-color) 45%, transparent);
+}
+
+.search-clear {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+
+    width: 18px;
+    height: 18px;
+
+    -webkit-appearance: none;
+    appearance: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+
+    opacity: .45;
+    transition: opacity .15s ease;
+}
+
+/* 🔑 선 두 개로 X 직접 그리기 */
+.search-clear::before,
+.search-clear::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 11px;
+    height: 1.5px;
+    border-radius: 1px;
+    background: var(--text-color);
+}
+.search-clear::before { transform: translate(-50%, -50%) rotate(45deg); }
+.search-clear::after  { transform: translate(-50%, -50%) rotate(-45deg); }
+
+.search-field:has(input:placeholder-shown) .search-clear {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.search-clear:active { opacity: 1; }
+@media (hover: hover) {
+    .search-clear:hover { opacity: .85; }
+}
