@@ -152,7 +152,9 @@ public class NotionLogService {
                         "property", NotionUsageLog.USER.getColumnName(),
                         "relation", Map.of("contains", userPageId)
                 ),
-                "sorts", List.of(Map.of("timestamp", "created_time", "direction", "descending"))
+                "sorts", List.of(Map.of("property", NotionUsageLog.DATE.getColumnName(),
+                        "timestamp", "created_time",
+                        "direction", "descending"))
         );
 
         String formattedDbId = notionTokenUtils.formatUuid(usageLogDataSourceId);
