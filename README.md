@@ -10,11 +10,13 @@
 ---
 ## 📱 스크린샷 (Screenshots)
 
-| 메인 화면 & NFC 스캔 | 향수 옷장 (Season Bar) | 데이터 분석 (Note DNA) | 위시리스트 (노트 매칭) |
+| 메인 화면 & NFC 스캔 | 향수 옷장 (Perfumes) | 데이터 분석 (Summary) | 위시리스트 (Wish) |
 | :---: | :---: | :---: | :---: |
-| <img src="여기에_메인화면_이미지링크.png" width="220" /> | <img src="여기에_옷장_이미지링크.png" width="220" /> | <img src="여기에_통계_이미지링크.png" width="220" /> | <img src="여기에_위시_이미지링크.png" width="220" /> |
+| <img src="https://github.com/user-attachments/assets/097afb64-a910-4d3f-8436-a1d6d46dfdc0" width="220" /> | <img src="https://github.com/user-attachments/assets/66a40022-1a28-411a-a3a7-d8c2f9f4d06c" width="220" /> | <img src="https://github.com/user-attachments/assets/45d9ad98-bb76-41be-8b20-7aa7c9b3c584" width="220" /> | <img src="https://github.com/user-attachments/assets/f67b4786-7ad3-42ba-bbe9-47f6403d2fda" width="220" /> |
 
 *(※ 위 이미지는 실제 모바일 환경에서 구동되는 화면입니다.)*
+
+---
 
 ## ✨ 핵심 기능 (Key Features)
 
@@ -81,5 +83,5 @@
 ---
 
 ## 👨‍💻 개발자 (Developer)
-* **개발 및 기획**: [조승현/jshjshjshjsh]
+* **개발 및 기획**: [ 조승현 / jshjshjshjsh ]
 * 본 프로젝트는 개인의 향수 수집 및 기록을 위해 개발된 1인 토이 프로젝트입니다.
